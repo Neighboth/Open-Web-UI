@@ -24,6 +24,7 @@
 
 	import AddToolServerModal from '$lib/components/AddToolServerModal.svelte';
 	import AddTerminalServerModal from '$lib/components/AddTerminalServerModal.svelte';
+	import AddSystemSkillModal from './Integrations/AddSystemSkillModal.svelte';
 	import ExternalKnowledge from './ExternalKnowledge.svelte';
 	import AdminSettingSection from './AdminSettingSection.svelte';
 	import AdminSettingRow from './AdminSettingRow.svelte';
@@ -34,7 +35,9 @@
 		getToolServerConnections,
 		setToolServerConnections,
 		getTerminalServerConnections,
-		setTerminalServerConnections
+		setTerminalServerConnections,
+		getSystemSkillsConfig,
+		setSystemSkillsConfig
 	} from '$lib/apis/configs';
 
 	export let saveSettings: Function;
@@ -48,10 +51,21 @@
 		enabled?: boolean;
 		[key: string]: any;
 	};
+	type SystemSkill = {
+		id: string;
+		name: string;
+		description?: string;
+		content?: string;
+	};
 
 	let servers: ToolServerConnection[] | null = null;
 	let connectionsConfig: any = null;
 	let showConnectionModal = false;
+
+	// System Skills
+	let systemSkills: SystemSkill[] = [];
+	let showAddSkillModal = false;
+	let editSkillIdx: number | null = null;
 
 	// Terminal server admin connections
 	let terminalConnections: TerminalConnection[] = [];
@@ -136,6 +150,34 @@
 		saveTerminalServers();
 	};
 
+	const saveSystemSkills = async () => {
+		const res = await setSystemSkillsConfig(localStorage.token, {
+			SYSTEM_BUILTIN_SKILLS: systemSkills
+		}).catch((err) => {
+			toast.error($i18n.t('Failed to save system skills'));
+			return null;
+		});
+
+		if (res) {
+			toast.success($i18n.t('System skills saved successfully'));
+		}
+	};
+
+	const addSystemSkill = (skill: SystemSkill) => {
+		systemSkills = [...systemSkills, skill];
+		saveSystemSkills();
+	};
+
+	const updateSystemSkill = (idx: number, updated: SystemSkill) => {
+		systemSkills = systemSkills.map((s, i) => (i === idx ? updated : s));
+		saveSystemSkills();
+	};
+
+	const removeSystemSkill = (idx: number) => {
+		systemSkills = systemSkills.filter((_, i) => i !== idx);
+		saveSystemSkills();
+	};
+
 	onMount(async () => {
 		connectionsConfig = await getConnectionsConfig(localStorage.token);
 		const res = await getToolServerConnections(localStorage.token);
@@ -149,10 +191,39 @@
 		} catch {
 			// Not configured yet
 		}
+
+		try {
+			const skillsRes = await getSystemSkillsConfig(localStorage.token);
+			if (skillsRes?.SYSTEM_BUILTIN_SKILLS) {
+				systemSkills = skillsRes.SYSTEM_BUILTIN_SKILLS as SystemSkill[];
+			}
+		} catch {
+			// Not configured yet
+		}
 	});
 </script>
 
 <AddToolServerModal bind:show={showConnectionModal} onSubmit={addConnectionHandler} />
+
+<AddSystemSkillModal
+	bind:show={showAddSkillModal}
+	edit={editSkillIdx !== null}
+	skill={editSkillIdx !== null ? systemSkills[editSkillIdx] : null}
+	onSubmit={(s: SystemSkill) => {
+		if (editSkillIdx !== null) {
+			updateSystemSkill(editSkillIdx, s);
+			editSkillIdx = null;
+		} else {
+			addSystemSkill(s);
+		}
+	}}
+	onDelete={() => {
+		if (editSkillIdx !== null) {
+			removeSystemSkill(editSkillIdx);
+			editSkillIdx = null;
+		}
+	}}
+/>
 
 <AddTerminalServerModal
 	bind:show={showAddTerminalModal}
@@ -233,6 +304,71 @@
 					<div class="mt-1 text-[0.6875rem] text-gray-400 dark:text-gray-600">
 						{$i18n.t('Connect to your own OpenAPI compatible external tool servers.')}
 					</div>
+				</div>
+			</AdminSettingSection>
+
+			<AdminSettingSection title={$i18n.t('Admin Built-in System Skills')}>
+				<div>
+					<div class="mb-2 flex items-center justify-between">
+						<div class="text-xs text-gray-600 dark:text-gray-400">
+							{$i18n.t(
+								'Global system skills automatically provided to models (unremovable by normal users)'
+							)}
+						</div>
+
+						<Tooltip content={$i18n.t('Add System Skill')}>
+							<button
+								class="flex size-6 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-black/5 hover:text-gray-900 dark:text-gray-600 dark:hover:bg-white/5 dark:hover:text-white"
+								on:click={() => {
+									editSkillIdx = null;
+									showAddSkillModal = true;
+								}}
+								type="button"
+							>
+								<Plus />
+							</button>
+						</Tooltip>
+					</div>
+
+					<div class="flex flex-col gap-1.5">
+						{#each systemSkills as skill, idx}
+							<div
+								class="flex w-full gap-2 items-center justify-between py-1.5 px-2.5 rounded-lg bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800"
+							>
+								<div class="flex-1 min-w-0">
+									<div class="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+										{skill.name} <span class="text-[0.6875rem] text-gray-400 font-mono">({skill.id})</span>
+									</div>
+									{#if skill.description}
+										<div class="text-[0.6875rem] text-gray-500 truncate">
+											{skill.description}
+										</div>
+									{/if}
+								</div>
+
+								<div class="flex gap-1 items-center shrink-0">
+									<Tooltip content={$i18n.t('Edit')}>
+										<button
+											class="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg transition"
+											on:click={() => {
+												editSkillIdx = idx;
+												showAddSkillModal = true;
+											}}
+											type="button"
+										>
+											<Cog6 className="size-4" />
+										</button>
+									</Tooltip>
+								</div>
+							</div>
+						{/each}
+					</div>
+
+					{#if systemSkills.length === 0}
+						<div class="text-[0.6875rem] text-gray-400 dark:text-gray-600">
+							{$i18n.t('No system skills configured.')}
+						</div>
+					{/if}
 				</div>
 			</AdminSettingSection>
 

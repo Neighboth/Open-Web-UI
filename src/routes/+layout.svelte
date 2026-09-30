@@ -52,6 +52,7 @@
 	import 'tippy.js/dist/tippy.css';
 
 	import { executeToolServer, getBackendConfig, getModels, getVersion } from '$lib/apis';
+	import { getToolServerConnections } from '$lib/apis/configs';
 	import { getSessionUser, updateUserTimezone, userSignOut } from '$lib/apis/auths';
 	import { getAllTags } from '$lib/apis/chats';
 	import { chatCompletion } from '$lib/apis/openai';
@@ -651,28 +652,55 @@
 					const directConnections = $settings?.directConnections ?? {};
 
 					if (directConnections) {
-						const urlIdx = model?.urlIdx;
+						const urlIdx = model?.urlIdx ?? 0;
 
-						const OPENAI_API_URL = directConnections.OPENAI_API_BASE_URLS[urlIdx];
-						const OPENAI_API_KEY = directConnections.OPENAI_API_KEYS[urlIdx];
-						const API_CONFIG = directConnections.OPENAI_API_CONFIGS[urlIdx];
+						const OPENAI_API_URL = directConnections.OPENAI_API_BASE_URLS?.[urlIdx] ?? directConnections.OPENAI_API_BASE_URLS?.[0];
+						const OPENAI_API_KEY = directConnections.OPENAI_API_KEYS?.[urlIdx] ?? directConnections.OPENAI_API_KEYS?.[0];
+						const API_CONFIG = directConnections.OPENAI_API_CONFIGS?.[urlIdx] ?? directConnections.OPENAI_API_CONFIGS?.[0];
 
 						try {
 							if (API_CONFIG?.prefix_id) {
 								const prefixId = API_CONFIG.prefix_id;
 								form_data['model'] = form_data['model'].replace(`${prefixId}.`, ``);
 							}
+							if (typeof form_data['model'] === 'string' && form_data['model'].startsWith('~')) {
+								form_data['model'] = form_data['model'].slice(1);
+							}
 
-							const [res, controller] = await chatCompletion(
+							let [res, controller] = await chatCompletion(
 								OPENAI_API_KEY,
 								form_data,
 								OPENAI_API_URL
 							);
 
 							if (res) {
-								// raise if the response is not ok
+								// raise or retry if response is not ok
 								if (!res.ok) {
-									throw await res.json();
+									let errData = null;
+									try {
+										errData = await res.json();
+									} catch (e) {
+										errData = null;
+									}
+									const errStr = JSON.stringify(errData || {});
+									if (
+										(errStr.includes('reasoning_effort') || errStr.includes('reasoning') || errStr.includes('thinking')) &&
+										(form_data?.reasoning_effort !== undefined || form_data?.thinking !== undefined)
+									) {
+										const retryFormData = { ...form_data };
+										delete retryFormData.reasoning_effort;
+										delete retryFormData.thinking;
+										[res, controller] = await chatCompletion(
+											OPENAI_API_KEY,
+											retryFormData,
+											OPENAI_API_URL
+										);
+										if (!res.ok) {
+											throw await res.json();
+										}
+									} else {
+										throw errData || (await res.json());
+									}
 								}
 
 								if (form_data?.stream ?? false) {
@@ -1295,6 +1323,16 @@
 						const timezone = getUserTimezone();
 						if (timezone) {
 							updateUserTimezone(localStorage.token, timezone);
+						}
+
+						if (sessionUser?.role === 'admin') {
+							getToolServerConnections(localStorage.token)
+								.then((res) => {
+									if (res?.TOOL_SERVER_CONNECTIONS) {
+										toolServers.set(res.TOOL_SERVER_CONNECTIONS);
+									}
+								})
+								.catch(() => {});
 						}
 
 						// Relay auth token to desktop app for API access

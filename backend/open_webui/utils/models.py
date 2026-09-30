@@ -108,9 +108,8 @@ async def get_all_models(request, refresh: bool = False, user: UserModel = None)
     # deep copy the base models to avoid modifying the original list
     models = [model.copy() for model in base_models]
 
-    # If there are no models, return an empty list
-    if len(models) == 0:
-        return []
+    # Even if there are no base models from central providers, proceed to load custom models
+    # so BYOK and standalone admin-configured models work properly.
 
     # Add arena models
     if config.get('evaluation.arena.enable'):
@@ -206,6 +205,41 @@ async def get_all_models(request, refresh: bool = False, user: UserModel = None)
                     model['filter_ids'] = filter_ids
                 else:
                     models = [m for m in models if m is not model]
+            elif custom_model.is_active and custom_model.id not in existing_ids:
+                # Standalone custom model defined in Admin without a central base model (e.g. BYOK)
+                info = custom_model.model_dump()
+                schema = get_chat_variables_schema(custom_model.params.model_dump().get('system'))
+                if schema:
+                    info.setdefault('meta', {})['chat_variables_schema'] = schema
+                elif isinstance(info.get('meta'), dict):
+                    info['meta'].pop('chat_variables_schema', None)
+                if 'params' in info:
+                    del info['params']
+
+                action_ids = []
+                filter_ids = []
+                if custom_model.meta:
+                    meta = custom_model.meta.model_dump()
+                    if ENABLE_PLUGINS and 'actionIds' in meta:
+                        action_ids.extend(meta['actionIds'])
+                    if ENABLE_PLUGINS and 'filterIds' in meta:
+                        filter_ids.extend(meta['filterIds'])
+
+                model = {
+                    'id': f'{custom_model.id}',
+                    'name': custom_model.name,
+                    'object': 'model',
+                    'created': custom_model.created_at,
+                    'owned_by': 'openai',
+                    'connection_type': None,
+                    'preset': True,
+                    'info': info,
+                    'action_ids': action_ids,
+                    'filter_ids': filter_ids,
+                }
+                models.append(model)
+                existing_ids.add(custom_model.id)
+                base_model_lookup[custom_model.id] = model
 
         elif custom_model.is_active:
             if custom_model.id in existing_ids:

@@ -57,6 +57,10 @@ from open_webui.tools.builtin import (
     delete_memory,
     edit_image,
     execute_code,
+    execute_command,
+    read_file,
+    write_file,
+    list_directory,
     fetch_url,
     generate_image,
     get_current_timestamp,
@@ -143,11 +147,20 @@ async def build_tool_server_headers(
     extra_params = extra_params or {}
     metadata = metadata or {}
 
-    auth_type = connection.get('auth_type', 'bearer')
-    headers = {}
-    cookies = getattr(request, 'cookies', {}) if connection.get('forward_cookies', False) else {}
+    user_tools = getattr(user, 'settings', {}).get('tools', {}) if user and isinstance(getattr(user, 'settings', {}), dict) else {}
+    user_provided = connection.get('user_provided') or (connection.get('info') or {}).get('user_provided')
+    user_key = (
+        user_tools.get(server_id)
+        or user_tools.get(f'server:{server_id}')
+        or (user_tools.get(connection.get('info', {}).get('id')) if connection.get('info') else None)
+        or user_tools.get(connection.get('id', ''))
+    )
+    if isinstance(user_key, dict):
+        user_key = user_key.get('key') or user_key.get('token') or user_key.get('apiKey') or ''
 
-    if auth_type == 'bearer':
+    if user_provided and user_key:
+        headers.update(bearer_auth_header(str(user_key)))
+    elif auth_type == 'bearer':
         headers.update(bearer_auth_header(connection.get('key', '')))
     elif auth_type == 'session':
         headers.update(bearer_auth_header(request.state.token.credentials))

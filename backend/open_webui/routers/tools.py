@@ -116,15 +116,27 @@ async def get_tools(
         server_id = f'server:{server.get("id")}'
         server_connections[server_id] = connection
 
+        conn_info = connection.get('info') or {}
+        icon = connection.get('icon') or conn_info.get('icon')
+        user_provided = connection.get('user_provided') or conn_info.get('user_provided') or False
+        user_provided_description = connection.get('user_provided_description') or conn_info.get('user_provided_description') or ''
+
+        meta = {
+            'description': server.get('openapi', {}).get('info', {}).get('description', ''),
+        }
+        if icon:
+            meta['icon'] = icon
+        if user_provided:
+            meta['user_provided'] = user_provided
+            meta['user_provided_description'] = user_provided_description
+
         tools.append(
             ToolUserResponse(
                 **{
                     'id': server_id,
                     'user_id': server_id,
                     'name': server.get('openapi', {}).get('info', {}).get('title', 'Tool Server'),
-                    'meta': {
-                        'description': server.get('openapi', {}).get('info', {}).get('description', ''),
-                    },
+                    'meta': meta,
                     'updated_at': int(time.time()),
                     'created_at': int(time.time()),
                 }
@@ -150,15 +162,26 @@ async def get_tools(
             tool_id = f'server:mcp:{info.get("id")}'
             server_connections[tool_id] = server
 
+            icon = server.get('icon') or info.get('icon')
+            user_provided = server.get('user_provided') or info.get('user_provided') or False
+            user_provided_description = server.get('user_provided_description') or info.get('user_provided_description') or ''
+
+            meta = {
+                'description': info.get('description', ''),
+            }
+            if icon:
+                meta['icon'] = icon
+            if user_provided:
+                meta['user_provided'] = user_provided
+                meta['user_provided_description'] = user_provided_description
+
             tools.append(
                 ToolUserResponse(
                     **{
                         'id': tool_id,
                         'user_id': tool_id,
                         'name': info.get('name', 'MCP Tool Server'),
-                        'meta': {
-                            'description': info.get('description', ''),
-                        },
+                        'meta': meta,
                         'updated_at': int(time.time()),
                         'created_at': int(time.time()),
                         **(

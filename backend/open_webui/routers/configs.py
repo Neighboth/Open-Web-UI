@@ -298,6 +298,18 @@ async def set_tool_servers_config(
     return {'TOOL_SERVER_CONNECTIONS': connections}
 
 
+@router.get('/system_skills')
+async def get_system_skills_config(request: Request, user=Depends(get_verified_user)):
+    return {'SYSTEM_BUILTIN_SKILLS': await Config.get('system.builtin_skills', []) or []}
+
+
+@router.post('/system_skills')
+async def set_system_skills_config(request: Request, form_data: dict, user=Depends(get_admin_user)):
+    skills = form_data.get('SYSTEM_BUILTIN_SKILLS', [])
+    await Config.set('system.builtin_skills', skills)
+    return {'SYSTEM_BUILTIN_SKILLS': skills}
+
+
 class TerminalServerConnection(BaseModel):
     id: str | None = ''
     name: str | None = ''

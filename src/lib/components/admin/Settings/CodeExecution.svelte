@@ -17,7 +17,7 @@
 
 	let config: any = null;
 
-	let engines = ['pyodide', 'jupyter'];
+	let engines = ['pyodide', 'jupyter', 'e2b', 'self_hosted'];
 	const inputClass =
 		'w-full h-7 rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 text-xs text-gray-700 outline-hidden transition-colors placeholder:text-gray-300 focus:border-blue-400 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:placeholder:text-gray-700 dark:focus:border-blue-500';
 	const textareaClass =
@@ -273,7 +273,103 @@
 								placeholder={$i18n.t('e.g. 60')}
 								autocomplete="off"
 							/>
+					{/if}
+
+					{#if config.CODE_INTERPRETER_ENGINE === 'e2b'}
+						<AdminSettingField
+							label={$i18n.t('E2B API Key')}
+							description={$i18n.t('API Key from your e2b.dev account for sandboxed microVM execution.')}
+						>
+							<SensitiveInput
+								variant="settings"
+								type="text"
+								placeholder={$i18n.t('Enter E2B API Key (e2b_...)')}
+								bind:value={config.CODE_INTERPRETER_E2B_API_KEY}
+								autocomplete="off"
+							/>
 						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('E2B Template ID')}
+							description={$i18n.t('Custom E2B sandbox template ID (default: base).')}
+						>
+							<input
+								class={inputClass}
+								type="text"
+								placeholder="base"
+								bind:value={config.CODE_INTERPRETER_E2B_TEMPLATE}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+						<div class="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3.5 text-xs text-blue-900 dark:text-blue-200 mt-2 mb-2 space-y-1.5">
+							<div class="font-semibold flex items-center gap-1.5">
+								<span>🚀</span> {$i18n.t('E2B Sandboxed Execution Setup Guide')}
+							</div>
+							<p class="leading-relaxed">
+								{$i18n.t('E2B runs code and commands inside secure cloud microVMs with full OS capabilities, package management, and internet access.')}
+							</p>
+							<ol class="list-decimal pl-4 space-y-1">
+								<li>{$i18n.t('Create an account at')} <a href="https://e2b.dev" target="_blank" rel="noreferrer" class="underline font-medium hover:text-blue-600">e2b.dev</a>.</li>
+								<li>{$i18n.t('Copy your API Key from the dashboard and paste it into the field above.')}</li>
+								<li>{$i18n.t('Save settings. The model will now run Python and shell tools securely in dedicated E2B sandboxes.')}</li>
+							</ol>
+						</div>
+					{/if}
+
+					{#if config.CODE_INTERPRETER_ENGINE === 'self_hosted'}
+						<AdminSettingField
+							label={$i18n.t('Sandbox Runner URL')}
+							description={$i18n.t('HTTP endpoint of your self-hosted Docker sandbox runner.')}
+						>
+							<input
+								class={inputClass}
+								type="text"
+								placeholder="http://localhost:8080"
+								bind:value={config.CODE_INTERPRETER_SANDBOX_URL}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('Sandbox Runner Auth Token')}
+							description={$i18n.t('Bearer authentication token (optional).')}
+						>
+							<SensitiveInput
+								variant="settings"
+								type="text"
+								placeholder={$i18n.t('Enter Auth Token')}
+								bind:value={config.CODE_INTERPRETER_SANDBOX_AUTH_TOKEN}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('Timeout (seconds)')}
+							description={$i18n.t('Execution timeout in seconds.')}
+						>
+							<input
+								class={inputClass}
+								type="number"
+								bind:value={config.CODE_INTERPRETER_SANDBOX_TIMEOUT}
+								placeholder="60"
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+						<div class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 mt-2 mb-2 space-y-1.5">
+							<div class="font-semibold flex items-center gap-1.5">
+								<span>🐳</span> {$i18n.t('Self-Hosted Docker Sandbox Setup Guide')}
+							</div>
+							<p class="leading-relaxed">
+								{$i18n.t('Run your own isolated code runner container for private, on-premise execution.')}
+							</p>
+							<ol class="list-decimal pl-4 space-y-1">
+								<li>{$i18n.t('Start the runner container:')} <code class="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 font-mono">docker run -d -p 8080:8080 --name sandbox-runner openwebui/sandbox-runner:latest</code></li>
+								<li>{$i18n.t('Provide the container endpoint (e.g. http://localhost:8080 or docker network DNS).')}</li>
+								<li>{$i18n.t('Save settings to enable on-premise execution for code and terminal commands.')}</li>
+							</ol>
+						</div>
 					{/if}
 
 					<AdminSettingField

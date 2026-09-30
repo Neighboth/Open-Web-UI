@@ -43,6 +43,8 @@
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import ChevronLeft from '$lib/components/icons/ChevronLeft.svelte';
 	import LinkSlash from '$lib/components/icons/LinkSlash.svelte';
+	import Cog6 from '$lib/components/icons/Cog6.svelte';
+	import UserToolAuthModal from './UserToolAuthModal.svelte';
 
 	const i18n = getContext('i18n') as any;
 
@@ -88,6 +90,9 @@
 	let show = false;
 	let tab = '';
 
+	let showUserToolAuthModal = false;
+	let authSelectedTool: any = null;
+
 	let tools: Record<string, IntegrationItem> | null = null;
 	let skills: Record<string, IntegrationItem> | null = null;
 	let toolQuery = '';
@@ -120,6 +125,12 @@
 		($user?.role === 'admin' || $user?.permissions?.chat?.file_upload);
 
 	const init = async () => {
+		try {
+			if (localStorage.token) {
+				_tools.set(await getTools(localStorage.token));
+				_skills.set(await getSkills(localStorage.token));
+			}
+		} catch (e) {}
 		await Promise.all([loadTools(), loadSkills()]);
 	};
 
@@ -153,7 +164,14 @@
 				items[`direct_server:${serverIdx}`] = {
 					id: `direct_server:${serverIdx}`,
 					name,
-					description: server.info.description ?? ''
+					description: server.info.description ?? '',
+					meta: {
+						description: server.info.description ?? '',
+						icon: server.icon || server.info.icon,
+						user_provided: server.user_provided || server.info.user_provided,
+						user_provided_description:
+							server.user_provided_description || server.info.user_provided_description
+					}
 				};
 			}
 		}
@@ -170,6 +188,8 @@
 			.filter(
 				(skill) =>
 					skill.is_active &&
+					!skill.is_system &&
+					!skill.system &&
 					(!query.trim() ||
 						`${skill.name} ${resolveLocalizedResource(skill, $i18n.language)} ${resolveLocalizedResource(skill, $i18n.language, 'description')}`
 							.toLowerCase()
@@ -244,6 +264,16 @@
 	const toggleTool = async (toolId: string, e: MouseEvent) => {
 		const tool = tools?.[toolId];
 		if (!tool) return;
+
+		if (tool.meta?.user_provided) {
+			const userToolKey = ($settings as any)?.tools?.[toolId];
+			if (!userToolKey) {
+				e.preventDefault();
+				authSelectedTool = tool;
+				showUserToolAuthModal = true;
+				return;
+			}
+		}
 
 		if (!(tool.authenticated ?? true)) {
 			e.preventDefault();
@@ -571,7 +601,15 @@
 													placement="top"
 												>
 													<div class="shrink-0">
-														<Wrench />
+														{#if tools?.[toolId]?.meta?.icon}
+															<img
+																src={tools[toolId].meta.icon}
+																alt={tools[toolId].name}
+																class="size-4 object-contain rounded-xs"
+															/>
+														{:else}
+															<Wrench />
+														{/if}
 													</div>
 												</Tooltip>
 												<Tooltip
@@ -638,6 +676,25 @@
 														}}
 													>
 														<Knobs />
+													</button>
+												</Tooltip>
+											</div>
+										{/if}
+
+										{#if tools?.[toolId]?.meta?.user_provided}
+											<div class=" shrink-0">
+												<Tooltip content={$i18n.t('Configure Credentials')}>
+													<button
+														class="self-center w-fit text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition rounded-full"
+														type="button"
+														on:click={(e) => {
+															e.stopPropagation();
+															e.preventDefault();
+															authSelectedTool = tools?.[toolId];
+															showUserToolAuthModal = true;
+														}}
+													>
+														<Cog6 className="size-3.5" />
 													</button>
 												</Tooltip>
 											</div>
@@ -733,3 +790,13 @@
 		</DropdownMenu>
 	</div>
 </Dropdown>
+
+<UserToolAuthModal
+	bind:show={showUserToolAuthModal}
+	tool={authSelectedTool}
+	onSave={() => {
+		if (authSelectedTool?.id && !selectedToolIds.includes(authSelectedTool.id)) {
+			selectedToolIds = [...selectedToolIds, authSelectedTool.id];
+		}
+	}}
+/>

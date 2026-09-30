@@ -153,25 +153,75 @@ export const getModels = async (
 			}
 		}
 
-		models = models.concat(
-			localModels.map((model) => ({
-				...model,
-				name: model?.name ?? model?.id,
-				direct: true
-			}))
-		);
-
-		// Remove duplicates
-		const modelsMap = {};
+		// Build lookup for backend custom models (by raw ID and normalized ID)
+		const backendModelsMap: Record<string, any> = {};
 		for (const model of models) {
-			const existing = modelsMap[model.id];
-			modelsMap[model.id] = existing
+			backendModelsMap[model.id] = model;
+			if (model.id.startsWith('~')) {
+				backendModelsMap[model.id.slice(1)] = model;
+			}
+		}
+
+		// Merge direct models with backend models, prioritizing custom name and info from backend
+		const modelsMap: Record<string, any> = {};
+		for (const backendModel of models) {
+			modelsMap[backendModel.id] = { ...backendModel };
+		}
+
+		for (const localModel of localModels) {
+			const directModel = {
+				...localModel,
+				name: localModel?.name ?? localModel?.id,
+				direct: true
+			};
+
+			// Check matching backend model
+			const matched =
+				backendModelsMap[directModel.id] ||
+				(directModel.id.startsWith('~') ? backendModelsMap[directModel.id.slice(1)] : null) ||
+				backendModelsMap[`~${directModel.id}`];
+
+			const targetId = matched ? matched.id : directModel.id;
+			const existing = modelsMap[targetId];
+
+			modelsMap[targetId] = existing
 				? {
+						...directModel,
 						...existing,
-						...model,
-						info: existing.info ?? model.info
+						direct: true,
+						urlIdx: directModel.urlIdx ?? existing.urlIdx,
+						openai: directModel.openai ?? existing.openai,
+						name:
+							existing.name && existing.name !== existing.id
+								? existing.name
+								: matched?.name && matched?.name !== matched?.id
+									? matched.name
+									: directModel.name,
+						description:
+							existing.description ||
+							matched?.description ||
+							existing.info?.meta?.description ||
+							matched?.info?.meta?.description ||
+							directModel.description,
+						info: existing.info ?? matched?.info ?? directModel.info
 					}
-				: model;
+				: matched
+					? {
+							...directModel,
+							...matched,
+							direct: true,
+							urlIdx: directModel.urlIdx,
+							name:
+								matched.name && matched.name !== matched.id
+									? matched.name
+									: directModel.name,
+							description:
+								matched.description ||
+								matched.info?.meta?.description ||
+								directModel.description,
+							info: matched.info ?? directModel.info
+						}
+					: directModel;
 		}
 
 		models = Object.values(modelsMap);

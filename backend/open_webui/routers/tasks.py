@@ -161,10 +161,15 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
             detail='No model specified for title generation. Please ensure a model is selected for this chat.',
         )
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, _, _ = get_user_direct_connection(user)
+        if u_key:
+            models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
+            )
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -229,10 +234,15 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
 
     model_id = form_data['model']
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, _, _ = get_user_direct_connection(user)
+        if u_key:
+            models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
+            )
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -294,10 +304,15 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
 
     model_id = form_data['model']
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, _, _ = get_user_direct_connection(user)
+        if u_key:
+            models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
+            )
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 

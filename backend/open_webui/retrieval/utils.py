@@ -932,8 +932,15 @@ async def agenerate_openai_batch_embeddings(
     url: str = 'https://api.openai.com/v1',
     key: str = '',
     prefix: str = None,
-    user: UserModel = None,
 ) -> list[list[float]]:
+    if user:
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, u_url, _ = get_user_direct_connection(user)
+        if u_key and (not key or url == 'https://api.openai.com/v1'):
+            key = u_key
+            if u_url:
+                url = u_url
+
     log.debug('agenerate_openai_batch_embeddings:model %s batch size: %s', model, len(texts))
     form_data = {'input': texts, 'model': model}
     if isinstance(RAG_EMBEDDING_PREFIX_FIELD_NAME, str) and isinstance(prefix, str):
@@ -1216,6 +1223,15 @@ async def generate_embeddings(
     url = kwargs.get('url', '')
     key = kwargs.get('key', '')
     user = kwargs.get('user')
+
+    if user and (not key or engine == ''):
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, u_url, _ = get_user_direct_connection(user)
+        if u_key:
+            engine = 'openai'
+            key = u_key
+            url = u_url or 'https://api.openai.com/v1'
+            model = model or 'text-embedding-3-small'
 
     if prefix is not None and RAG_EMBEDDING_PREFIX_FIELD_NAME is None:
         if isinstance(text, list):

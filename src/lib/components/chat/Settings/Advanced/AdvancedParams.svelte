@@ -488,15 +488,17 @@
 
 		{#if (params?.reasoning_effort ?? null) !== null}
 			<div class="flex mt-0.5 space-x-2">
-				<div class=" flex-1">
-					<input
-						class="text-sm w-full bg-transparent outline-hidden outline-none"
-						type="text"
+				<div class="flex-1">
+					<select
+						class="text-sm w-full bg-transparent outline-hidden outline-none dark:bg-gray-800 rounded px-1 py-0.5"
 						aria-label={$i18n.t('settings.personal.general.parameters.reasoningEffort.label')}
-						placeholder={$i18n.t('Enter reasoning effort')}
 						bind:value={params.reasoning_effort}
-						autocomplete="off"
-					/>
+					>
+						<option value="none">{$i18n.t('Off')}</option>
+						<option value="low">{$i18n.t('Low')}</option>
+						<option value="medium">{$i18n.t('Medium')}</option>
+						<option value="high">{$i18n.t('High')}</option>
+					</select>
 				</div>
 			</div>
 		{/if}

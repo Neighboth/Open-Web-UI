@@ -204,15 +204,28 @@
 	const normalizeSelectedModels = (modelIds: string[] = []) => {
 		const availableModels = getAvailableModelIds();
 		const defaultModels = getDefaultModelIds();
-		let normalized = (modelIds ?? []).filter(
-			(modelId) => modelId && availableModels.includes(modelId)
-		);
+
+		const findAvailableMatch = (id: string) => {
+			if (!id) return null;
+			if (availableModels.includes(id)) return id;
+			const stripped = id.startsWith('~') ? id.slice(1) : id;
+			const prefixed = `~${id}`;
+			return availableModels.find((m) => m === stripped || m === prefixed || (m.startsWith('~') && m.slice(1) === stripped)) || null;
+		};
+
+		let normalized = (modelIds ?? [])
+			.map((id) => findAvailableMatch(id))
+			.filter(Boolean) as string[];
 
 		if (normalized.length === 0 && $settings?.models?.length) {
-			normalized = $settings.models.filter((modelId) => availableModels.includes(modelId));
+			normalized = ($settings.models ?? [])
+				.map((id) => findAvailableMatch(id))
+				.filter(Boolean) as string[];
 		}
 		if (normalized.length === 0 && defaultModels.length > 0) {
-			normalized = defaultModels.filter((modelId) => availableModels.includes(modelId));
+			normalized = defaultModels
+				.map((id) => findAvailableMatch(id))
+				.filter(Boolean) as string[];
 		}
 		if (normalized.length === 0) {
 			normalized = availableModels.length > 0 ? [availableModels[0]] : [''];

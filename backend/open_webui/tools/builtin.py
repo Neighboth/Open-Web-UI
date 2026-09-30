@@ -738,6 +738,33 @@ async def execute_code(
             stderr = output.get('stderr', '')
             result = output.get('result', '')
 
+        elif engine == 'e2b':
+            from open_webui.utils.code_interpreter import execute_code_e2b
+
+            output = await execute_code_e2b(
+                api_key=await Config.get('code_interpreter.e2b.api_key'),
+                code=code,
+                template=await Config.get('code_interpreter.e2b.template') or 'base',
+            )
+
+            stdout = output.get('stdout', '')
+            stderr = output.get('stderr', '')
+            result = output.get('result', '')
+
+        elif engine == 'self_hosted':
+            from open_webui.utils.code_interpreter import execute_code_sandbox
+
+            output = await execute_code_sandbox(
+                url=await Config.get('code_interpreter.sandbox.url'),
+                code=code,
+                token=await Config.get('code_interpreter.sandbox.auth_token') or '',
+                timeout=await Config.get('code_interpreter.sandbox.timeout') or 60,
+            )
+
+            stdout = output.get('stdout', '')
+            stderr = output.get('stderr', '')
+            result = output.get('result', '')
+
         else:
             return JSONCodec.dumps({'error': f'Unknown code interpreter engine: {engine}'})
 
@@ -790,6 +817,129 @@ async def execute_code(
     except Exception as e:
         log.exception(f'execute_code error: {e}')
         return JSONCodec.dumps({'error': str(e)})
+
+
+async def execute_command(
+    command: str,
+    timeout: int = 60,
+    __request__: Request = None,
+    __user__: dict = None,
+    __metadata__: dict = None,
+) -> str:
+    """
+    Execute a shell/terminal command in the sandboxed operating system environment.
+    Use this to run system commands, inspect environments, execute scripts, install packages, etc.
+
+    :param command: The shell command to execute
+    :param timeout: Command timeout in seconds (default 60)
+    :return: JSON with stdout, stderr, and exit_code
+    """
+    from open_webui.utils.code_interpreter import execute_command_sandbox
+
+    try:
+        res = await execute_command_sandbox(command, timeout=timeout)
+        return JSONCodec.dumps(res, ensure_ascii=False)
+    except Exception as e:
+        log.exception(f'execute_command error: {e}')
+        return JSONCodec.dumps({'error': str(e), 'exit_code': 1})
+
+
+async def read_file(
+    path: str,
+    __request__: Request = None,
+    __user__: dict = None,
+    __metadata__: dict = None,
+) -> str:
+    """
+    Read the contents of a file in the workspace or sandbox environment.
+
+    :param path: The path to the file to read
+    :return: The content of the file
+    """
+    from pathlib import Path
+    import aiofiles
+
+    try:
+        p = Path(path)
+        if p.exists() and p.is_file():
+            async with aiofiles.open(p, 'r', encoding='utf-8', errors='replace') as f:
+                content = await f.read()
+            return content
+        else:
+            from open_webui.utils.code_interpreter import execute_command_sandbox
+
+            res = await execute_command_sandbox(f'cat "{path}"')
+            if res.get('exit_code') == 0:
+                return res.get('stdout', '')
+            return f"Error: File not found or unreadable: {res.get('stderr', '')}"
+    except Exception as e:
+        return f'Error reading file: {e}'
+
+
+async def write_file(
+    path: str,
+    content: str,
+    __request__: Request = None,
+    __user__: dict = None,
+    __metadata__: dict = None,
+) -> str:
+    """
+    Write or overwrite text content to a file in the workspace or sandbox environment.
+
+    :param path: The path to the file to write
+    :param content: The text content to write into the file
+    :return: Status message
+    """
+    from pathlib import Path
+    import aiofiles
+
+    try:
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        async with aiofiles.open(p, 'w', encoding='utf-8') as f:
+            await f.write(content)
+        return f"File '{path}' successfully written."
+    except Exception as e:
+        from open_webui.utils.code_interpreter import execute_command_sandbox
+
+        escaped = JSONCodec.dumps(content)
+        res = await execute_command_sandbox(
+            f'python3 -c "import sys, json; open(\'{path}\', \'w\').write(json.loads({escaped}))"'
+        )
+        if res.get('exit_code') == 0:
+            return f"File '{path}' successfully written."
+        return f'Error writing file: {e}'
+
+
+async def list_directory(
+    path: str = '.',
+    __request__: Request = None,
+    __user__: dict = None,
+    __metadata__: dict = None,
+) -> str:
+    """
+    List files and directories at the given path in the sandbox environment.
+
+    :param path: The directory path to list (default: '.')
+    :return: JSON list of files and directories
+    """
+    from pathlib import Path
+
+    try:
+        p = Path(path)
+        if p.exists() and p.is_dir():
+            entries = [
+                {'name': item.name, 'is_dir': item.is_dir(), 'size': item.stat().st_size if item.is_file() else None}
+                for item in p.iterdir()
+            ]
+            return JSONCodec.dumps(entries, ensure_ascii=False)
+        else:
+            from open_webui.utils.code_interpreter import execute_command_sandbox
+
+            res = await execute_command_sandbox(f'ls -la "{path}"')
+            return res.get('stdout') or res.get('stderr') or 'Directory not found.'
+    except Exception as e:
+        return f'Error listing directory: {e}'
 
 
 # =============================================================================
@@ -3507,7 +3657,16 @@ async def view_skill(
             skill = await get_terminal_skill(__request__, __user__, __metadata__ or {}, skill_name)
             if not skill:
                 return JSONCodec.dumps({'error': f"Skill '{id}' not found"})
-            return JSONCodec.dumps(skill, ensure_ascii=False)
+        builtin_system_skills = await Config.get('system.builtin_skills', []) or []
+        for b_skill in builtin_system_skills:
+            if b_skill.get('id') == id or str(b_skill.get('id', '')).lower() == str(id).lower():
+                return JSONCodec.dumps(
+                    {
+                        'name': b_skill.get('name'),
+                        'content': b_skill.get('content', ''),
+                    },
+                    ensure_ascii=False,
+                )
 
         from open_webui.models.access_grants import AccessGrants
         from open_webui.models.skills import Skills

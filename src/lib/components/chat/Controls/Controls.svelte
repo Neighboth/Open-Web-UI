@@ -27,6 +27,7 @@
 	let showFiles = getOpen('files');
 	let showValves = getOpen('valves', false);
 	let showSystemPrompt = getOpen('systemPrompt');
+	let showThinking = getOpen('thinking');
 	let showAdvancedParams = getOpen('advancedParams');
 
 	const compactSectionButtonClass =
@@ -129,6 +130,28 @@
 			{/if}
 
 			{#if $user?.role === 'admin' || ($user?.permissions.chat?.params ?? true)}
+				<Collapsible
+					title={$i18n.t('Thinking / Reasoning Level')}
+					bind:open={showThinking}
+					onChange={setOpen('thinking')}
+					buttonClassName={compactSectionButtonClass}
+					chevronClassName="size-2.5"
+					chevronStrokeWidth="2"
+				>
+					<div class="pt-1 pb-1 text-xs" slot="content">
+						<select
+							bind:value={params.reasoning_effort}
+							class="w-full rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 py-1.5 text-xs text-gray-700 outline-hidden transition-colors dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:focus:border-blue-500"
+						>
+							<option value={null}>{$i18n.t('Auto / Default')}</option>
+							<option value="none">{$i18n.t('Off')}</option>
+							<option value="low">{$i18n.t('Low')}</option>
+							<option value="medium">{$i18n.t('Medium')}</option>
+							<option value="high">{$i18n.t('High')}</option>
+						</select>
+					</div>
+				</Collapsible>
+
 				<Collapsible
 					title={$i18n.t('Advanced Params')}
 					bind:open={showAdvancedParams}

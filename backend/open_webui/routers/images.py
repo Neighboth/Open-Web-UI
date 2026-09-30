@@ -361,9 +361,11 @@ async def verify_connection(form_data: ConnectionVerificationForm, user=Depends(
 
 @router.get('/models')
 async def get_models(request: Request, user=Depends(get_verified_user)):
+    from open_webui.utils.direct_connections import get_user_direct_connection
+    u_key, _, _ = get_user_direct_connection(user)
     image_config = await get_image_config()
     try:
-        if image_config.IMAGE_GENERATION_ENGINE == 'openai':
+        if image_config.IMAGE_GENERATION_ENGINE == 'openai' or (not image_config.IMAGE_GENERATION_ENGINE and u_key):
             return [
                 {'id': 'dall-e-2', 'name': 'DALL·E 2'},
                 {'id': 'dall-e-3', 'name': 'DALL·E 3'},
@@ -561,14 +563,18 @@ async def upload_image(request, image_data, content_type, metadata, user, db=Non
 
 @router.post('/generations')
 async def generate_images(request: Request, form_data: CreateImageForm, user=Depends(get_verified_user)):
+    from open_webui.utils.direct_connections import get_user_direct_connection
+    u_key, u_url, _ = get_user_direct_connection(user)
+    has_direct = bool(u_key)
+
     image_config = await get_image_config()
-    if not image_config.ENABLE_IMAGE_GENERATION:
+    if not image_config.ENABLE_IMAGE_GENERATION and not has_direct:
         raise HTTPException(
             status_code=403,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    if user.role != 'admin' and not await has_permission(
+    if not has_direct and user.role != 'admin' and not await has_permission(
         user.id, 'features.image_generation', image_config.USER_PERMISSIONS
     ):
         raise HTTPException(
@@ -599,6 +605,9 @@ async def image_generations(
     metadata: dict | None = None,
     user=None,
 ):
+    from open_webui.utils.direct_connections import get_user_direct_connection
+    u_key, u_url, _ = get_user_direct_connection(user)
+
     image_config = await get_image_config()
     # if IMAGE_SIZE = 'auto', default WidthxHeight to the 512x512 default
     # This is only relevant when the user has set IMAGE_SIZE to 'auto' with an
@@ -617,17 +626,29 @@ async def image_generations(
 
     model = await get_image_model(request)
 
+    engine = image_config.IMAGE_GENERATION_ENGINE
+    openai_key = image_config.IMAGES_OPENAI_API_KEY
+    openai_url = image_config.IMAGES_OPENAI_API_BASE_URL
+
+    if u_key and (not openai_key or not engine or engine == 'openai'):
+        engine = 'openai'
+        openai_key = u_key
+        openai_url = u_url or 'https://api.openai.com/v1'
+
+    if not model and engine == 'openai':
+        model = form_data.model or 'dall-e-3'
+
     try:
-        if image_config.IMAGE_GENERATION_ENGINE == 'openai':
+        if engine == 'openai':
             headers = {
-                'Authorization': f'Bearer {image_config.IMAGES_OPENAI_API_KEY}',
+                'Authorization': f'Bearer {openai_key}',
                 'Content-Type': 'application/json',
             }
 
             if ENABLE_FORWARD_USER_INFO_HEADERS:
                 headers = include_user_info_headers(headers, user)
 
-            url = f'{image_config.IMAGES_OPENAI_API_BASE_URL}/images/generations'
+            url = f'{openai_url}/images/generations'
             if image_config.IMAGES_OPENAI_API_VERSION:
                 url = f'{url}?api-version={image_config.IMAGES_OPENAI_API_VERSION}'
 
@@ -857,18 +878,18 @@ class EditImageForm(BaseModel):
 
 @router.post('/edit')
 async def edit_images(request: Request, form_data: EditImageForm, user=Depends(get_verified_user)):
-    # Authorize the direct route like /generations and the edit_image tool: enforce the
-    # global image-edit switch and the per-user image-generation permission. The internal
-    # callers (edit_image tool, chat middleware) gate themselves and call image_edits()
-    # directly, so they are unaffected by this wrapper.
+    from open_webui.utils.direct_connections import get_user_direct_connection
+    u_key, u_url, _ = get_user_direct_connection(user)
+    has_direct = bool(u_key)
+
     image_config = await get_image_config()
-    if not image_config.ENABLE_IMAGE_EDIT:
+    if not image_config.ENABLE_IMAGE_EDIT and not has_direct:
         raise HTTPException(
             status_code=403,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    if user.role != 'admin' and not await has_permission(
+    if not has_direct and user.role != 'admin' and not await has_permission(
         user.id, 'features.image_generation', image_config.USER_PERMISSIONS
     ):
         raise HTTPException(
@@ -975,9 +996,24 @@ async def image_edits(
         )
 
     try:
-        if image_config.IMAGE_EDIT_ENGINE == 'openai':
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, u_url, _ = get_user_direct_connection(user)
+
+        engine = image_config.IMAGE_EDIT_ENGINE
+        openai_key = image_config.IMAGES_EDIT_OPENAI_API_KEY
+        openai_url = image_config.IMAGES_EDIT_OPENAI_API_BASE_URL
+
+        if u_key and (not openai_key or not engine or engine == 'openai'):
+            engine = 'openai'
+            openai_key = u_key
+            openai_url = u_url or 'https://api.openai.com/v1'
+
+        if not model and engine == 'openai':
+            model = form_data.model or 'dall-e-2'
+
+        if engine == 'openai':
             headers = {
-                'Authorization': f'Bearer {image_config.IMAGES_EDIT_OPENAI_API_KEY}',
+                'Authorization': f'Bearer {openai_key}',
             }
 
             if ENABLE_FORWARD_USER_INFO_HEADERS:
@@ -1032,7 +1068,7 @@ async def image_edits(
 
             session = await get_session()
             async with session.post(
-                url=f'{image_config.IMAGES_EDIT_OPENAI_API_BASE_URL}/images/edits{url_search_params}',
+                url=f'{openai_url}/images/edits{url_search_params}',
                 headers=headers,
                 data=form,
                 ssl=AIOHTTP_CLIENT_SESSION_SSL,
@@ -1046,7 +1082,7 @@ async def image_edits(
                     image_data, content_type = await get_image_data(
                         image_url,
                         {k: v for k, v in headers.items() if k != 'Content-Type'}
-                        if _is_same_origin(image_url, image_config.IMAGES_EDIT_OPENAI_API_BASE_URL)
+                        if _is_same_origin(image_url, openai_url)
                         else None,
                     )
                 else:

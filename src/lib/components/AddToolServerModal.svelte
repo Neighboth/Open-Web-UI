@@ -52,6 +52,9 @@
 	let forwardCookies = false;
 	let key = '';
 	let headers = '';
+	let icon = '';
+	let userProvided = false;
+	let userProvidedDescription = '';
 
 	let functionNameFilterList = '';
 	let accessGrants = [];
@@ -277,6 +280,15 @@
 					oauthResourceParameter = data.info.oauth_resource_parameter ?? 'auto';
 				}
 
+				if (data.icon || data.info?.icon) icon = data.icon || data.info?.icon || '';
+				if (data.user_provided !== undefined || data.info?.user_provided !== undefined) {
+					userProvided = data.user_provided ?? data.info?.user_provided ?? false;
+				}
+				if (data.user_provided_description || data.info?.user_provided_description) {
+					userProvidedDescription =
+						data.user_provided_description || data.info?.user_provided_description || '';
+				}
+
 				if (data.config) {
 					enable = data.config.enable ?? true;
 					accessGrants = data.config.access_grants ?? [];
@@ -306,10 +318,17 @@
 				headers: headers ? JSON.parse(headers) : undefined,
 				key,
 
+				icon,
+				user_provided: userProvided,
+				user_provided_description: userProvidedDescription,
+
 				info: {
 					id: id,
 					name: name,
 					description: description,
+					icon: icon,
+					user_provided: userProvided,
+					user_provided_description: userProvidedDescription,
 					...(type === 'mcp' && ['oauth_2.1', 'oauth_2.1_static'].includes(auth_type)
 						? {
 								...(oauthScope ? { oauth_scope: oauthScope } : {}),
@@ -387,6 +406,9 @@
 			headers: headers ? JSON.parse(headers) : undefined,
 
 			key,
+			icon,
+			user_provided: userProvided,
+			user_provided_description: userProvidedDescription,
 			config: {
 				enable: enable,
 				function_name_filter_list: functionNameFilterList,
@@ -396,6 +418,9 @@
 				id: id,
 				name: name,
 				description: description,
+				icon: icon,
+				user_provided: userProvided,
+				user_provided_description: userProvidedDescription,
 				...(type === 'mcp' && oauthAuthTypes.includes(auth_type)
 					? {
 							...(oauthScope ? { oauth_scope: oauthScope } : {}),
@@ -427,6 +452,9 @@
 		path = 'openapi.json';
 
 		key = '';
+		icon = '';
+		userProvided = false;
+		userProvidedDescription = '';
 		auth_type = 'bearer';
 		forwardCookies = false;
 
@@ -460,6 +488,10 @@
 			headers = connection?.headers ? JSON.stringify(connection.headers, null, 2) : '';
 
 			key = connection?.key ?? '';
+			icon = connection?.icon ?? connection?.info?.icon ?? '';
+			userProvided = connection?.user_provided ?? connection?.info?.user_provided ?? false;
+			userProvidedDescription =
+				connection?.user_provided_description ?? connection?.info?.user_provided_description ?? '';
 
 			id = connection.info?.id ?? '';
 			name = connection.info?.name ?? '';
@@ -474,6 +506,10 @@
 			enable = connection.config?.enable ?? true;
 			functionNameFilterList = connection.config?.function_name_filter_list ?? '';
 			accessGrants = connection.config?.access_grants ?? [];
+		} else {
+			icon = '';
+			userProvided = false;
+			userProvidedDescription = '';
 		}
 	};
 
@@ -627,6 +663,23 @@
 									type="text"
 									bind:value={description}
 									placeholder={$i18n.t('Enter description')}
+									autocomplete="off"
+								/>
+							</div>
+						</div>
+
+						<div class="flex flex-col w-full mt-1 mb-1.5">
+							<label for="icon" class={`mb-0.5 text-xs text-gray-500`}
+								>{$i18n.t('Icon URL')}</label
+							>
+
+							<div class="flex-1">
+								<input
+									id="icon"
+									class={`w-full text-sm ${inputClass}`}
+									type="text"
+									bind:value={icon}
+									placeholder={$i18n.t('Enter icon URL (e.g. https://... or /static/...)')}
 									autocomplete="off"
 								/>
 							</div>
@@ -820,6 +873,37 @@
 								</div>
 							</div>
 						</div>
+
+						{#if auth_type !== 'none'}
+							<div
+								class="flex flex-col gap-1.5 mt-2.5 p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800"
+							>
+								<div class="flex justify-between items-center">
+									<div>
+										<div class="text-xs font-medium text-gray-700 dark:text-gray-300">
+											{$i18n.t('User-Provided Authentication')}
+										</div>
+										<div class="text-[0.6875rem] text-gray-500 dark:text-gray-400">
+											{$i18n.t('Each user enters their personal API credentials directly in chat')}
+										</div>
+									</div>
+									<Switch bind:state={userProvided} />
+								</div>
+
+								{#if userProvided}
+									<div class="mt-1">
+										<div class="text-xs text-gray-500 mb-1">
+											{$i18n.t('Instructions for User (Markdown supported)')}
+										</div>
+										<Textarea
+											className="w-full text-xs bg-transparent rounded-lg border border-gray-200 dark:border-gray-700 px-2 py-1.5 outline-hidden min-h-[60px]"
+											placeholder={$i18n.t('Instructions or link on how to obtain API key...')}
+											bind:value={userProvidedDescription}
+										/>
+									</div>
+								{/if}
+							</div>
+						{/if}
 
 						<div class="flex items-center justify-between">
 							<button

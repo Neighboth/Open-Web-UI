@@ -1654,6 +1654,8 @@ async def generate_chat_completion(
     streaming = False
     response = None
 
+    payload_dict = JSONCodec.loads(payload) if isinstance(payload, str) else payload
+
     try:
         session = await get_session()
 
@@ -1667,11 +1669,26 @@ async def generate_chat_completion(
             timeout=get_client_timeout(stream=is_streaming_request),
         )
 
+        # If 400 error due to unsupported reasoning_effort or thinking, retry without it
+        if r.status == 400 and ('reasoning_effort' in payload_dict or 'thinking' in payload_dict):
+            peek_err = await r.text()
+            if any(term in peek_err.lower() for term in ['reasoning_effort', 'reasoning', 'thinking', 'unrecognized request argument']):
+                log.info('Upstream does not support reasoning_effort/thinking, retrying without it')
+                payload_dict.pop('reasoning_effort', None)
+                payload_dict.pop('thinking', None)
+                payload = JSONCodec.dumps(payload_dict)
+                r = await session.request(
+                    method='POST',
+                    url=request_url,
+                    data=payload,
+                    headers=headers,
+                    cookies=cookies,
+                    ssl=AIOHTTP_CLIENT_SESSION_SSL,
+                    timeout=get_client_timeout(stream=is_streaming_request),
+                )
+
         # Check if response is SSE
         if 'text/event-stream' in r.headers.get('Content-Type', ''):
-            # If the provider returned an error status with SSE content-type,
-            # read the body and return a proper error response instead of
-            # streaming the error back (which hides the error from logs).
             if r.status >= 400:
                 error_body = await r.text()
                 log.error(

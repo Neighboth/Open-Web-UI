@@ -403,6 +403,17 @@ async def _tts_openai(request, payload, file_path, file_body_path, user):
     api_key = await Config.get('audio.tts.openai.api_key')
     api_base_url = await Config.get('audio.tts.openai.api_base_url')
 
+    if not api_key:
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, u_url, _ = get_user_direct_connection(user)
+        if u_key:
+            api_key = u_key
+            api_base_url = u_url
+            if not payload.get('model'):
+                payload['model'] = 'tts-1'
+            if not payload.get('voice'):
+                payload['voice'] = 'alloy'
+
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {api_key}',

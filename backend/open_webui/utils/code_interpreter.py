@@ -195,3 +195,159 @@ async def execute_code_jupyter(
     async with JupyterCodeExecuter(base_url, code, token, password, timeout) as executor:
         result = await executor.run()
         return result.model_dump()
+
+
+async def execute_code_e2b(api_key: str, code: str, timeout: int = 60, template: str = 'base') -> dict:
+    if not api_key:
+        return {
+            'stdout': '',
+            'stderr': 'E2B API key not configured. Please set it in Admin -> Code Execution settings.',
+            'result': '',
+        }
+    try:
+        try:
+            from e2b_code_interpreter import Sandbox
+            with Sandbox(api_key=api_key) as sandbox:
+                execution = sandbox.run_code(code)
+                stdout = '\n'.join([log.line for log in execution.logs.stdout])
+                stderr = '\n'.join([log.line for log in execution.logs.stderr])
+                results = [str(r) for r in execution.results]
+                return {
+                    'stdout': stdout.strip(),
+                    'stderr': stderr.strip(),
+                    'result': '\n'.join(results).strip(),
+                }
+        except ImportError:
+            headers = {'X-API-Key': api_key, 'Content-Type': 'application/json'}
+            timeout_cfg = aiohttp.ClientTimeout(total=timeout)
+            async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+                async with session.post(
+                    'https://api.e2b.dev/sandboxes',
+                    headers=headers,
+                    json={'template': template or 'base'},
+                ) as resp:
+                    resp.raise_for_status()
+                    sb = await resp.json()
+                    sandbox_id = sb.get('sandboxID') or sb.get('id')
+
+                try:
+                    cmd_url = f'https://api.e2b.dev/sandboxes/{sandbox_id}/commands'
+                    async with session.post(
+                        cmd_url,
+                        headers=headers,
+                        json={'command': f'python3 -c {JSONCodec.dumps(code)}'},
+                    ) as c_resp:
+                        c_resp.raise_for_status()
+                        res = await c_resp.json()
+                        return {
+                            'stdout': str(res.get('stdout', '')).strip(),
+                            'stderr': str(res.get('stderr', '')).strip(),
+                            'result': str(res.get('result', '')).strip(),
+                        }
+                finally:
+                    try:
+                        async with session.delete(f'https://api.e2b.dev/sandboxes/{sandbox_id}', headers=headers):
+                            pass
+                    except Exception:
+                        pass
+    except Exception as e:
+        logger.exception('E2B execution error: %s', e)
+        return {'stdout': '', 'stderr': f'E2B Error: {e}', 'result': ''}
+
+
+async def execute_code_sandbox(url: str, code: str, token: str = '', timeout: int = 60) -> dict:
+    if not url:
+        return {'stdout': '', 'stderr': 'Self-hosted Sandbox URL not configured.', 'result': ''}
+    try:
+        headers = {'Content-Type': 'application/json'}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+        timeout_cfg = aiohttp.ClientTimeout(total=timeout)
+        async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+            async with session.post(
+                f"{url.rstrip('/')}/execute",
+                headers=headers,
+                json={'code': code, 'timeout': timeout},
+            ) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
+                return {
+                    'stdout': str(data.get('stdout', '')).strip(),
+                    'stderr': str(data.get('stderr', '')).strip(),
+                    'result': str(data.get('result', '')).strip(),
+                }
+    except Exception as e:
+        logger.exception('Sandbox execution error: %s', e)
+        return {'stdout': '', 'stderr': f'Sandbox Error: {e}', 'result': ''}
+
+
+async def execute_command_sandbox(command: str, timeout: int = 60) -> dict:
+    """Executes shell command in configured sandbox or environment."""
+    from open_webui.models.config import Config
+    engine = await Config.get('code_interpreter.engine', 'pyodide')
+
+    if engine == 'e2b':
+        api_key = await Config.get('code_interpreter.e2b.api_key', '')
+        if not api_key:
+            return {'stdout': '', 'stderr': 'E2B API key not configured.', 'exit_code': 1}
+        headers = {'X-API-Key': api_key, 'Content-Type': 'application/json'}
+        timeout_cfg = aiohttp.ClientTimeout(total=timeout)
+        async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+            async with session.post(
+                'https://api.e2b.dev/sandboxes',
+                headers=headers,
+                json={'template': 'base'},
+            ) as resp:
+                resp.raise_for_status()
+                sb = await resp.json()
+                sandbox_id = sb.get('sandboxID') or sb.get('id')
+            try:
+                cmd_url = f'https://api.e2b.dev/sandboxes/{sandbox_id}/commands'
+                async with session.post(cmd_url, headers=headers, json={'command': command}) as c_resp:
+                    c_resp.raise_for_status()
+                    res = await c_resp.json()
+                    return {
+                        'stdout': str(res.get('stdout', '')),
+                        'stderr': str(res.get('stderr', '')),
+                        'exit_code': res.get('exitCode', 0),
+                    }
+            finally:
+                try:
+                    async with session.delete(f'https://api.e2b.dev/sandboxes/{sandbox_id}', headers=headers):
+                        pass
+                except Exception:
+                    pass
+    elif engine == 'self_hosted':
+        url = await Config.get('code_interpreter.sandbox.url', '')
+        token = await Config.get('code_interpreter.sandbox.auth_token', '')
+        if not url:
+            return {'stdout': '', 'stderr': 'Sandbox URL not configured.', 'exit_code': 1}
+        headers = {'Content-Type': 'application/json'}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+        timeout_cfg = aiohttp.ClientTimeout(total=timeout)
+        async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+            async with session.post(
+                f"{url.rstrip('/')}/command",
+                headers=headers,
+                json={'command': command, 'timeout': timeout},
+            ) as resp:
+                resp.raise_for_status()
+                return await resp.json()
+    else:
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+            return {
+                'stdout': stdout.decode('utf-8', errors='replace'),
+                'stderr': stderr.decode('utf-8', errors='replace'),
+                'exit_code': proc.returncode,
+            }
+        except asyncio.TimeoutError:
+            proc.kill()
+            return {'stdout': '', 'stderr': 'Command timed out', 'exit_code': 124}
+

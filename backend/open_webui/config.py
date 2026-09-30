@@ -458,6 +458,12 @@ CODE_INTERPRETER_JUPYTER_TIMEOUT = int(
         os.getenv('CODE_EXECUTION_JUPYTER_TIMEOUT', '60'),
     )
 )
+CODE_INTERPRETER_E2B_API_KEY = os.getenv('CODE_INTERPRETER_E2B_API_KEY', '')
+CODE_INTERPRETER_E2B_TEMPLATE = os.getenv('CODE_INTERPRETER_E2B_TEMPLATE', 'base')
+CODE_INTERPRETER_SANDBOX_URL = os.getenv('CODE_INTERPRETER_SANDBOX_URL', '')
+CODE_INTERPRETER_SANDBOX_AUTH_TOKEN = os.getenv('CODE_INTERPRETER_SANDBOX_AUTH_TOKEN', '')
+CODE_INTERPRETER_SANDBOX_TIMEOUT = int(os.getenv('CODE_INTERPRETER_SANDBOX_TIMEOUT', '60'))
+SYSTEM_BUILTIN_SKILLS = []
 
 CODE_INTERPRETER_BLOCKED_MODULES = [
     library.strip() for library in os.getenv('CODE_INTERPRETER_BLOCKED_MODULES', '').split(',') if library.strip()
@@ -2423,6 +2429,13 @@ Your task is to choose and return the correct tool(s) from the list of available
      "tool_calls": []
    }
 
+- For simple greetings, casual chitchat, or conversation that does not require external actions (e.g. "selam", "merhaba", "hi", "hello", "how are you", "nasılsın", "teşekkürler"), NEVER call any tools or search. Return an empty array:
+   {
+     "tool_calls": []
+   }
+
+- Only call tools when the user's query explicitly or specifically requires real external data, computation, or action that cannot be answered directly.
+
 - If one or more tools match the query, construct a JSON response containing a "tool_calls" array with objects that include:
    - "name": The tool's name.
    - "parameters": A dictionary of required parameters and their corresponding values.
@@ -2854,6 +2867,12 @@ DEFAULT_CONFIG = {
     'code_interpreter.jupyter.auth_token': CODE_INTERPRETER_JUPYTER_AUTH_TOKEN,
     'code_interpreter.jupyter.auth_password': CODE_INTERPRETER_JUPYTER_AUTH_PASSWORD,
     'code_interpreter.jupyter.timeout': CODE_INTERPRETER_JUPYTER_TIMEOUT,
+    'code_interpreter.e2b.api_key': CODE_INTERPRETER_E2B_API_KEY,
+    'code_interpreter.e2b.template': CODE_INTERPRETER_E2B_TEMPLATE,
+    'code_interpreter.sandbox.url': CODE_INTERPRETER_SANDBOX_URL,
+    'code_interpreter.sandbox.auth_token': CODE_INTERPRETER_SANDBOX_AUTH_TOKEN,
+    'code_interpreter.sandbox.timeout': CODE_INTERPRETER_SANDBOX_TIMEOUT,
+    'system.builtin_skills': SYSTEM_BUILTIN_SKILLS,
     'google_drive.enable': ENABLE_GOOGLE_DRIVE_INTEGRATION,
     'google_drive.client_id': GOOGLE_DRIVE_CLIENT_ID,
     'google_drive.api_key': GOOGLE_DRIVE_API_KEY,

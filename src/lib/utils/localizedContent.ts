@@ -125,7 +125,12 @@ export const resolveLocalizedModelName = (model: any, locale?: string | null) =>
 
 export const resolveLocalizedModelDescription = (model: any, locale?: string | null) => {
 	const meta = model?.info?.meta ?? model?.meta;
-	return resolveLocalizedString(meta?.description, meta?.i18n, locale, 'description');
+	return resolveLocalizedString(
+		meta?.description ?? model?.description ?? model?.info?.description,
+		meta?.i18n,
+		locale,
+		'description'
+	);
 };
 
 export const resolveLocalizedPromptSuggestions = (

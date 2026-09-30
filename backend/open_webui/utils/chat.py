@@ -62,6 +62,21 @@ async def generate_direct_chat_completion(
 
     event_caller = await get_event_call(metadata)
     if event_caller is None:
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, u_url, _ = get_user_direct_connection(user)
+        if u_key:
+            import aiohttp
+            target_url = u_url or 'https://api.openai.com/v1'
+            headers = {'Authorization': f'Bearer {u_key}', 'Content-Type': 'application/json'}
+            model_name = form_data.get('model', '')
+            if model_name.startswith('~'):
+                model_name = model_name[1:]
+            req_data = {**form_data, 'model': model_name, 'stream': False}
+            async with aiohttp.ClientSession() as session:
+                async with session.post(f'{target_url}/chat/completions', json=req_data, headers=headers) as r:
+                    r.raise_for_status()
+                    return await r.json()
+
         raise Exception(
             'Direct connection requires an active WebSocket session; '
             'cannot generate completion in this context (e.g. background task).'
@@ -190,6 +205,12 @@ async def generate_chat_completion(
     # round trips on a Redis-backed model pool.
     model = models.get(model_id)
     if model is None:
+        from open_webui.utils.direct_connections import get_user_direct_connection
+        u_key, u_url, _ = get_user_direct_connection(user)
+        if u_key:
+            model = {'id': model_id, 'name': model_id, 'direct': True}
+            models[model_id] = model
+            return await generate_direct_chat_completion(request, form_data, user=user, models=models)
         raise Exception('Model not found')
 
     if getattr(request.state, 'direct', False) and model_id == getattr(request.state, 'model', {}).get('id'):
