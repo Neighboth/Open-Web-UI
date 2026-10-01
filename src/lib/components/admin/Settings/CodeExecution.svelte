@@ -273,6 +273,7 @@
 								placeholder={$i18n.t('e.g. 60')}
 								autocomplete="off"
 							/>
+						</AdminSettingField>
 					{/if}
 
 					{#if config.CODE_INTERPRETER_ENGINE === 'e2b'}

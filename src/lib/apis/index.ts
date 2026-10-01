@@ -153,12 +153,19 @@ export const getModels = async (
 			}
 		}
 
-		// Build lookup for backend custom models (by raw ID and normalized ID)
+		// Build lookup for backend custom models (by raw ID, normalized ID, and base_model_id)
 		const backendModelsMap: Record<string, any> = {};
 		for (const model of models) {
 			backendModelsMap[model.id] = model;
-			if (model.id.startsWith('~')) {
-				backendModelsMap[model.id.slice(1)] = model;
+			const cleanId = model.id.replace(/^~/, '');
+			backendModelsMap[cleanId] = model;
+			backendModelsMap[`~${cleanId}`] = model;
+
+			const baseId = model.base_model_id || model.info?.base_model_id;
+			if (baseId) {
+				backendModelsMap[baseId] = model;
+				backendModelsMap[baseId.replace(/^~/, '')] = model;
+				backendModelsMap[`~${baseId.replace(/^~/, '')}`] = model;
 			}
 		}
 
@@ -169,57 +176,91 @@ export const getModels = async (
 		}
 
 		for (const localModel of localModels) {
+			const cleanLocalId = (localModel?.id ?? '').replace(/^~/, '');
+			const cleanLocalWithoutPrefix = cleanLocalId.includes('.')
+				? cleanLocalId.split('.').slice(1).join('.')
+				: cleanLocalId;
+
+			// Check matching backend model
+			const matched =
+				backendModelsMap[localModel.id] ||
+				backendModelsMap[cleanLocalId] ||
+				backendModelsMap[`~${cleanLocalId}`] ||
+				backendModelsMap[cleanLocalWithoutPrefix] ||
+				backendModelsMap[`~${cleanLocalWithoutPrefix}`];
+
+			const targetId = matched ? matched.id : localModel.id;
+			const existing = modelsMap[targetId];
+
+			// Remove duplicate entry if localModel.id was previously keyed differently
+			if (matched && localModel.id !== targetId && modelsMap[localModel.id]) {
+				delete modelsMap[localModel.id];
+			}
+			if (matched && cleanLocalId !== targetId && modelsMap[cleanLocalId]) {
+				delete modelsMap[cleanLocalId];
+			}
+
 			const directModel = {
 				...localModel,
 				name: localModel?.name ?? localModel?.id,
 				direct: true
 			};
 
-			// Check matching backend model
-			const matched =
-				backendModelsMap[directModel.id] ||
-				(directModel.id.startsWith('~') ? backendModelsMap[directModel.id.slice(1)] : null) ||
-				backendModelsMap[`~${directModel.id}`];
-
-			const targetId = matched ? matched.id : directModel.id;
-			const existing = modelsMap[targetId];
+			const customName =
+				matched?.name && matched.name !== matched.id && matched.name !== matched.id.replace(/^~/, '')
+					? matched.name
+					: existing?.name && existing.name !== existing.id && existing.name !== existing.id.replace(/^~/, '')
+						? existing.name
+						: localModel?.name && localModel.name !== localModel.id && localModel.name !== cleanLocalId
+							? localModel.name
+							: (matched?.name ?? existing?.name ?? localModel.name ?? localModel.id);
 
 			modelsMap[targetId] = existing
 				? {
 						...directModel,
 						...existing,
+						id: targetId,
+						name: customName,
 						direct: true,
-						urlIdx: directModel.urlIdx ?? existing.urlIdx,
+						urlIdx: directModel.urlIdx ?? existing.urlIdx ?? 0,
 						openai: directModel.openai ?? existing.openai,
-						name:
-							existing.name && existing.name !== existing.id
-								? existing.name
-								: matched?.name && matched?.name !== matched?.id
-									? matched.name
-									: directModel.name,
 						description:
-							existing.description ||
+							matched?.info?.meta?.description ||
 							matched?.description ||
 							existing.info?.meta?.description ||
-							matched?.info?.meta?.description ||
+							existing.description ||
 							directModel.description,
-						info: existing.info ?? matched?.info ?? directModel.info
+						info: {
+							...(directModel.info ?? {}),
+							...(existing.info ?? {}),
+							...(matched?.info ?? {}),
+							meta: {
+								...(directModel.info?.meta ?? {}),
+								...(existing.info?.meta ?? {}),
+								...(matched?.info?.meta ?? {})
+							}
+						}
 					}
 				: matched
 					? {
 							...directModel,
 							...matched,
+							id: targetId,
+							name: customName,
 							direct: true,
-							urlIdx: directModel.urlIdx,
-							name:
-								matched.name && matched.name !== matched.id
-									? matched.name
-									: directModel.name,
+							urlIdx: directModel.urlIdx ?? 0,
 							description:
-								matched.description ||
 								matched.info?.meta?.description ||
+								matched.description ||
 								directModel.description,
-							info: matched.info ?? directModel.info
+							info: {
+								...(directModel.info ?? {}),
+								...(matched.info ?? {}),
+								meta: {
+									...(directModel.info?.meta ?? {}),
+									...(matched.info?.meta ?? {})
+								}
+							}
 						}
 					: directModel;
 		}

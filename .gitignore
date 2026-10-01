@@ -26,6 +26,7 @@ static/pyodide/*
 # Distribution / packaging
 .Python
 build/
+backend/open_webui/frontend/
 develop-eggs/
 dist/
 downloads/

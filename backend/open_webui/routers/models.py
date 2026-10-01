@@ -786,6 +786,12 @@ async def get_model_profile_image(
 
     # First, check the database for regular models
     model_meta = await Models.get_model_meta_by_id(id, db=db)
+    if not model_meta:
+        if id.startswith('~'):
+            model_meta = await Models.get_model_meta_by_id(id[1:], db=db)
+        else:
+            model_meta = await Models.get_model_meta_by_id(f'~{id}', db=db)
+
     if model_meta:
         meta, model_user_id, model_updated_at = model_meta
         # Denied callers get the default image rather than an error, so model ids stay unprobeable.

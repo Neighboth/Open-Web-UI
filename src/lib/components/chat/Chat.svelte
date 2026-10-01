@@ -4665,7 +4665,15 @@
 						chatUser={chatOwner}
 						modelId={selectedModelIds?.at(0) ?? null}
 						models={selectedModelIds.reduce((a, e, i, arr) => {
-							const model = $models.find((m) => m.id === e);
+							const cleanE = e.replace(/^~/, '');
+							const model = $models.find(
+								(m) =>
+									m.id === e ||
+									m.id === cleanE ||
+									m.id === `~${cleanE}` ||
+									m.base_model_id === e ||
+									m.base_model_id === cleanE
+							);
 							if (model) {
 								return [...a, model];
 							}

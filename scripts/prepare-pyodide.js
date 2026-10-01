@@ -250,8 +250,27 @@ if (process.env.USE_SLIM === 'true') {
 	}
 	await writeFile(lockPath, JSON.stringify(lockData, null, 2));
 } else {
-	await downloadPackages();
-	await copyPyodide();
-	await downloadPyPIWheels();
-	await verifyBundledWheels();
+	try {
+		await downloadPackages();
+		await copyPyodide();
+		await downloadPyPIWheels();
+		await verifyBundledWheels();
+	} catch (err) {
+		console.warn('Pyodide offline packaging failed (likely network/SSL), falling back to CDN mode:', err?.message || err);
+		await copyPyodide();
+		try {
+			const { version } = JSON.parse(await readFile('node_modules/pyodide/package.json', 'utf-8'));
+			const lockPath = 'static/pyodide/pyodide-lock.json';
+			const lockData = JSON.parse(await readFile(lockPath, 'utf-8'));
+			for (const pkg of Object.values(lockData.packages)) {
+				pkg.file_name = new URL(
+					pkg.file_name,
+					`https://cdn.jsdelivr.net/pyodide/v${version}/full/`
+				).href;
+			}
+			await writeFile(lockPath, JSON.stringify(lockData, null, 2));
+		} catch (e) {
+			console.warn('Could not update lock file for CDN fallback:', e?.message || e);
+		}
+	}
 }

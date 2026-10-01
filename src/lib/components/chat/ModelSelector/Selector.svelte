@@ -187,7 +187,19 @@
 	let selectedModel = '';
 	$: selectedValues = values ?? (value ? [value] : []);
 	$: primaryValue = selectedValues[0] ?? value ?? '';
-	$: selectedModel = items.find((item) => item.value === primaryValue) ?? '';
+	$: selectedModel =
+		items.find((item) => item.value === primaryValue) ??
+		items.find(
+			(item) =>
+				item.value === `~${primaryValue}` ||
+				item.value === primaryValue.replace(/^~/, '') ||
+				item.model?.id === primaryValue ||
+				item.model?.id === `~${primaryValue}` ||
+				item.model?.id === primaryValue.replace(/^~/, '') ||
+				item.model?.base_model_id === primaryValue ||
+				item.model?.base_model_id === primaryValue.replace(/^~/, '')
+		) ??
+		'';
 	$: selectedCount = selectedValues.filter(Boolean).length;
 	$: triggerLabel = selectedModel
 		? compareEnabled && selectedCount > 1

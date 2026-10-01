@@ -120,7 +120,14 @@ export const valveTranslationSource = (schema: any, prefix: string): Record<stri
 export const resolveLocalizedModelName = (model: any, locale?: string | null) => {
 	const meta = model?.info?.meta ?? model?.meta;
 	const info = model?.info ?? model;
-	return resolveLocalizedString(model?.name ?? info?.name ?? model?.id, meta?.i18n, locale, 'name');
+	const candidate =
+		info?.name && info.name !== model?.id && !info.name.startsWith('~')
+			? info.name
+			: model?.name && model.name !== model?.id && !model.name.startsWith('~')
+				? model.name
+				: model?.name ?? info?.name ?? model?.id ?? '';
+	const name = resolveLocalizedString(candidate, meta?.i18n, locale, 'name');
+	return name.startsWith('~') ? name.slice(1) : name;
 };
 
 export const resolveLocalizedModelDescription = (model: any, locale?: string | null) => {
