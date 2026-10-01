@@ -112,25 +112,17 @@
 			config.IMAGE_GENERATION_ENGINE === 'automatic1111' &&
 			config.AUTOMATIC1111_BASE_URL === ''
 		) {
-			toast.error($i18n.t('AUTOMATIC1111 Base URL is required.'));
+			toast.error($i18n.t('AUTOMATIC1111 Base URL is .'));
 			config.ENABLE_IMAGE_GENERATION = false;
 
 			return null;
 		} else if (config.IMAGE_GENERATION_ENGINE === 'comfyui' && config.COMFYUI_BASE_URL === '') {
-			toast.error($i18n.t('ComfyUI Base URL is required.'));
+			toast.error($i18n.t('ComfyUI Base URL is .'));
 			config.ENABLE_IMAGE_GENERATION = false;
 
 			return null;
-		} else if (config.IMAGE_GENERATION_ENGINE === 'openai' && config.IMAGES_OPENAI_API_KEY === '') {
-			toast.error($i18n.t('OpenAI API Key is required.'));
-			config.ENABLE_IMAGE_GENERATION = false;
-
-			return null;
-		} else if (config.IMAGE_GENERATION_ENGINE === 'gemini' && config.IMAGES_GEMINI_API_KEY === '') {
-			toast.error($i18n.t('Gemini API Key is required.'));
-			config.ENABLE_IMAGE_GENERATION = false;
-
-			return null;
+		
+		
 		}
 
 		const res = await updateConfig(localStorage.token, {
@@ -342,7 +334,7 @@
 									class={inputClass}
 									bind:value={config.IMAGE_GENERATION_MODEL}
 									placeholder={$i18n.t('Select a model')}
-									required
+									
 								/>
 
 								<datalist id="model-list">
@@ -366,7 +358,7 @@
 										class={inputClass}
 										placeholder={$i18n.t('Enter Number of Steps (e.g. 50)')}
 										bind:value={config.IMAGE_STEPS}
-										required
+										
 									/>
 								</AdminSettingField>
 							{/if}
@@ -633,7 +625,7 @@
 									className="my-1 w-full resize-none rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 py-1.5 text-xs text-gray-700 outline-hidden transition-colors placeholder:text-gray-300 focus:border-blue-400 disabled:text-gray-600 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:placeholder:text-gray-700 dark:focus:border-blue-500"
 									rows="10"
 										bind:value={config.COMFYUI_WORKFLOW}
-									required
+									
 								/>
 							{/if} -->
 							</div>
@@ -660,7 +652,7 @@
 															class="{inputClass} w-24"
 															placeholder={$i18n.t('Key')}
 															bind:value={node.key}
-															required
+															
 														/>
 													</Tooltip>
 												</div>
@@ -685,7 +677,7 @@
 								</div>
 
 								<div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-									{$i18n.t('*Prompt node ID(s) are required for image generation')}
+									{$i18n.t('*Prompt node ID(s) are  for image generation')}
 								</div>
 							</AdminSettingField>
 						{/if}
@@ -709,7 +701,7 @@
 								variant="settings"
 								placeholder={$i18n.t('settings.admin.images.imagesGeminiApiKey.label')}
 								bind:value={config.IMAGES_GEMINI_API_KEY}
-								required={true}
+								
 							/>
 						</AdminSettingField>
 
@@ -963,7 +955,7 @@
 															class="{inputClass} w-24"
 															placeholder={$i18n.t('Key')}
 															bind:value={node.key}
-															required
+															
 														/>
 													</Tooltip>
 												</div>
@@ -988,7 +980,7 @@
 								</div>
 
 								<div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
-									{$i18n.t('*Prompt node ID(s) are required for image generation')}
+									{$i18n.t('*Prompt node ID(s) are  for image generation')}
 								</div>
 							</AdminSettingField>
 						{/if}
@@ -1011,7 +1003,7 @@
 									variant="settings"
 									placeholder={$i18n.t('settings.admin.images.imagesEditGeminiApiKey.label')}
 									bind:value={config.IMAGES_EDIT_GEMINI_API_KEY}
-									required={true}
+									
 								/>
 							</AdminSettingField>
 						</div>

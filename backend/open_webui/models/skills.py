@@ -35,6 +35,7 @@ class Skill(Base):
 class SkillMeta(BaseModel):
     i18n: dict[str, dict[str, str]] | None = None
     tags: Optional[list[str]] = []
+    model_config = ConfigDict(extra='allow')
 
 
 class SkillModel(BaseModel):

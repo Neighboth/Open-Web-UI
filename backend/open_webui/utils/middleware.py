@@ -1557,25 +1557,9 @@ async def chat_completion_tools_handler(
     return body, {'sources': sources}
 
 
-def is_simple_greeting(text: str | None) -> bool:
-    if not text or not isinstance(text, str):
-        return False
-    cleaned = re.sub(r'[^\w\s]', '', text.strip().lower())
-    greetings = {
-        'selam', 'selamlar', 'merhaba', 'merhabalar', 'slm', 'mrb', 'günaydın', 'gunaydin',
-        'iyi günler', 'iyi gunler', 'iyi akşamlar', 'iyi aksamlar', 'iyi geceler',
-        'hi', 'hello', 'hey', 'greetings', 'good morning', 'good evening', 'good afternoon',
-        'how are you', 'nasılsın', 'nasilsin', 'naber', 'whats up', "what's up", 'sup', 'yo',
-        'thanks', 'teşekkürler', 'tesekkurler', 'sağol', 'sagol'
-    }
-    return cleaned in greetings or cleaned.replace(' ', '') in {g.replace(' ', '') for g in greetings}
-
-
 async def chat_web_search_handler(request: Request, form_data: dict, extra_params: dict, user):
     messages = form_data.get('messages', [])
     user_message = get_last_user_message(messages)
-    if is_simple_greeting(user_message):
-        return form_data
 
     event_emitter = extra_params['__event_emitter__']
     await event_emitter(
@@ -1843,8 +1827,6 @@ async def add_file_context(messages: list, chat_id: str, user) -> list:
 
 async def chat_image_generation_handler(request: Request, form_data: dict, extra_params: dict, user):
     user_message = get_last_user_message(form_data.get('messages', []))
-    if is_simple_greeting(user_message):
-        return form_data
 
     metadata = extra_params.get('__metadata__', {})
     chat_id = metadata.get('chat_id', None)
@@ -2727,8 +2709,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                 # Skip forced RAG web search when native FC is enabled - model can use web_search tool
                 if metadata.get('params', {}).get('function_calling') == 'legacy':
                     last_user_msg = get_last_user_message(form_data.get('messages', []))
-                    if not is_simple_greeting(last_user_msg):
-                        form_data = await chat_web_search_handler(request, form_data, extra_params, user)
+                    form_data = await chat_web_search_handler(request, form_data, extra_params, user)
 
         if 'image_generation' in features and features['image_generation']:
             # features is client-supplied; re-check the permission the direct /images routes enforce.
@@ -2740,8 +2721,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                 # Skip forced image generation when native FC is enabled - model can use generate_image tool
                 if metadata.get('params', {}).get('function_calling') == 'legacy':
                     last_user_msg = get_last_user_message(form_data.get('messages', []))
-                    if not is_simple_greeting(last_user_msg):
-                        form_data = await chat_image_generation_handler(request, form_data, extra_params, user)
+                    form_data = await chat_image_generation_handler(request, form_data, extra_params, user)
 
         if 'code_interpreter' in features and features['code_interpreter']:
             engine = await Config.get('code_interpreter.engine', 'pyodide')
@@ -3242,11 +3222,10 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                 # If the function calling is not native, then call the tools function calling handler
                 try:
                     last_user_msg = get_last_user_message(form_data.get('messages', []))
-                    if not is_simple_greeting(last_user_msg):
-                        form_data, flags = await chat_completion_tools_handler(
-                            request, form_data, extra_params, user, models, tools_dict
-                        )
-                        sources.extend(flags.get('sources', []))
+                    form_data, flags = await chat_completion_tools_handler(
+                        request, form_data, extra_params, user, models, tools_dict
+                    )
+                    sources.extend(flags.get('sources', []))
                 except Exception as e:
                     log.exception(e)
 

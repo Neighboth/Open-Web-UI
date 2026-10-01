@@ -1237,7 +1237,9 @@
 					} else {
 						message.statusHistory = [data];
 					}
-				} else if (type === 'context_compaction') {
+				} else if (type === 'live_agent_preview') {
+						agentLiveUrl.set(data?.url ?? null);
+					} else if (type === 'context_compaction') {
 					handleContextCompactionStatus(data);
 				} else if (type === 'chat:active') {
 					if (!data?.active) {
@@ -4687,6 +4689,7 @@
 					/>
 				{/if}
 			</div>
+			<LiveAgentPreview />
 		</div>
 	{:else if loading}
 		<div class=" flex items-center justify-center h-full w-full">

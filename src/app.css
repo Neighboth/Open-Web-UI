@@ -1013,3 +1013,7 @@ html.high-contrast:not(.dark) .shimmer {
 	color: var(--color-gray-800);
 	-webkit-text-fill-color: var(--color-gray-800);
 }
+
+.markdown-prose table { @apply border-collapse border border-gray-300 dark:border-gray-700 w-full; }
+.markdown-prose th, .markdown-prose td { @apply border border-gray-300 dark:border-gray-700 px-3 py-2; }
+.markdown-prose th { @apply bg-gray-50 dark:bg-gray-850 font-semibold; }

@@ -2429,10 +2429,7 @@ Your task is to choose and return the correct tool(s) from the list of available
      "tool_calls": []
    }
 
-- For simple greetings, casual chitchat, or conversation that does not require external actions (e.g. "selam", "merhaba", "hi", "hello", "how are you", "nasılsın", "teşekkürler"), NEVER call any tools or search. Return an empty array:
-   {
-     "tool_calls": []
-   }
+
 
 - Only call tools when the user's query explicitly or specifically requires real external data, computation, or action that cannot be answered directly.
 

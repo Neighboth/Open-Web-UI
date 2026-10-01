@@ -166,10 +166,7 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
         if u_key:
             models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-            )
+            pass  # Fall back to task.model.default if available
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -239,10 +236,7 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
         if u_key:
             models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-            )
+            pass  # Fall back to task.model.default if available
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -309,10 +303,7 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
         if u_key:
             models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-            )
+            pass  # Fall back to task.model.default if available
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -368,10 +359,7 @@ async def generate_image_prompt(request: Request, form_data: dict, user=Depends(
 
     model_id = form_data['model']
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        pass  # allow fallback to task.model.default
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -445,10 +433,7 @@ async def generate_queries(request: Request, form_data: dict, user=Depends(get_v
 
     model_id = form_data['model']
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        pass  # allow fallback to task.model.default
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -521,10 +506,7 @@ async def generate_autocompletion(request: Request, form_data: dict, user=Depend
 
     model_id = form_data['model']
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        pass  # allow fallback to task.model.default
 
     task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
@@ -580,10 +562,7 @@ async def generate_emoji(request: Request, form_data: dict, user=Depends(get_ver
 
     model_id = form_data['model']
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        pass  # allow fallback to task.model.default
 
     task_model_id, _ = await get_task_model_generation_config(model_id, models)
 
@@ -635,10 +614,7 @@ async def generate_moa_response(request: Request, form_data: dict, user=Depends(
     model_id = form_data['model']
 
     if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
-        )
+        pass  # allow fallback to task.model.default
 
     template = DEFAULT_MOA_GENERATION_PROMPT_TEMPLATE
 

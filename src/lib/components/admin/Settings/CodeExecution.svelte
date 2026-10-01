@@ -389,6 +389,20 @@
 					</AdminSettingField>
 				{/if}
 			</AdminSettingSection>
+		
+		<AdminSettingSection title={$i18n.t('Computer Use / Live Agent Preview')}>
+			<div class="px-1 text-sm text-gray-500 mb-3 space-y-2">
+				<p>{$i18n.t('Open WebUI supports live UI preview for agents (like Gemini Spark or ChatGPT Advanced Data Analysis). This allows models to open a browser or operating system interface on the right side of the chat screen, where you can watch the agent work and even manually intervene.')}</p>
+				
+				<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">{$i18n.t('How to Setup:')}</p>
+				<ul class="list-disc list-inside ml-2 space-y-1">
+					<li>{$i18n.t('Connect a browser-use or computer-use Tool / MCP Server to Open WebUI.')}</li>
+					<li>{$i18n.t('The tool should emit a server-sent event (SSE) with `type: "live_agent_preview"` and include the `url` (e.g. a VNC web client or iframe URL) in the data payload.')}</li>
+					<li>{$i18n.t('Example Payload:')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">&#123; "type": "live_agent_preview", "data": &#123; "url": "http://localhost:6080/vnc.html" &#125; &#125;</code></li>
+					<li>{$i18n.t('When the model uses this tool, the preview pane will automatically slide out.')}</li>
+				</ul>
+			</div>
+		</AdminSettingSection>
 		{/if}
 	</div>
 	<div class="flex justify-end pt-6 text-sm font-normal">
@@ -400,3 +414,8 @@
 		</button>
 	</div>
 </form>
+
+
+
+
+

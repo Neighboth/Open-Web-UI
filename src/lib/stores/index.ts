@@ -135,6 +135,7 @@ export const showSidebar = writable(false);
 export const showSearch = writable(false);
 export const showSettings: Writable<boolean | string | SettingsModalRequest> = writable(false);
 export const showChangelog = writable(false);
+export const agentLiveUrl = writable<string | null>(null);
 
 export const showControls = writable(false);
 export const showEmbeds = writable(false);
@@ -396,3 +397,4 @@ export type SessionUser = {
 	role: string;
 	profile_image_url: string;
 };
+
