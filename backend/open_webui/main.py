@@ -1126,8 +1126,18 @@ async def chat_completion(
         missing_base_model = False
         if not model_item.get('direct', False):
             if model_id not in request.app.state.MODELS:
-                raise Exception('Model not found')
+                from open_webui.utils.direct_connections import get_user_direct_connection
 
+                u_key, u_url, _ = get_user_direct_connection(user)
+                if u_key:
+                    model_item = {'id': model_id, 'name': model_id, 'direct': True}
+                else:
+                    raise Exception(f"Model '{model_id}' not found")
+
+        if model_item.get('direct', False):
+            model = model_item
+            await _set_direct_model(request, model, user)
+        else:
             model = request.app.state.MODELS[model_id]
             model_info = await Models.get_model_by_id(model_id)
             missing_base_model = bool(
@@ -1159,9 +1169,6 @@ async def chat_completion(
                         await check_model_access(user, fallback_model)
                 except Exception as e:
                     raise e
-        else:
-            model = model_item
-            await _set_direct_model(request, model, user)
 
         # Read before the fallback below can rebind model to a different one.
         model_capabilities = ((model.get('info') or {}).get('meta') or {}).get('capabilities') or {}

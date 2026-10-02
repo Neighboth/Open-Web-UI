@@ -304,6 +304,9 @@
 
 	const exportHandler = async () => {
 		// export current connection as json file
+		const actualUserProvided = auth_type !== 'none' && Boolean(userProvided);
+		const actualUserProvidedDescription = actualUserProvided ? userProvidedDescription : '';
+
 		const json = JSON.stringify([
 			{
 				type,
@@ -319,16 +322,17 @@
 				key,
 
 				icon,
-				user_provided: userProvided,
-				user_provided_description: userProvidedDescription,
+				user_provided: actualUserProvided,
+				user_provided_description: actualUserProvidedDescription,
 
 				info: {
 					id: id,
 					name: name,
 					description: description,
 					icon: icon,
-					user_provided: userProvided,
-					user_provided_description: userProvidedDescription,
+					auth_type: auth_type,
+					user_provided: actualUserProvided,
+					user_provided_description: actualUserProvidedDescription,
 					...(type === 'mcp' && ['oauth_2.1', 'oauth_2.1_static'].includes(auth_type)
 						? {
 								...(oauthScope ? { oauth_scope: oauthScope } : {}),
@@ -393,6 +397,9 @@
 			}
 		}
 
+		const actualUserProvided = auth_type !== 'none' && Boolean(userProvided);
+		const actualUserProvidedDescription = actualUserProvided ? userProvidedDescription : '';
+
 		const connection = {
 			type,
 			url,
@@ -407,8 +414,8 @@
 
 			key,
 			icon,
-			user_provided: userProvided,
-			user_provided_description: userProvidedDescription,
+			user_provided: actualUserProvided,
+			user_provided_description: actualUserProvidedDescription,
 			config: {
 				enable: enable,
 				function_name_filter_list: functionNameFilterList,
@@ -419,8 +426,9 @@
 				name: name,
 				description: description,
 				icon: icon,
-				user_provided: userProvided,
-				user_provided_description: userProvidedDescription,
+				auth_type: auth_type,
+				user_provided: actualUserProvided,
+				user_provided_description: actualUserProvidedDescription,
 				...(type === 'mcp' && oauthAuthTypes.includes(auth_type)
 					? {
 							...(oauthScope ? { oauth_scope: oauthScope } : {}),

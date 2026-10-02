@@ -415,6 +415,7 @@ async def _tts_openai(request, payload, file_path, file_body_path, user):
             if not payload.get('voice'):
                 payload['voice'] = 'alloy'
 
+    api_base_url = (api_base_url or 'https://api.openai.com/v1').rstrip('/')
     headers = {
         'Content-Type': 'application/json',
         'Authorization': f'Bearer {api_key}',
@@ -725,6 +726,7 @@ async def _transcribe_openai(request, file_path, filename, languages, file_dir, 
                 if not api_base_url or 'pixrouter' in (api_base_url or '') or api_base_url == 'test':
                     api_base_url = u_url or 'https://api.openai.com/v1'
 
+        api_base_url = (api_base_url or 'https://api.openai.com/v1').rstrip('/')
         headers = {'Authorization': f'Bearer {api_key}'}
         if user and ENABLE_FORWARD_USER_INFO_HEADERS:
             headers = include_user_info_headers(headers, user)

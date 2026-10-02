@@ -473,7 +473,7 @@ async def get_anthropic_request_target(request: Request, form_data: dict, user: 
 
     model = models.get(model_id)
     if not model or 'urlIdx' not in model:
-        raise HTTPException(status_code=404, detail=ERROR_MESSAGES.MODEL_NOT_FOUND())
+        raise HTTPException(status_code=404, detail=ERROR_MESSAGES.MODEL_NOT_FOUND(model_id))
 
     url, key, api_config = await get_openai_connection(model['urlIdx'])
     prefix_id = api_config.get('prefix_id')
@@ -1546,9 +1546,16 @@ async def generate_chat_completion(
     if model:
         idx = model['urlIdx']
     else:
+        from open_webui.utils.direct_connections import get_user_direct_connection
+
+        u_key, u_url, _ = get_user_direct_connection(user)
+        if u_key:
+            from open_webui.utils.chat import generate_direct_chat_completion
+
+            return await generate_direct_chat_completion(request, form_data, user=user, models=models or {})
         raise HTTPException(
             status_code=404,
-            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(),
+            detail=ERROR_MESSAGES.MODEL_NOT_FOUND(model_id),
         )
 
     url, key, api_config = await get_openai_connection(idx)

@@ -1085,11 +1085,11 @@
 
 			const model = atSelectedModel ?? $models.find((m) => m.id === selectedModels[0]);
 			if (model) {
-				// Set Default Tools
-				if (model?.info?.meta?.toolIds) {
+				// Set Default Tools only if model explicitly configured default toolIds
+				if (Array.isArray(model?.info?.meta?.toolIds) && model.info.meta.toolIds.length > 0) {
 					const defaultIds = [
 						...new Set(
-							[...(model?.info?.meta?.toolIds ?? [])].filter((id) =>
+							[...(model.info.meta.toolIds ?? [])].filter((id) =>
 								$tools.find((t) => t.id === id)
 							)
 						)
@@ -1113,23 +1113,17 @@
 					selectedToolIds = authed;
 					pendingOAuthTools = unauthed;
 					await continueOAuthRedirect();
-				} else if ($settings?.tools) {
-					selectedToolIds = $settings.tools;
-				} else {
-					selectedToolIds = selectedToolIds.filter((id) => !id.startsWith('direct_server:'));
 				}
 
-				// Set Default Skills
-				if (model?.info?.meta?.skillIds) {
+				// Set Default Skills only if model explicitly configured default skillIds
+				if (Array.isArray(model?.info?.meta?.skillIds) && model.info.meta.skillIds.length > 0) {
 					selectedSkillIds = [
 						...new Set(
-							[...(model?.info?.meta?.skillIds ?? [])].filter((id) =>
+							[...(model.info.meta.skillIds ?? [])].filter((id) =>
 								($skills ?? []).find((s) => s.id === id && s.is_active)
 							)
 						)
 					];
-				} else {
-					selectedSkillIds = [];
 				}
 
 				// Set Default Filters (Toggleable only)

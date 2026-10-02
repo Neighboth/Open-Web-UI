@@ -118,11 +118,13 @@ async def get_tools(
 
         conn_info = connection.get('info') or {}
         icon = connection.get('icon') or conn_info.get('icon')
-        user_provided = connection.get('user_provided') or conn_info.get('user_provided') or False
-        user_provided_description = connection.get('user_provided_description') or conn_info.get('user_provided_description') or ''
+        auth_type = connection.get('auth_type') or conn_info.get('auth_type') or ('none' if not connection.get('key') else 'bearer')
+        user_provided = (connection.get('user_provided') or conn_info.get('user_provided') or False) if auth_type != 'none' else False
+        user_provided_description = (connection.get('user_provided_description') or conn_info.get('user_provided_description') or '') if user_provided else ''
 
         meta = {
             'description': server.get('openapi', {}).get('info', {}).get('description', ''),
+            'auth_type': auth_type,
         }
         if icon:
             meta['icon'] = icon
@@ -164,11 +166,16 @@ async def get_tools(
             server_connections[tool_id] = server
 
             icon = server.get('icon') or info.get('icon')
-            user_provided = server.get('user_provided') or info.get('user_provided') or False
-            user_provided_description = server.get('user_provided_description') or info.get('user_provided_description') or ''
+            if auth_type == 'none':
+                user_provided = False
+                user_provided_description = ''
+            else:
+                user_provided = server.get('user_provided') or info.get('user_provided') or False
+                user_provided_description = server.get('user_provided_description') or info.get('user_provided_description') or ''
 
             meta = {
                 'description': info.get('description', ''),
+                'auth_type': auth_type,
             }
             if icon:
                 meta['icon'] = icon
@@ -210,6 +217,9 @@ async def get_tools(
             server_connections[server_id] = connection
             icon = connection.get('icon') or info.get('icon')
             name = info.get('name') or info.get('title') or connection.get('url') or f'Tool Server {idx+1}'
+            conn_auth_type = connection.get('auth_type') or info.get('auth_type') or 'none'
+            conn_user_provided = connection.get('user_provided', False) if conn_auth_type != 'none' else False
+            conn_user_provided_desc = connection.get('user_provided_description', '') if conn_user_provided else ''
             tools.append(
                 ToolUserResponse(
                     **{
@@ -219,8 +229,9 @@ async def get_tools(
                         'meta': {
                             'description': info.get('description', '') or connection.get('url', ''),
                             'icon': icon,
-                            'user_provided': connection.get('user_provided', False),
-                            'user_provided_description': connection.get('user_provided_description', ''),
+                            'auth_type': conn_auth_type,
+                            'user_provided': conn_user_provided,
+                            'user_provided_description': conn_user_provided_desc,
                         },
                         'updated_at': int(time.time()),
                         'created_at': int(time.time()),

@@ -193,10 +193,6 @@
 		}
 
 		tools = items;
-
-		if (!q) {
-			selectedToolIds = selectedToolIds.filter((id) => Object.keys(tools ?? {}).includes(id));
-		}
 	};
 
 	const setSkills = (skillItems: IntegrationItem[] | null, query = '') => {
@@ -219,10 +215,6 @@
 				};
 				return a;
 			}, {});
-
-		if (!query.trim()) {
-			selectedSkillIds = selectedSkillIds.filter((id) => Object.keys(skills ?? {}).includes(id));
-		}
 	};
 
 	const getTerminalSkillItems = async (): Promise<TerminalSkill[]> => {
@@ -281,7 +273,18 @@
 		const tool = tools?.[toolId];
 		if (!tool) return;
 
-		if (tool.meta?.user_provided) {
+		const isClosing = selectedToolIds.includes(toolId);
+		if (isClosing) {
+			selectedToolIds = selectedToolIds.filter((id) => id !== toolId);
+			return;
+		}
+
+		const isUserProvided =
+			Boolean(tool.meta?.user_provided) &&
+			tool.auth_type !== 'none' &&
+			tool.meta?.auth_type !== 'none';
+
+		if (isUserProvided) {
 			const userToolKey = ($settings as any)?.tools?.[toolId];
 			if (!userToolKey) {
 				e.preventDefault();
@@ -303,14 +306,7 @@
 			return;
 		}
 
-		const state = !selectedToolIds.includes(toolId);
-		await tick();
-
-		if (state) {
-			selectedToolIds = [...selectedToolIds, toolId];
-		} else {
-			selectedToolIds = selectedToolIds.filter((id) => id !== toolId);
-		}
+		selectedToolIds = [...selectedToolIds, toolId];
 	};
 
 	const toggleSkill = async (skillId: string) => {
@@ -464,7 +460,7 @@
 						</div>
 						{/if}
 						
-						{#if tools?.[toolId]?.meta?.user_provided}
+						{#if tools?.[toolId]?.meta?.user_provided && tools?.[toolId]?.auth_type !== 'none' && tools?.[toolId]?.meta?.auth_type !== 'none'}
 						<div class=" shrink-0">
 						<Tooltip content={$i18n.t('Configure Credentials')}>
 						<button
