@@ -147,6 +147,10 @@ async def build_tool_server_headers(
     extra_params = extra_params or {}
     metadata = metadata or {}
 
+    auth_type = connection.get('auth_type', 'bearer')
+    headers = {}
+    cookies = getattr(request, 'cookies', {}) if connection.get('forward_cookies', False) else {}
+
     user_tools = getattr(user, 'settings', {}).get('tools', {}) if user and isinstance(getattr(user, 'settings', {}), dict) else {}
     user_provided = connection.get('user_provided') or (connection.get('info') or {}).get('user_provided')
     user_key = (

@@ -1605,6 +1605,31 @@ async def delete_chat_by_id(
     else:
         result = await Chats.delete_chat_by_id_and_user_id(id, user.id, db=db)
 
+    # Clean up browser/sandbox session directories to prevent lingering storage
+    try:
+        import shutil
+        from pathlib import Path
+        from open_webui.env import DATA_DIR
+        session_dir_names = [
+            f"{chat.user_id}_{id}",
+            f"{user.id}_{id}",
+            f"session_{chat.user_id}_{id}",
+            f"session_{user.id}_{id}"
+        ]
+        base_session_dirs = [
+            Path('/data/browser_sessions'),
+            Path(DATA_DIR) / 'browser_sessions',
+            Path(DATA_DIR) / 'sandbox_sessions'
+        ]
+        for base_dir in base_session_dirs:
+            if base_dir.exists():
+                for sname in session_dir_names:
+                    s_path = base_dir / sname
+                    if s_path.exists() and s_path.is_dir():
+                        shutil.rmtree(s_path, ignore_errors=True)
+    except Exception as cleanup_err:
+        log.debug('Error cleaning up chat session directories: %s', cleanup_err)
+
     if result:
         await publish_event(
             request,

@@ -126,10 +126,20 @@
 		($user?.role === 'admin' || $user?.permissions?.chat?.file_upload);
 
 	const init = async () => {
+		if ($_tools !== null) {
+			setTools($_tools, toolQuery);
+		}
+		if ($_skills !== null) {
+			setSkills($_skills, skillQuery);
+		}
 		try {
 			if (localStorage.token) {
-				_tools.set(await getTools(localStorage.token));
-				_skills.set(await getSkills(localStorage.token));
+				const [fetchedTools, fetchedSkills] = await Promise.all([
+					getTools(localStorage.token).catch(() => null),
+					getSkills(localStorage.token).catch(() => null)
+				]);
+				if (fetchedTools) _tools.set(fetchedTools);
+				if (fetchedSkills) _skills.set(fetchedSkills);
 			}
 		} catch (e) {}
 		await Promise.all([loadTools(), loadSkills()]);
@@ -146,10 +156,15 @@
 						.includes(q)
 			)
 			.reduce<Record<string, IntegrationItem>>((a, tool) => {
+				const icon = (tool as any)?.icon || tool.meta?.icon || (tool as any)?.info?.icon;
 				a[tool.id] = {
 					...tool,
 					name: tool.name,
-					description: tool.meta?.description
+					description: tool.meta?.description,
+					meta: {
+						...(tool.meta || {}),
+						icon: icon || tool.meta?.icon
+					}
 				};
 				return a;
 			}, {});

@@ -298,6 +298,20 @@ class Tools:
 							required
 						/>
 					</Tooltip>
+
+					<Tooltip
+						className="flex min-w-[7rem] max-w-[12rem] items-center"
+						content={$i18n.t('Icon URL (optional, e.g. https://... or /static/...)')}
+						placement="top-start"
+					>
+						<input
+							class="w-full bg-transparent text-xs outline-hidden placeholder:text-gray-400 dark:placeholder:text-gray-600"
+							type="text"
+							placeholder={$i18n.t('Icon URL (optional)')}
+							aria-label={$i18n.t('Icon URL')}
+							bind:value={meta.icon}
+						/>
+					</Tooltip>
 				</div>
 			</div>
 

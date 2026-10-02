@@ -206,6 +206,7 @@ async def generate_chat_completion(
     from open_webui.utils.direct_connections import get_user_direct_connection
     u_key, u_url, _ = get_user_direct_connection(user)
 
+    model = models.get(model_id)
     if model is None:
         if u_key:
             model = {'id': model_id, 'name': model_id, 'direct': True}

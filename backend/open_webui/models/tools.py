@@ -36,8 +36,12 @@ class Tool(Base):  # database table definition
 class ToolMeta(BaseModel):
     i18n: dict[str, dict[str, str]] | None = None
     description: str | None = None
+    icon: str | None = None
+    user_provided: bool | None = None
+    user_provided_description: str | None = None
     manifest: dict | None = {}
     has_user_valves: bool = False
+    model_config = ConfigDict(extra='allow')
 
 
 class ToolModel(BaseModel):
