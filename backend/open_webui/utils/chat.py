@@ -203,17 +203,23 @@ async def generate_chat_completion(
     model_id = form_data['model']
     # Single lookup — membership check plus getitem would be two Redis
     # round trips on a Redis-backed model pool.
-    model = models.get(model_id)
+    from open_webui.utils.direct_connections import get_user_direct_connection
+    u_key, u_url, _ = get_user_direct_connection(user)
+
     if model is None:
-        from open_webui.utils.direct_connections import get_user_direct_connection
-        u_key, u_url, _ = get_user_direct_connection(user)
         if u_key:
             model = {'id': model_id, 'name': model_id, 'direct': True}
             models[model_id] = model
             return await generate_direct_chat_completion(request, form_data, user=user, models=models)
         raise Exception('Model not found')
 
-    if getattr(request.state, 'direct', False) and model_id == getattr(request.state, 'model', {}).get('id'):
+    is_direct = (
+        getattr(request.state, 'direct', False)
+        or model.get('direct')
+        or str(model_id).startswith('~')
+        or (u_key and bool(getattr(user, 'settings', {}).get('directConnections')))
+    )
+    if is_direct and u_key:
         return await generate_direct_chat_completion(request, form_data, user=user, models=models)
     else:
         # Check if user has access to the model
@@ -319,11 +325,17 @@ async def generate_chat_completion(
             else:
                 return convert_response_ollama_to_openai(response)
         else:
-            return await generate_openai_chat_completion(
-                request=request,
-                form_data=form_data,
-                user=user,
-            )
+            try:
+                return await generate_openai_chat_completion(
+                    request=request,
+                    form_data=form_data,
+                    user=user,
+                )
+            except Exception as e:
+                if u_key:
+                    log.info('generate_openai_chat_completion failed (%s), falling back to direct connection', e)
+                    return await generate_direct_chat_completion(request, form_data, user=user, models=models)
+                raise e
 
 
 chat_completion = generate_chat_completion

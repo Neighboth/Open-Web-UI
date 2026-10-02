@@ -349,10 +349,68 @@
 	let imageGenerationEnabled = false;
 	let webSearchEnabled = false;
 	let codeInterpreterEnabled = false;
+	let browserEnabled = false;
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
 	let pendingWebSearchPrompt: string | null = null;
 	let webSearchConfirmed = false;
+
+	let saveIntegrationsTimer: ReturnType<typeof setTimeout> | null = null;
+	let isRestoringIntegrations = false;
+
+	const saveActiveIntegrations = () => {
+		if (isRestoringIntegrations) return;
+		if (saveIntegrationsTimer) clearTimeout(saveIntegrationsTimer);
+		saveIntegrationsTimer = setTimeout(async () => {
+			const activeIntegrations = {
+				selectedToolIds,
+				selectedSkillIds,
+				selectedFilterIds,
+				webSearchEnabled,
+				imageGenerationEnabled,
+				codeInterpreterEnabled,
+				browserEnabled
+			};
+			settings.set({
+				...$settings,
+				activeIntegrations
+			});
+			if (localStorage.token) {
+				await updateUserSettings(localStorage.token, { activeIntegrations }).catch((err) => {
+					console.error('[active integrations settings]', err);
+				});
+			}
+		}, 300);
+	};
+
+	const restoreActiveIntegrations = () => {
+		isRestoringIntegrations = true;
+		const ai = $settings?.activeIntegrations;
+		if (ai) {
+			selectedToolIds = Array.isArray(ai.selectedToolIds) ? [...ai.selectedToolIds] : [];
+			selectedSkillIds = Array.isArray(ai.selectedSkillIds) ? [...ai.selectedSkillIds] : [];
+			selectedFilterIds = Array.isArray(ai.selectedFilterIds) ? [...ai.selectedFilterIds] : [];
+			webSearchEnabled = Boolean(ai.webSearchEnabled);
+			imageGenerationEnabled = Boolean(ai.imageGenerationEnabled);
+			codeInterpreterEnabled = Boolean(ai.codeInterpreterEnabled);
+			browserEnabled = Boolean(ai.browserEnabled);
+		} else {
+			selectedToolIds = [];
+			selectedSkillIds = [];
+			selectedFilterIds = [];
+			webSearchEnabled = false;
+			imageGenerationEnabled = false;
+			codeInterpreterEnabled = false;
+			browserEnabled = false;
+		}
+		setTimeout(() => {
+			isRestoringIntegrations = false;
+		}, 150);
+	};
+
+	$: if (!isRestoringIntegrations && (selectedToolIds || selectedSkillIds || selectedFilterIds || webSearchEnabled !== undefined || imageGenerationEnabled !== undefined || codeInterpreterEnabled !== undefined || browserEnabled !== undefined)) {
+		saveActiveIntegrations();
+	}
 
 	$: {
 		const currentModels = atSelectedModel?.id ? [atSelectedModel.id] : selectedModels;
@@ -844,11 +902,7 @@
 		messageInput?.setText('');
 
 		files = [];
-		selectedToolIds = [];
-		selectedSkillIds = [];
-		selectedFilterIds = [];
-		webSearchEnabled = false;
-		imageGenerationEnabled = false;
+		restoreActiveIntegrations();
 
 		const storageChatInput = sessionStorage.getItem(
 			`chat-input${chatIdProp ? `-${chatIdProp}` : ''}`
@@ -915,12 +969,7 @@
 		chatVariables = {};
 		chatFiles = [];
 		files = [];
-		selectedToolIds = [];
-		selectedSkillIds = [];
-		selectedFilterIds = [];
-		webSearchEnabled = false;
-		imageGenerationEnabled = false;
-		codeInterpreterEnabled = false;
+		restoreActiveIntegrations();
 		prompt = '';
 		messageInput?.setText('');
 		await chatId.set('');
@@ -983,13 +1032,8 @@
 	};
 
 	const resetInput = async () => {
-		selectedToolIds = [];
-		selectedSkillIds = [];
-		selectedFilterIds = [];
 		pendingOAuthTools = [];
-		webSearchEnabled = false;
-		imageGenerationEnabled = false;
-		codeInterpreterEnabled = false;
+		restoreActiveIntegrations();
 
 		if (selectedModelIds.filter((id) => id).length > 0) {
 			await setDefaults();
@@ -1571,6 +1615,7 @@
 	onMount(() => {
 		loading = true;
 		console.log('mounted');
+		restoreActiveIntegrations();
 		window.addEventListener('message', onMessageHandler);
 		$socket?.on('events', chatEventHandler);
 		$socket?.on('connect', handleSocketConnect);
@@ -1632,12 +1677,7 @@
 				messageInput?.setText('');
 
 				files = [];
-				selectedToolIds = [];
-				selectedSkillIds = [];
-				selectedFilterIds = [];
-				webSearchEnabled = false;
-				imageGenerationEnabled = false;
-				codeInterpreterEnabled = false;
+				restoreActiveIntegrations();
 
 				await restoreChatInput(storageChatInput);
 			}
@@ -4467,6 +4507,7 @@
 										bind:selectedFilterIds
 										bind:imageGenerationEnabled
 										bind:codeInterpreterEnabled
+										bind:browserEnabled
 										{pendingOAuthTools}
 										{oauthRedirectHandler}
 										bind:webSearchEnabled
@@ -4559,6 +4600,7 @@
 										bind:selectedFilterIds
 										bind:imageGenerationEnabled
 										bind:codeInterpreterEnabled
+										bind:browserEnabled
 										{pendingOAuthTools}
 										{oauthRedirectHandler}
 										bind:webSearchEnabled

@@ -630,10 +630,11 @@ async def image_generations(
     openai_key = image_config.IMAGES_OPENAI_API_KEY
     openai_url = image_config.IMAGES_OPENAI_API_BASE_URL
 
-    if u_key and (not openai_key or not engine or engine == 'openai'):
+    if u_key and (not openai_key or openai_key == 'test' or not engine or engine == 'openai'):
         engine = 'openai'
         openai_key = u_key
-        openai_url = u_url or 'https://api.openai.com/v1'
+        if not openai_url or openai_url == 'test' or 'pixrouter' in (openai_url or ''):
+            openai_url = u_url or 'https://api.openai.com/v1'
 
     if not model and engine == 'openai':
         model = form_data.model or 'dall-e-3'

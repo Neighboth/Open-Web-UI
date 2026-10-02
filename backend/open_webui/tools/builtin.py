@@ -754,11 +754,13 @@ async def execute_code(
         elif engine == 'self_hosted':
             from open_webui.utils.code_interpreter import execute_code_sandbox
 
+            session_id = f"{(__user__ or {}).get('id', '')}_{__chat_id__ or ''}"
             output = await execute_code_sandbox(
                 url=await Config.get('code_interpreter.sandbox.url'),
                 code=code,
                 token=await Config.get('code_interpreter.sandbox.auth_token') or '',
                 timeout=await Config.get('code_interpreter.sandbox.timeout') or 60,
+                session_id=session_id,
             )
 
             stdout = output.get('stdout', '')
@@ -837,7 +839,8 @@ async def execute_command(
     from open_webui.utils.code_interpreter import execute_command_sandbox
 
     try:
-        res = await execute_command_sandbox(command, timeout=timeout)
+        session_id = f"{(__user__ or {}).get('id', '')}_{(__metadata__ or {}).get('chat_id', '')}"
+        res = await execute_command_sandbox(command, timeout=timeout, session_id=session_id)
         return JSONCodec.dumps(res, ensure_ascii=False)
     except Exception as e:
         log.exception(f'execute_command error: {e}')

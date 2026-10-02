@@ -13,7 +13,7 @@
 	let show = false;
 
 	const options = [
-		{ value: null, label: 'Default' },
+		{ value: null, label: 'Off' },
 		{ value: 'low', label: 'Low' },
 		{ value: 'medium', label: 'Medium' },
 		{ value: 'high', label: 'High' }
@@ -55,7 +55,7 @@
 						on:click={() => setReasoning(option.value)}
 					>
 						<div class="flex-1 text-left truncate">
-							{$i18n.t(option.label)}
+							{option.value === null ? ($i18n.language === 'tr-TR' ? 'Kapalı' : $i18n.t('Off')) : $i18n.t(option.label)}
 						</div>
 						{#if currentReasoning === option.value}
 							<div class="shrink-0 text-amber-500 dark:text-amber-400">

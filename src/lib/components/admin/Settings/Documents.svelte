@@ -147,13 +147,6 @@
 	const submitHandler = async () => {
 		if (
 			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'external' &&
-			RAGConfig.EXTERNAL_DOCUMENT_LOADER_URL === ''
-		) {
-			toast.error($i18n.t('External Document Loader URL required.'));
-			return;
-		}
-		if (
-			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'external' &&
 			RAGConfig.EXTERNAL_DOCUMENT_LOADER_HEADERS
 		) {
 			try {
@@ -167,14 +160,6 @@
 				return;
 			}
 		}
-		if (RAGConfig.CONTENT_EXTRACTION_ENGINE === 'tika' && RAGConfig.TIKA_SERVER_URL === '') {
-			toast.error($i18n.t('Tika Server URL required.'));
-			return;
-		}
-		if (RAGConfig.CONTENT_EXTRACTION_ENGINE === 'docling' && RAGConfig.DOCLING_SERVER_URL === '') {
-			toast.error($i18n.t('Docling Server URL required.'));
-			return;
-		}
 		if (
 			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'datalab_marker' &&
 			RAGConfig.DATALAB_MARKER_ADDITIONAL_CONFIG &&
@@ -186,37 +171,6 @@
 				toast.error($i18n.t('Invalid JSON format in Additional Config'));
 				return;
 			}
-		}
-
-		if (
-			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'document_intelligence' &&
-			RAGConfig.DOCUMENT_INTELLIGENCE_ENDPOINT === ''
-		) {
-			toast.error($i18n.t('Document Intelligence endpoint required.'));
-			return;
-		}
-		if (
-			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'mistral_ocr' &&
-			RAGConfig.MISTRAL_OCR_API_KEY === ''
-		) {
-			toast.error($i18n.t('Mistral OCR API Key required.'));
-			return;
-		}
-		if (
-			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'paddleocr_vl' &&
-			RAGConfig.PADDLEOCR_VL_BASE_URL === ''
-		) {
-			toast.error($i18n.t('PaddleOCR-vl API URL required.'));
-			return;
-		}
-
-		if (
-			RAGConfig.CONTENT_EXTRACTION_ENGINE === 'mineru' &&
-			RAGConfig.MINERU_API_MODE === 'cloud' &&
-			RAGConfig.MINERU_API_KEY === ''
-		) {
-			toast.error($i18n.t('MinerU API Key required for Cloud API mode.'));
-			return;
 		}
 
 		if (!RAGConfig.BYPASS_EMBEDDING_AND_RETRIEVAL) {

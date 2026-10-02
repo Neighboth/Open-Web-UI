@@ -255,19 +255,24 @@ async def execute_code_e2b(api_key: str, code: str, timeout: int = 60, template:
         return {'stdout': '', 'stderr': f'E2B Error: {e}', 'result': ''}
 
 
-async def execute_code_sandbox(url: str, code: str, token: str = '', timeout: int = 60) -> dict:
+async def execute_code_sandbox(url: str, code: str, token: str = '', timeout: int = 60, session_id: str = '') -> dict:
     if not url:
         return {'stdout': '', 'stderr': 'Self-hosted Sandbox URL not configured.', 'result': ''}
     try:
         headers = {'Content-Type': 'application/json'}
         if token:
             headers['Authorization'] = f'Bearer {token}'
+        if session_id:
+            headers['X-Session-Id'] = session_id
         timeout_cfg = aiohttp.ClientTimeout(total=timeout)
         async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+            payload = {'code': code, 'timeout': timeout}
+            if session_id:
+                payload['session_id'] = session_id
             async with session.post(
                 f"{url.rstrip('/')}/execute",
                 headers=headers,
-                json={'code': code, 'timeout': timeout},
+                json=payload,
             ) as resp:
                 resp.raise_for_status()
                 data = await resp.json()
@@ -281,7 +286,7 @@ async def execute_code_sandbox(url: str, code: str, token: str = '', timeout: in
         return {'stdout': '', 'stderr': f'Sandbox Error: {e}', 'result': ''}
 
 
-async def execute_command_sandbox(command: str, timeout: int = 60) -> dict:
+async def execute_command_sandbox(command: str, timeout: int = 60, session_id: str = '') -> dict:
     """Executes shell command in configured sandbox or environment."""
     from open_webui.models.config import Config
     engine = await Config.get('code_interpreter.engine', 'pyodide')
@@ -325,12 +330,17 @@ async def execute_command_sandbox(command: str, timeout: int = 60) -> dict:
         headers = {'Content-Type': 'application/json'}
         if token:
             headers['Authorization'] = f'Bearer {token}'
+        if session_id:
+            headers['X-Session-Id'] = session_id
         timeout_cfg = aiohttp.ClientTimeout(total=timeout)
         async with aiohttp.ClientSession(timeout=timeout_cfg) as session:
+            payload = {'command': command, 'timeout': timeout}
+            if session_id:
+                payload['session_id'] = session_id
             async with session.post(
                 f"{url.rstrip('/')}/command",
                 headers=headers,
-                json={'command': command, 'timeout': timeout},
+                json=payload,
             ) as resp:
                 resp.raise_for_status()
                 return await resp.json()

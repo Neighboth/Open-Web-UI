@@ -400,7 +400,7 @@ async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extr
                 if type == 'openapi':
                     tool_server_data = None
                     for server in await get_tool_servers(request):
-                        if server['id'] == server_id:
+                        if str(server.get('id')) == str(server_id) or str(server.get('idx')) == str(server_id):
                             tool_server_data = server
                             break
 
@@ -419,7 +419,7 @@ async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extr
                     tool_server_connection = connections[tool_server_idx]
 
                     # Check access control for tool server
-                    if not await has_connection_access(user, tool_server_connection, user_group_ids):
+                    if user.role != 'admin' and not await has_connection_access(user, tool_server_connection, user_group_ids):
                         log.warning(f'Access denied to tool server {server_id} for user {user.id}')
                         continue
 

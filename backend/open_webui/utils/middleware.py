@@ -3210,6 +3210,24 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             # (e.g. pipe functions) can access all tools including MCP and builtins.
             metadata['tools'] = tools_dict
 
+            tool_descriptions = []
+            for name, tool in tools_dict.items():
+                spec = tool.get('spec', {})
+                desc = spec.get('description', '') or ''
+                tool_descriptions.append(f"- {name}: {desc.strip()}")
+
+            if tool_descriptions:
+                tools_prompt = (
+                    "You have access to the following tools and capabilities which you can invoke:\n"
+                    + "\n".join(tool_descriptions)
+                    + "\nWhen asked about your tools or capabilities, acknowledge that you have these tools available and can use them when needed."
+                )
+                form_data['messages'] = add_or_update_system_message(
+                    tools_prompt,
+                    form_data['messages'],
+                    append=True,
+                )
+
             if metadata.get('params', {}).get('function_calling') != 'legacy':
                 # If the function calling is native, then call the tools function calling handler
                 form_data['tools'] = [

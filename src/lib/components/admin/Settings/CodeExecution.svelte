@@ -261,6 +261,8 @@
 				{/if}
 			</AdminSettingSection>
 
+			<div class="my-8 border-t border-gray-200 dark:border-gray-800"></div>
+
 			<AdminSettingSection
 				title={$i18n.t('settings.admin.codeExecution.sections.codeInterpreter.title')}
 			>
@@ -487,67 +489,72 @@
 				{/if}
 			</AdminSettingSection>
 		
-		<AdminSettingSection title={$i18n.t('Computer Use / Live Agent Preview (Browser & OS Sandbox)')}>
-			<AdminSettingRow
-				label={$i18n.t('Enable Browser / Computer Use Sandbox')}
-				description={$i18n.t('Allow models to control a headless or graphical browser and operating system session.')}
-				let:labelId
-			>
-				<Switch bind:state={config.BROWSER_SANDBOX_ENABLE} ariaLabelledbyId={labelId} />
-			</AdminSettingRow>
+			<div class="my-8 border-t border-gray-200 dark:border-gray-800"></div>
 
-			{#if config.BROWSER_SANDBOX_ENABLE}
-				<AdminSettingField
-					label={$i18n.t('Browser Sandbox URL / Endpoint')}
-					description={$i18n.t('Self-hosted Browserless / Chromium / Playwright container or cloud service (e.g. http://localhost:3000 or wss://chrome.browserless.io).')}
+			<AdminSettingSection title={$i18n.t('Computer Use / Live Agent Preview (Browser & OS Sandbox)')}>
+				<AdminSettingRow
+					label={$i18n.t('Enable Browser / Computer Use Sandbox')}
+					description={$i18n.t('Allow models to control a headless or graphical browser and operating system session.')}
+					let:labelId
 				>
-					<input
-						class={inputClass}
-						type="text"
-						placeholder="http://localhost:3000"
-						bind:value={config.BROWSER_SANDBOX_URL}
-						autocomplete="off"
-					/>
-				</AdminSettingField>
+					<Switch bind:state={config.BROWSER_SANDBOX_ENABLE} ariaLabelledbyId={labelId} />
+				</AdminSettingRow>
 
-				<AdminSettingField
-					label={$i18n.t('Browser Sandbox Auth Token')}
-					description={$i18n.t('API token for browser service authentication (optional).')}
-				>
-					<SensitiveInput
-						variant="settings"
-						type="text"
-						placeholder={$i18n.t('Enter Auth Token')}
-						bind:value={config.BROWSER_SANDBOX_AUTH_TOKEN}
-						autocomplete="off"
-					/>
-				</AdminSettingField>
+				{#if config.BROWSER_SANDBOX_ENABLE}
+					<AdminSettingField
+						label={$i18n.t('Browser Sandbox URL / Endpoint')}
+						description={$i18n.t('Self-hosted Browserless / Chromium / Playwright container or cloud service (e.g. http://localhost:3000 or wss://chrome.browserless.io).')}
+					>
+						<input
+							class={inputClass}
+							type="text"
+							placeholder="http://localhost:3000"
+							bind:value={config.BROWSER_SANDBOX_URL}
+							autocomplete="off"
+						/>
+					</AdminSettingField>
 
-				<AdminSettingField
-					label={$i18n.t('Live Screen / Web VNC Stream URL')}
-					description={$i18n.t('URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).')}
-				>
-					<input
-						class={inputClass}
-						type="text"
-						placeholder="http://localhost:6080/vnc.html"
-						bind:value={config.BROWSER_SANDBOX_LIVE_URL}
-						autocomplete="off"
-					/>
-				</AdminSettingField>
-			{/if}
+					<AdminSettingField
+						label={$i18n.t('Browser Sandbox Auth Token')}
+						description={$i18n.t('API token for browser service authentication (optional).')}
+					>
+						<SensitiveInput
+							variant="settings"
+							type="text"
+							placeholder={$i18n.t('Enter Auth Token')}
+							bind:value={config.BROWSER_SANDBOX_AUTH_TOKEN}
+							autocomplete="off"
+						/>
+					</AdminSettingField>
 
-			<div class="px-1 text-sm text-gray-500 my-3 space-y-2">
-				<p>{$i18n.t('Open WebUI supports live UI preview for agents (like Gemini Spark or ChatGPT Agent). This allows models to open a browser or operating system interface on the right side of the chat screen, where you can watch the agent work live and take over manually if needed.')}</p>
-				
-				<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">{$i18n.t('Self-Hosted Browser Quickstart Guide:')}</p>
-				<ol class="list-decimal list-inside ml-2 space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
-					<li>{$i18n.t('Run Browserless / Chrome via Docker:')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono">docker run -d -p 3000:3000 -e "CONCURRENT=10" ghcr.io/browserless/chromium</code></li>
-					<li>{$i18n.t('For full OS & GUI with VNC preview (noVNC):')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono">docker run -d -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc</code></li>
-					<li>{$i18n.t('Enter the endpoint and live VNC URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.')}</li>
-				</ol>
-			</div>
-		</AdminSettingSection>
+					<AdminSettingField
+						label={$i18n.t('Live Screen / Web VNC Stream URL')}
+						description={$i18n.t('URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).')}
+					>
+						<input
+							class={inputClass}
+							type="text"
+							placeholder="http://localhost:6080/vnc.html"
+							bind:value={config.BROWSER_SANDBOX_LIVE_URL}
+							autocomplete="off"
+						/>
+					</AdminSettingField>
+
+					<div class="px-1 text-sm text-gray-500 my-3 space-y-2">
+						<p>{$i18n.t('Open WebUI supports live UI preview for agents (like Gemini Spark or ChatGPT Agent). This allows models to open a browser or operating system interface on the right side of the chat screen, where you can watch the agent work live and take over manually if needed.')}</p>
+						
+						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">{$i18n.t('Per-User & Per-Chat Zero-Idle Sandbox Isolation:')}</p>
+						<p class="text-xs text-gray-600 dark:text-gray-400">{$i18n.t('Every chat runs in an isolated context directory (/data/browser_sessions/${userId}_${chatId}). Browser and container instances automatically freeze / spin-down after 5 minutes of inactivity (consuming 0 CPU and 0 RAM) and instantly resume when returning to the conversation, preserving cookies, logins, and session data permanently.')}</p>
+
+						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">{$i18n.t('Self-Hosted Browser Quickstart Guide:')}</p>
+						<ol class="list-decimal list-inside ml-2 space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
+							<li>{$i18n.t('Run Browserless / Chrome via Docker:')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono">docker run -d -p 3000:3000 -e "CONCURRENT=10" ghcr.io/browserless/chromium</code></li>
+							<li>{$i18n.t('For full OS & GUI with VNC preview (noVNC):')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono">docker run -d -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc</code></li>
+							<li>{$i18n.t('Enter the endpoint and live VNC URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.')}</li>
+						</ol>
+					</div>
+				{/if}
+			</AdminSettingSection>
 		{/if}
 	</div>
 	<div class="flex justify-end pt-6 text-sm font-normal">
