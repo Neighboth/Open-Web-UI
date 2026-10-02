@@ -369,6 +369,7 @@ async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extr
 
                 tool_dict = {
                     'tool_id': tool_id,
+                    'tool_name': getattr(tool, 'name', None) or tool_id,
                     'callable': callable,
                     'spec': spec,
                     # Misc info
@@ -475,6 +476,7 @@ async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extr
 
                         tool_dict = {
                             'tool_id': tool_id,
+                            'tool_name': (tool_server_data.get('info') or {}).get('title') or (tool_server_connection.get('info') or {}).get('name') or 'Tool Server',
                             'callable': callable,
                             'spec': clean_openai_tool_schema(spec),
                             # Misc info

@@ -214,11 +214,17 @@ async def generate_chat_completion(
             return await generate_direct_chat_completion(request, form_data, user=user, models=models)
         raise Exception('Model not found')
 
+    u_settings = getattr(user, 'settings', None)
+    u_settings_dict = u_settings.model_dump() if hasattr(u_settings, 'model_dump') else dict(u_settings or {})
+    has_direct_conn = bool(
+        u_settings_dict.get('directConnections')
+        or (isinstance(u_settings_dict.get('ui'), dict) and u_settings_dict.get('ui', {}).get('directConnections'))
+    )
     is_direct = (
         getattr(request.state, 'direct', False)
         or model.get('direct')
         or str(model_id).startswith('~')
-        or (u_key and bool(getattr(user, 'settings', {}).get('directConnections')))
+        or (u_key and has_direct_conn)
     )
     if is_direct and u_key:
         return await generate_direct_chat_completion(request, form_data, user=user, models=models)

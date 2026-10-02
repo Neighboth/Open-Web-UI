@@ -136,7 +136,41 @@ class InterfaceSettings(BaseModel):
 class UserSettings(BaseModel):
     ui: dict | None = {}
     model_config = ConfigDict(extra='allow')
-    pass
+
+    def get(self, key, default=None):
+        if hasattr(self, key):
+            val = getattr(self, key)
+            if val is not None:
+                return val
+        if self.__pydantic_extra__ and key in self.__pydantic_extra__:
+            val = self.__pydantic_extra__[key]
+            if val is not None:
+                return val
+        return default
+
+    def __getitem__(self, key):
+        val = self.get(key)
+        if val is None and not (hasattr(self, key) or (self.__pydantic_extra__ and key in self.__pydantic_extra__)):
+            raise KeyError(key)
+        return val
+
+    def __contains__(self, key):
+        return hasattr(self, key) or (bool(self.__pydantic_extra__) and key in self.__pydantic_extra__)
+
+    def keys(self):
+        k = set(self.__dict__.keys())
+        if self.__pydantic_extra__:
+            k.update(self.__pydantic_extra__.keys())
+        return list(k)
+
+    def items(self):
+        d = self.model_dump()
+        return d.items()
+
+    def values(self):
+        d = self.model_dump()
+        return d.values()
+
 
 
 class User(Base):  # identity & profile
@@ -827,7 +861,7 @@ class UsersTable:
             user = await session.get(User, id)
             if not user:
                 return None
-            user_settings = dict(user.settings or {})
+            user_settings = user.settings.model_dump() if hasattr(user.settings, 'model_dump') else dict(user.settings or {})
             updated = dict(updated)
             ui_settings = updated.pop('ui', None)
             user_settings.update(updated)

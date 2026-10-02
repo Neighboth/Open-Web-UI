@@ -68,7 +68,11 @@
 		const userSettings = await getUserSettings(localStorage.token);
 
 		if (userSettings?.ui) {
-			settings.set(userSettings.ui);
+			const activeIntegrations = userSettings.ui?.activeIntegrations || userSettings?.activeIntegrations;
+			settings.set({
+				...userSettings.ui,
+				...(activeIntegrations ? { activeIntegrations } : {})
+			});
 		}
 		loadKeybindings(userSettings?.keybindings);
 

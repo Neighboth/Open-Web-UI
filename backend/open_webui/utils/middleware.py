@@ -3213,14 +3213,28 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             tool_descriptions = []
             for name, tool in tools_dict.items():
                 spec = tool.get('spec', {})
-                desc = spec.get('description', '') or ''
-                tool_descriptions.append(f"- {name}: {desc.strip()}")
+                desc = (spec.get('description', '') or '').strip()
+                tool_id = tool.get('tool_id', '')
+                tool_name = tool.get('tool_name') or tool.get('name') or ''
+                server_data = tool.get('server', {})
+                server_title = (server_data.get('info') or {}).get('title') or server_data.get('url') or ''
+
+                ident_parts = []
+                if tool_name and tool_name.lower() != name.lower():
+                    ident_parts.append(f'Tool: "{tool_name}"')
+                if tool_id and tool_id != name:
+                    ident_parts.append(f'ID: `{tool_id}`')
+                if server_title and server_title.lower() != name.lower():
+                    ident_parts.append(f'Server: "{server_title}"')
+
+                ident_str = f" ({', '.join(ident_parts)})" if ident_parts else ""
+                tool_descriptions.append(f"- `{name}`{ident_str}: {desc}")
 
             if tool_descriptions:
                 tools_prompt = (
                     "You have access to the following tools and capabilities which you can invoke:\n"
                     + "\n".join(tool_descriptions)
-                    + "\nWhen asked about your tools or capabilities, acknowledge that you have these tools available and can use them when needed."
+                    + "\nWhen asked about your tools, capabilities, or whether you have a specific tool, acknowledge that you have these tools available and can use them when requested."
                 )
                 form_data['messages'] = add_or_update_system_message(
                     tools_prompt,

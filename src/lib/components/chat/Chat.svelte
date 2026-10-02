@@ -341,15 +341,33 @@
 	$: contextUsage = getContextUsage() ?? (contextCompactionEnabled ? serverContextUsage : null);
 	$: embeddedHeaderTitle = embeddedTitle || $chatTitle || $i18n.t('Chat');
 
-	let selectedToolIds: string[] = [];
-	let selectedSkillIds: string[] = [];
-	let selectedFilterIds: string[] = [];
+	const getSavedActiveIntegrations = () => {
+		try {
+			if (typeof localStorage !== 'undefined') {
+				const saved = localStorage.getItem('activeIntegrations');
+				if (saved) return JSON.parse(saved);
+			}
+		} catch (e) {}
+		return null;
+	};
+
+	const initialIntegrations = getSavedActiveIntegrations();
+
+	let selectedToolIds: string[] = Array.isArray(initialIntegrations?.selectedToolIds)
+		? [...initialIntegrations.selectedToolIds]
+		: [];
+	let selectedSkillIds: string[] = Array.isArray(initialIntegrations?.selectedSkillIds)
+		? [...initialIntegrations.selectedSkillIds]
+		: [];
+	let selectedFilterIds: string[] = Array.isArray(initialIntegrations?.selectedFilterIds)
+		? [...initialIntegrations.selectedFilterIds]
+		: [];
 	let pendingOAuthTools = [];
 
-	let imageGenerationEnabled = false;
-	let webSearchEnabled = false;
-	let codeInterpreterEnabled = false;
-	let browserEnabled = false;
+	let imageGenerationEnabled = Boolean(initialIntegrations?.imageGenerationEnabled);
+	let webSearchEnabled = Boolean(initialIntegrations?.webSearchEnabled);
+	let codeInterpreterEnabled = Boolean(initialIntegrations?.codeInterpreterEnabled);
+	let browserEnabled = Boolean(initialIntegrations?.browserEnabled);
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
 	let pendingWebSearchPrompt: string | null = null;
@@ -371,12 +389,20 @@
 				codeInterpreterEnabled,
 				browserEnabled
 			};
+			try {
+				if (typeof localStorage !== 'undefined') {
+					localStorage.setItem('activeIntegrations', JSON.stringify(activeIntegrations));
+				}
+			} catch (e) {}
 			settings.set({
 				...$settings,
 				activeIntegrations
 			});
 			if (localStorage.token) {
-				await updateUserSettings(localStorage.token, { activeIntegrations }).catch((err) => {
+				await updateUserSettings(localStorage.token, {
+					ui: { activeIntegrations },
+					activeIntegrations
+				}).catch((err) => {
 					console.error('[active integrations settings]', err);
 				});
 			}
@@ -385,7 +411,7 @@
 
 	const restoreActiveIntegrations = () => {
 		isRestoringIntegrations = true;
-		const ai = $settings?.activeIntegrations;
+		const ai = $settings?.activeIntegrations ?? $settings?.ui?.activeIntegrations ?? getSavedActiveIntegrations();
 		if (ai) {
 			selectedToolIds = Array.isArray(ai.selectedToolIds) ? [...ai.selectedToolIds] : [];
 			selectedSkillIds = Array.isArray(ai.selectedSkillIds) ? [...ai.selectedSkillIds] : [];
@@ -394,18 +420,10 @@
 			imageGenerationEnabled = Boolean(ai.imageGenerationEnabled);
 			codeInterpreterEnabled = Boolean(ai.codeInterpreterEnabled);
 			browserEnabled = Boolean(ai.browserEnabled);
-		} else {
-			selectedToolIds = [];
-			selectedSkillIds = [];
-			selectedFilterIds = [];
-			webSearchEnabled = false;
-			imageGenerationEnabled = false;
-			codeInterpreterEnabled = false;
-			browserEnabled = false;
 		}
 		setTimeout(() => {
 			isRestoringIntegrations = false;
-		}, 150);
+		}, 200);
 	};
 
 	$: if (!isRestoringIntegrations && (selectedToolIds || selectedSkillIds || selectedFilterIds || webSearchEnabled !== undefined || imageGenerationEnabled !== undefined || codeInterpreterEnabled !== undefined || browserEnabled !== undefined)) {
@@ -836,13 +854,19 @@
 			prompt = input.prompt ?? '';
 			messageInput?.setText(prompt);
 			files = input.files ?? [];
-			selectedToolIds = input.selectedToolIds ?? [];
-			selectedSkillIds = input.selectedSkillIds ?? [];
-			selectedFilterIds = input.selectedFilterIds ?? [];
-			webSearchEnabled = input.webSearchEnabled ?? false;
-			imageGenerationEnabled = input.imageGenerationEnabled ?? false;
-			codeInterpreterEnabled = input.codeInterpreterEnabled ?? false;
-			browserEnabled = input.browserEnabled ?? false;
+			if (Array.isArray(input.selectedToolIds) && input.selectedToolIds.length > 0) {
+				selectedToolIds = input.selectedToolIds;
+			}
+			if (Array.isArray(input.selectedSkillIds) && input.selectedSkillIds.length > 0) {
+				selectedSkillIds = input.selectedSkillIds;
+			}
+			if (Array.isArray(input.selectedFilterIds) && input.selectedFilterIds.length > 0) {
+				selectedFilterIds = input.selectedFilterIds;
+			}
+			if (input.webSearchEnabled) webSearchEnabled = true;
+			if (input.imageGenerationEnabled) imageGenerationEnabled = true;
+			if (input.codeInterpreterEnabled) codeInterpreterEnabled = true;
+			if (input.browserEnabled) browserEnabled = true;
 			if (input.toolApprovalMode) {
 				await handleToolApprovalModeChange(input.toolApprovalMode);
 			}
