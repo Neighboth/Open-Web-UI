@@ -3659,7 +3659,7 @@ async def view_skill(
                 return JSONCodec.dumps({'error': f"Skill '{id}' not found"})
         builtin_system_skills = await Config.get('system.builtin_skills', []) or []
         for b_skill in builtin_system_skills:
-            if b_skill.get('id') == id or str(b_skill.get('id', '')).lower() == str(id).lower():
+            if b_skill.get('id') == id or str(b_skill.get('id', '')).lower() == str(id).lower() or str(b_skill.get('name', '')).lower() == str(id).lower():
                 return JSONCodec.dumps(
                     {
                         'name': b_skill.get('name'),

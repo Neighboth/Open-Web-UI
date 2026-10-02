@@ -13,10 +13,11 @@ def get_user_direct_connection(user: Any) -> Tuple[Optional[str], Optional[str],
     settings = getattr(user, 'settings', None) or {}
     if not isinstance(settings, dict):
         return None, None, {}
-    ui = settings.get('ui') or {}
-    if not isinstance(ui, dict):
-        return None, None, {}
-    direct = ui.get('directConnections')
+    direct = settings.get('directConnections')
+    if not direct or not isinstance(direct, dict):
+        ui = settings.get('ui') or {}
+        if isinstance(ui, dict):
+            direct = ui.get('directConnections')
     if not direct or not isinstance(direct, dict):
         return None, None, {}
 

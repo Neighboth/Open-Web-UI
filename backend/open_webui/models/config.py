@@ -147,6 +147,11 @@ class Config(Base):
             return row.value if row else Config.default_value(key, default)
 
     @staticmethod
+    async def set(key: str, value: Any) -> None:
+        """Set a single config key. Alias to upsert."""
+        await Config.upsert({key: value})
+
+    @staticmethod
     async def get_many(*keys: str) -> dict:
         """Get multiple config values. Returns {key: value} for keys that exist."""
         disabled_values = {

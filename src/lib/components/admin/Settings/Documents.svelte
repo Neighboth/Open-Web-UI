@@ -97,23 +97,6 @@
 			return;
 		}
 
-		if (RAG_EMBEDDING_ENGINE === 'openai' && RAG_EMBEDDING_MODEL === '') {
-			toast.error(
-				$i18n.t(
-					'Model filesystem path detected. Model shortname is required for update, cannot continue.'
-				)
-			);
-			return;
-		}
-
-		if (
-			RAG_EMBEDDING_ENGINE === 'azure_openai' &&
-			(AzureOpenAIKey === '' || AzureOpenAIUrl === '' || AzureOpenAIVersion === '')
-		) {
-			toast.error($i18n.t('OpenAI URL/Key required.'));
-			return;
-		}
-
 		console.debug('Update embedding model attempt:', {
 			RAG_EMBEDDING_ENGINE,
 			RAG_EMBEDDING_MODEL,
@@ -938,7 +921,7 @@
 								placeholder={$i18n.t('Enter Tokenizer Model')}
 								bind:value={RAGConfig.RAG_TOKENIZER_MODEL}
 								autocomplete="off"
-								required={RAG_EMBEDDING_ENGINE !== ''}
+								required={false}
 							/>
 						</AdminSettingField>
 					{/if}
@@ -1041,7 +1024,7 @@
 									class={inputClass}
 									placeholder={$i18n.t('settings.admin.documents.openaiurl.label')}
 									bind:value={OpenAIUrl}
-									required
+									required={false}
 								/>
 							</AdminSettingField>
 							<AdminSettingField
@@ -1066,7 +1049,7 @@
 									class={inputClass}
 									placeholder={$i18n.t('settings.admin.documents.ollamaurl.label')}
 									bind:value={OllamaUrl}
-									required
+									required={false}
 								/>
 							</AdminSettingField>
 							<AdminSettingField
@@ -1091,7 +1074,7 @@
 									class={inputClass}
 									placeholder={$i18n.t('settings.admin.documents.azureopenaiurl.label')}
 									bind:value={AzureOpenAIUrl}
-									required
+									required={false}
 								/>
 							</AdminSettingField>
 							<AdminSettingField
@@ -1112,7 +1095,7 @@
 									class={inputClass}
 									placeholder={$i18n.t('settings.admin.documents.version.label')}
 									bind:value={AzureOpenAIVersion}
-									required
+									required={false}
 								/>
 							</AdminSettingField>
 						</div>
@@ -1131,7 +1114,7 @@
 											model: RAG_EMBEDDING_MODEL.slice(-40)
 										})}
 								bind:value={RAG_EMBEDDING_MODEL}
-								required={RAG_EMBEDDING_ENGINE === 'ollama'}
+								required={false}
 							/>
 
 							{#if RAG_EMBEDDING_ENGINE === ''}
@@ -1278,7 +1261,7 @@
 											class={inputClass}
 											placeholder={$i18n.t('settings.admin.documents.ragExternalRerankerUrl.label')}
 											bind:value={RAGConfig.RAG_EXTERNAL_RERANKER_URL}
-											required
+											required={false}
 										/>
 									</AdminSettingField>
 									<AdminSettingField

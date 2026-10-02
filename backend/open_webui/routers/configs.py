@@ -50,6 +50,11 @@ CODE_EXECUTION_CONFIG_KEYS = {
     'CODE_EXECUTION_JUPYTER_AUTH_TOKEN': 'code_execution.jupyter.auth_token',
     'CODE_EXECUTION_JUPYTER_AUTH_PASSWORD': 'code_execution.jupyter.auth_password',
     'CODE_EXECUTION_JUPYTER_TIMEOUT': 'code_execution.jupyter.timeout',
+    'CODE_EXECUTION_E2B_API_KEY': 'code_execution.e2b.api_key',
+    'CODE_EXECUTION_E2B_TEMPLATE': 'code_execution.e2b.template',
+    'CODE_EXECUTION_SANDBOX_URL': 'code_execution.sandbox.url',
+    'CODE_EXECUTION_SANDBOX_AUTH_TOKEN': 'code_execution.sandbox.auth_token',
+    'CODE_EXECUTION_SANDBOX_TIMEOUT': 'code_execution.sandbox.timeout',
     'ENABLE_CODE_INTERPRETER': 'code_interpreter.enable',
     'CODE_INTERPRETER_ENGINE': 'code_interpreter.engine',
     'CODE_INTERPRETER_PROMPT_TEMPLATE': 'code_interpreter.prompt_template',
@@ -58,6 +63,15 @@ CODE_EXECUTION_CONFIG_KEYS = {
     'CODE_INTERPRETER_JUPYTER_AUTH_TOKEN': 'code_interpreter.jupyter.auth_token',
     'CODE_INTERPRETER_JUPYTER_AUTH_PASSWORD': 'code_interpreter.jupyter.auth_password',
     'CODE_INTERPRETER_JUPYTER_TIMEOUT': 'code_interpreter.jupyter.timeout',
+    'CODE_INTERPRETER_E2B_API_KEY': 'code_interpreter.e2b.api_key',
+    'CODE_INTERPRETER_E2B_TEMPLATE': 'code_interpreter.e2b.template',
+    'CODE_INTERPRETER_SANDBOX_URL': 'code_interpreter.sandbox.url',
+    'CODE_INTERPRETER_SANDBOX_AUTH_TOKEN': 'code_interpreter.sandbox.auth_token',
+    'CODE_INTERPRETER_SANDBOX_TIMEOUT': 'code_interpreter.sandbox.timeout',
+    'BROWSER_SANDBOX_ENABLE': 'browser_sandbox.enable',
+    'BROWSER_SANDBOX_URL': 'browser_sandbox.url',
+    'BROWSER_SANDBOX_AUTH_TOKEN': 'browser_sandbox.auth_token',
+    'BROWSER_SANDBOX_LIVE_URL': 'browser_sandbox.live_url',
 }
 MODELS_CONFIG_KEYS = {
     'DEFAULT_MODELS': 'ui.default_models',
@@ -702,15 +716,29 @@ class CodeInterpreterConfigForm(BaseModel):
     CODE_EXECUTION_JUPYTER_AUTH: str | None
     CODE_EXECUTION_JUPYTER_AUTH_TOKEN: str | None
     CODE_EXECUTION_JUPYTER_AUTH_PASSWORD: str | None
-    CODE_EXECUTION_JUPYTER_TIMEOUT: int | None
+    CODE_EXECUTION_JUPYTER_TIMEOUT: int | None = None
+    CODE_EXECUTION_E2B_API_KEY: str | None = None
+    CODE_EXECUTION_E2B_TEMPLATE: str | None = None
+    CODE_EXECUTION_SANDBOX_URL: str | None = None
+    CODE_EXECUTION_SANDBOX_AUTH_TOKEN: str | None = None
+    CODE_EXECUTION_SANDBOX_TIMEOUT: int | None = None
     ENABLE_CODE_INTERPRETER: bool
     CODE_INTERPRETER_ENGINE: str
-    CODE_INTERPRETER_PROMPT_TEMPLATE: str | None
-    CODE_INTERPRETER_JUPYTER_URL: str | None
-    CODE_INTERPRETER_JUPYTER_AUTH: str | None
-    CODE_INTERPRETER_JUPYTER_AUTH_TOKEN: str | None
-    CODE_INTERPRETER_JUPYTER_AUTH_PASSWORD: str | None
-    CODE_INTERPRETER_JUPYTER_TIMEOUT: int | None
+    CODE_INTERPRETER_PROMPT_TEMPLATE: str | None = None
+    CODE_INTERPRETER_JUPYTER_URL: str | None = None
+    CODE_INTERPRETER_JUPYTER_AUTH: str | None = None
+    CODE_INTERPRETER_JUPYTER_AUTH_TOKEN: str | None = None
+    CODE_INTERPRETER_JUPYTER_AUTH_PASSWORD: str | None = None
+    CODE_INTERPRETER_JUPYTER_TIMEOUT: int | None = None
+    CODE_INTERPRETER_E2B_API_KEY: str | None = None
+    CODE_INTERPRETER_E2B_TEMPLATE: str | None = None
+    CODE_INTERPRETER_SANDBOX_URL: str | None = None
+    CODE_INTERPRETER_SANDBOX_AUTH_TOKEN: str | None = None
+    CODE_INTERPRETER_SANDBOX_TIMEOUT: int | None = None
+    BROWSER_SANDBOX_ENABLE: bool | None = False
+    BROWSER_SANDBOX_URL: str | None = None
+    BROWSER_SANDBOX_AUTH_TOKEN: str | None = None
+    BROWSER_SANDBOX_LIVE_URL: str | None = None
 
 
 @router.get('/code_execution', response_model=CodeInterpreterConfigForm)

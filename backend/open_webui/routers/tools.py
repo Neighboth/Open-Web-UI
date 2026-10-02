@@ -145,7 +145,8 @@ async def get_tools(
 
     # MCP Tool Servers
     for server in await Config.get('tool_server.connections', []):
-        if server.get('type', 'openapi') == 'mcp' and (server.get('config') or {}).get('enable'):
+        enable = (server.get('config') or {}).get('enable', True)
+        if server.get('type', 'openapi') == 'mcp' and enable:
             info = server.get('info') or {}
             server_id = info.get('id')
             auth_type = server.get('auth_type', 'none')
@@ -195,6 +196,39 @@ async def get_tools(
                 )
             )
 
+    # Ensure all enabled tool server connections appear even if external probe timed out
+    existing_tool_server_ids = {str(t.id) for t in tools}
+    for idx, connection in enumerate(await Config.get('tool_server.connections', []) or []):
+        conn_enable = (connection.get('config') or {}).get('enable', True)
+        if not conn_enable:
+            continue
+        info = connection.get('info') or {}
+        conn_id = info.get('id') or str(idx)
+        server_type = connection.get('type', 'openapi')
+        server_id = f'server:mcp:{conn_id}' if server_type == 'mcp' else f'server:{conn_id}'
+        if server_id not in existing_tool_server_ids:
+            server_connections[server_id] = connection
+            icon = connection.get('icon') or info.get('icon')
+            name = info.get('name') or info.get('title') or connection.get('url') or f'Tool Server {idx+1}'
+            tools.append(
+                ToolUserResponse(
+                    **{
+                        'id': server_id,
+                        'user_id': server_id,
+                        'name': name,
+                        'meta': {
+                            'description': info.get('description', '') or connection.get('url', ''),
+                            'icon': icon,
+                            'user_provided': connection.get('user_provided', False),
+                            'user_provided_description': connection.get('user_provided_description', ''),
+                        },
+                        'updated_at': int(time.time()),
+                        'created_at': int(time.time()),
+                    }
+                )
+            )
+            existing_tool_server_ids.add(server_id)
+
     if not bypass_access_control:
         tools = [
             tool
@@ -202,7 +236,7 @@ async def get_tools(
             if not str(tool.id).startswith('server:')
             or await has_connection_access(
                 user,
-                server_connections[str(tool.id)],
+                server_connections.get(str(tool.id), {}),
                 user_group_ids,
             )
         ]

@@ -81,6 +81,7 @@
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
 	export let codeInterpreterEnabled = false;
+	export let browserEnabled = false;
 
 	export let onShowValves: Function;
 	export let onClose: Function;
@@ -342,11 +343,6 @@
 					in:fly={{ x: -20, duration: 150 }}
 				>
 					{#if tools}
-						<hr class="my-1 border-gray-200 dark:border-gray-800" />
-						<div class="px-2 py-1 text-xs text-gray-500 font-semibold">{$i18n.t('Tools')}</div>
-						{#if toolIds.length === 0}
-						<div class="text-center text-xs text-gray-500 py-3">{$i18n.t('No tools found')}</div>
-						{:else}
 						<div class="flex flex-col gap-0.5">
 						{#each toolIds as toolId}
 						<button
@@ -477,14 +473,6 @@
 						</div>
 						</button>
 						{/each}
-						</div>
-						{/if}
-						<hr class="my-1 border-gray-200 dark:border-gray-800" />
-						<div class="px-2 py-1 text-xs text-gray-500 font-semibold">{$i18n.t('Skills')}</div>
-						{#if skillIds.length === 0}
-						<div class="text-center text-xs text-gray-500 py-3">{$i18n.t('No skills found')}</div>
-						{:else}
-						<div class="flex flex-col gap-0.5">
 						{#each skillIds as skillId}
 						<button
 						class="relative flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
@@ -533,7 +521,6 @@
 						</button>
 						{/each}
 						</div>
-						{/if}
 					{:else}
 						<div class="py-4">
 							<Spinner />
@@ -698,6 +685,30 @@
 							</button>
 						</Tooltip>
 					{/if}
+
+					<Tooltip content={$i18n.t('Web Browser (Live Agent & Sandbox)')} placement="top-start">
+						<button
+							class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+							aria-pressed={browserEnabled}
+							on:click={() => {
+								browserEnabled = !browserEnabled;
+							}}
+						>
+							<div class="flex-1 truncate">
+								<div class="flex flex-1 gap-2 items-center">
+									<div class="shrink-0">
+										<GlobeAlt className="size-3.5 text-blue-500" strokeWidth="1.75" />
+									</div>
+
+									<div class=" truncate">{$i18n.t('Web Browser')}</div>
+								</div>
+							</div>
+
+							<div class=" shrink-0" inert>
+								<Switch state={browserEnabled} />
+							</div>
+						</button>
+					</Tooltip>
 				</div>
 			{/if}
 		</DropdownMenu>

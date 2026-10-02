@@ -36,26 +36,29 @@
 <Dropdown bind:show {closeOnOutsideClick}>
 	<Tooltip content={$i18n.t('Reasoning Effort')} placement="top">
 		<button
-			class="bg-transparent hover:bg-gray-100 text-gray-700 dark:text-white dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0"
+			class="bg-transparent hover:bg-gray-100 {currentReasoning ? 'text-amber-500 dark:text-amber-400' : 'text-gray-700 dark:text-white'} dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0 transition"
 			aria-label={$i18n.t('Reasoning')}
 			type="button"
 		>
-			<LightBulb className="size-4.5" strokeWidth="1.5" />
+			<LightBulb className="size-4.5" strokeWidth={currentReasoning ? "2" : "1.5"} />
 		</button>
 	</Tooltip>
 	<div slot="content">
-		<DropdownMenu className="min-w-40 max-w-40 max-h-72 overflow-hidden">
-			<div class="p-1 flex flex-col gap-0.5">
+		<DropdownMenu className="min-w-44 max-w-48 max-h-72 overflow-hidden p-1.5">
+			<div class="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
+				{$i18n.t('Thinking Level')}
+			</div>
+			<div class="flex flex-col gap-0.5">
 				{#each options as option}
 					<button
-						class="relative flex w-full gap-2 items-center px-2 py-1.5 text-sm font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+						class="relative flex w-full gap-2 items-center px-2 py-1.5 text-xs font-normal cursor-pointer rounded-xl hover:bg-gray-50/60 dark:hover:bg-gray-800/60 transition"
 						on:click={() => setReasoning(option.value)}
 					>
 						<div class="flex-1 text-left truncate">
 							{$i18n.t(option.label)}
 						</div>
 						{#if currentReasoning === option.value}
-							<div class="shrink-0 text-gray-600 dark:text-gray-300">
+							<div class="shrink-0 text-amber-500 dark:text-amber-400">
 								<Check className="size-3.5" strokeWidth="2.5" />
 							</div>
 						{/if}

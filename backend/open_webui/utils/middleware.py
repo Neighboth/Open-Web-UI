@@ -2870,7 +2870,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                     f'<skill>\n<id>{b_id}</id>\n<name>{b_name}</name>\n'
                     f'<description>{b_desc}</description>\n</skill>\n'
                 )
-                if not use_builtin_tools or b_id in mentioned_skill_ids:
+                if b_content:
                     form_data['messages'] = add_or_update_system_message(
                         f'<skill name="{b_name}">\n{b_content}\n</skill>',
                         form_data['messages'],

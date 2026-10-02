@@ -168,7 +168,11 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
         else:
             pass  # Fall back to task.model.default if available
 
-    task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
+    if models.get(model_id, {}).get('direct') or str(model_id).startswith('~'):
+        task_model_id = model_id
+        task_model_params = {}
+    else:
+        task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
     log.debug('generating chat title using model %s for user %s ', task_model_id, user.email)
 
@@ -238,7 +242,11 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
         else:
             pass  # Fall back to task.model.default if available
 
-    task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
+    if models.get(model_id, {}).get('direct') or str(model_id).startswith('~'):
+        task_model_id = model_id
+        task_model_params = {}
+    else:
+        task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
     log.debug('generating chat title using model %s for user %s ', task_model_id, user.email)
 
@@ -305,7 +313,11 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
         else:
             pass  # Fall back to task.model.default if available
 
-    task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
+    if models.get(model_id, {}).get('direct') or str(model_id).startswith('~'):
+        task_model_id = model_id
+        task_model_params = {}
+    else:
+        task_model_id, task_model_params = await get_task_model_generation_config(model_id, models)
 
     log.debug('generating chat tags using model %s for user %s ', task_model_id, user.email)
 
