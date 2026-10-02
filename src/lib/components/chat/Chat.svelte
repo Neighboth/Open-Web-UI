@@ -2269,6 +2269,7 @@
 			$models.map((m) => m.id).includes(modelId) ? modelId : ''
 		);
 
+		loading = false;
 		await tick();
 		messageInput?.focus({ preventScroll: true });
 	};

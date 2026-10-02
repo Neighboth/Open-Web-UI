@@ -62,67 +62,53 @@ export const getModels = async (
 	if (connections && !base) {
 		let localModels = [];
 
-		if (connections) {
-			const OPENAI_API_BASE_URLS = connections.OPENAI_API_BASE_URLS;
-			const OPENAI_API_KEYS = connections.OPENAI_API_KEYS;
-			const OPENAI_API_CONFIGS = connections.OPENAI_API_CONFIGS;
+		try {
+			const OPENAI_API_BASE_URLS = connections.OPENAI_API_BASE_URLS || [];
+			const OPENAI_API_KEYS = connections.OPENAI_API_KEYS || [];
+			const OPENAI_API_CONFIGS = connections.OPENAI_API_CONFIGS || {};
 
 			const requests = [];
 			for (const idx in OPENAI_API_BASE_URLS) {
 				const url = OPENAI_API_BASE_URLS[idx];
+				if (!url) continue;
 
-				if (idx.toString() in OPENAI_API_CONFIGS) {
-					const apiConfig = OPENAI_API_CONFIGS[idx.toString()] ?? {};
+				const apiConfig = OPENAI_API_CONFIGS?.[idx.toString()] ?? {};
+				const enable = apiConfig?.enable ?? true;
+				const modelIds = apiConfig?.model_ids ?? [];
 
-					const enable = apiConfig?.enable ?? true;
-					const modelIds = apiConfig?.model_ids ?? [];
+				if (enable) {
+					if (modelIds.length > 0) {
+						const modelList = {
+							object: 'list',
+							data: modelIds.map((modelId) => ({
+								id: modelId,
+								name: modelId,
+								owned_by: 'openai',
+								openai: { id: modelId },
+								urlIdx: idx
+							}))
+						};
 
-					if (enable) {
-						if (modelIds.length > 0) {
-							const modelList = {
-								object: 'list',
-								data: modelIds.map((modelId) => ({
-									id: modelId,
-									name: modelId,
-									owned_by: 'openai',
-									openai: { id: modelId },
-									urlIdx: idx
-								}))
-							};
-
-							requests.push(
-								(async () => {
-									return modelList;
-								})()
-							);
-						} else {
-							requests.push(
-								(async () => {
-									return await getOpenAIModelsDirect(url, OPENAI_API_KEYS[idx])
-										.then((res) => {
-											return res;
-										})
-										.catch((err) => {
-											return {
-												object: 'list',
-												data: [],
-												urlIdx: idx
-											};
-										});
-								})()
-							);
-						}
+						requests.push(Promise.resolve(modelList));
 					} else {
 						requests.push(
-							(async () => {
-								return {
+							getOpenAIModelsDirect(url, OPENAI_API_KEYS[idx])
+								.then((res) => res)
+								.catch((err) => ({
 									object: 'list',
 									data: [],
 									urlIdx: idx
-								};
-							})()
+								}))
 						);
 					}
+				} else {
+					requests.push(
+						Promise.resolve({
+							object: 'list',
+							data: [],
+							urlIdx: idx
+						})
+					);
 				}
 			}
 
@@ -130,142 +116,157 @@ export const getModels = async (
 
 			for (const idx in responses) {
 				const response = responses[idx];
-				const apiConfig = OPENAI_API_CONFIGS[idx.toString()] ?? {};
+				const apiConfig = OPENAI_API_CONFIGS?.[idx.toString()] ?? {};
 
-				let models = Array.isArray(response) ? response : (response?.data ?? []);
-				models = models.map((model) => ({ ...model, openai: { id: model.id }, urlIdx: idx }));
+				let fetchedModels = Array.isArray(response) ? response : (response?.data ?? []);
+				fetchedModels = fetchedModels.map((model) => ({
+					...model,
+					openai: { id: model?.id },
+					urlIdx: idx
+				}));
 
-				const prefixId = apiConfig.prefix_id;
+				const prefixId = apiConfig?.prefix_id;
 				if (prefixId) {
-					for (const model of models) {
-						model.id = `${prefixId}.${model.id}`;
+					for (const model of fetchedModels) {
+						if (model?.id) {
+							model.id = `${prefixId}.${model.id}`;
+						}
 					}
 				}
 
-				const tags = normalizeTags(apiConfig.tags);
+				const tags = normalizeTags(apiConfig?.tags);
 				if (tags.length > 0) {
-					for (const model of models) {
+					for (const model of fetchedModels) {
 						model.tags = tags;
 					}
 				}
 
-				localModels = localModels.concat(models);
-			}
-		}
-
-		// Build lookup for backend custom models (by raw ID, normalized ID, and base_model_id)
-		const backendModelsMap: Record<string, any> = {};
-		for (const model of models) {
-			backendModelsMap[model.id] = model;
-			const cleanId = model.id.replace(/^~/, '');
-			backendModelsMap[cleanId] = model;
-			backendModelsMap[`~${cleanId}`] = model;
-
-			const baseId = model.base_model_id || model.info?.base_model_id;
-			if (baseId) {
-				backendModelsMap[baseId] = model;
-				backendModelsMap[baseId.replace(/^~/, '')] = model;
-				backendModelsMap[`~${baseId.replace(/^~/, '')}`] = model;
-			}
-		}
-
-		// Merge direct models with backend models, prioritizing custom name and info from backend
-		const modelsMap: Record<string, any> = {};
-		for (const backendModel of models) {
-			modelsMap[backendModel.id] = { ...backendModel };
-		}
-
-		for (const localModel of localModels) {
-			const cleanLocalId = (localModel?.id ?? '').replace(/^~/, '');
-			const cleanLocalWithoutPrefix = cleanLocalId.includes('.')
-				? cleanLocalId.split('.').slice(1).join('.')
-				: cleanLocalId;
-
-			// Check matching backend model
-			const matched =
-				backendModelsMap[localModel.id] ||
-				backendModelsMap[cleanLocalId] ||
-				backendModelsMap[`~${cleanLocalId}`] ||
-				backendModelsMap[cleanLocalWithoutPrefix] ||
-				backendModelsMap[`~${cleanLocalWithoutPrefix}`];
-
-			const targetId = matched ? matched.id : localModel.id;
-			const existing = modelsMap[targetId];
-
-			// Remove duplicate entry if localModel.id was previously keyed differently
-			if (matched && localModel.id !== targetId && modelsMap[localModel.id]) {
-				delete modelsMap[localModel.id];
-			}
-			if (matched && cleanLocalId !== targetId && modelsMap[cleanLocalId]) {
-				delete modelsMap[cleanLocalId];
+				localModels = localModels.concat(fetchedModels);
 			}
 
-			const directModel = {
-				...localModel,
-				name: localModel?.name ?? localModel?.id,
-				direct: true
-			};
+			// Build lookup for backend custom models (by raw ID, normalized ID, and base_model_id)
+			const backendModelsMap: Record<string, any> = {};
+			for (const model of (Array.isArray(models) ? models : [])) {
+				if (!model || !model.id) continue;
+				backendModelsMap[model.id] = model;
+				const cleanId = String(model.id).replace(/^~/, '');
+				backendModelsMap[cleanId] = model;
+				backendModelsMap[`~${cleanId}`] = model;
 
-			const customName =
-				matched?.name && matched.name !== matched.id && matched.name !== matched.id.replace(/^~/, '')
-					? matched.name
-					: existing?.name && existing.name !== existing.id && existing.name !== existing.id.replace(/^~/, '')
-						? existing.name
-						: localModel?.name && localModel.name !== localModel.id && localModel.name !== cleanLocalId
-							? localModel.name
-							: (matched?.name ?? existing?.name ?? localModel.name ?? localModel.id);
+				const baseId = model.base_model_id || model.info?.base_model_id;
+				if (baseId && typeof baseId === 'string') {
+					backendModelsMap[baseId] = model;
+					backendModelsMap[baseId.replace(/^~/, '')] = model;
+					backendModelsMap[`~${baseId.replace(/^~/, '')}`] = model;
+				}
+			}
 
-			modelsMap[targetId] = existing
-				? {
-						...directModel,
-						...existing,
-						id: targetId,
-						name: customName,
-						direct: true,
-						urlIdx: directModel.urlIdx ?? existing.urlIdx ?? 0,
-						openai: directModel.openai ?? existing.openai,
-						description:
-							matched?.info?.meta?.description ||
-							matched?.description ||
-							existing.info?.meta?.description ||
-							existing.description ||
-							directModel.description,
-						info: {
-							...(directModel.info ?? {}),
-							...(existing.info ?? {}),
-							...(matched?.info ?? {}),
-							meta: {
-								...(directModel.info?.meta ?? {}),
-								...(existing.info?.meta ?? {}),
-								...(matched?.info?.meta ?? {})
-							}
-						}
-					}
-				: matched
+			// Merge direct models with backend models, prioritizing custom name and info from backend
+			const modelsMap: Record<string, any> = {};
+			for (const backendModel of (Array.isArray(models) ? models : [])) {
+				if (backendModel?.id) {
+					modelsMap[backendModel.id] = { ...backendModel };
+				}
+			}
+
+			for (const localModel of localModels) {
+				if (!localModel || !localModel.id) continue;
+				const cleanLocalId = String(localModel.id).replace(/^~/, '');
+				const cleanLocalWithoutPrefix = cleanLocalId.includes('.')
+					? cleanLocalId.split('.').slice(1).join('.')
+					: cleanLocalId;
+
+				// Check matching backend model
+				const matched =
+					backendModelsMap[localModel.id] ||
+					backendModelsMap[cleanLocalId] ||
+					backendModelsMap[`~${cleanLocalId}`] ||
+					backendModelsMap[cleanLocalWithoutPrefix] ||
+					backendModelsMap[`~${cleanLocalWithoutPrefix}`];
+
+				const targetId = matched?.id ?? localModel.id;
+				const existing = modelsMap[targetId];
+
+				// Remove duplicate entry if localModel.id was previously keyed differently
+				if (matched && localModel.id !== targetId && modelsMap[localModel.id]) {
+					delete modelsMap[localModel.id];
+				}
+				if (matched && cleanLocalId !== targetId && modelsMap[cleanLocalId]) {
+					delete modelsMap[cleanLocalId];
+				}
+
+				const directModel = {
+					...localModel,
+					name: localModel?.name ?? localModel?.id,
+					direct: true
+				};
+
+				const matchedIdClean = typeof matched?.id === 'string' ? matched.id.replace(/^~/, '') : '';
+				const existingIdClean = typeof existing?.id === 'string' ? existing.id.replace(/^~/, '') : '';
+
+				const customName =
+					matched?.name && matched.name !== matched.id && matched.name !== matchedIdClean
+						? matched.name
+						: existing?.name && existing.name !== existing.id && existing.name !== existingIdClean
+							? existing.name
+							: localModel?.name && localModel.name !== localModel.id && localModel.name !== cleanLocalId
+								? localModel.name
+								: (matched?.name ?? existing?.name ?? localModel.name ?? localModel.id);
+
+				modelsMap[targetId] = existing
 					? {
 							...directModel,
-							...matched,
+							...existing,
 							id: targetId,
 							name: customName,
 							direct: true,
-							urlIdx: directModel.urlIdx ?? 0,
+							urlIdx: directModel.urlIdx ?? existing.urlIdx ?? 0,
+							openai: directModel.openai ?? existing.openai,
 							description:
-								matched.info?.meta?.description ||
-								matched.description ||
+								matched?.info?.meta?.description ||
+								matched?.description ||
+								existing?.info?.meta?.description ||
+								existing?.description ||
 								directModel.description,
 							info: {
 								...(directModel.info ?? {}),
-								...(matched.info ?? {}),
+								...(existing.info ?? {}),
+								...(matched?.info ?? {}),
 								meta: {
 									...(directModel.info?.meta ?? {}),
-									...(matched.info?.meta ?? {})
+									...(existing.info?.meta ?? {}),
+									...(matched?.info?.meta ?? {})
 								}
 							}
 						}
-					: directModel;
-		}
+					: matched
+						? {
+								...directModel,
+								...matched,
+								id: targetId,
+								name: customName,
+								direct: true,
+								urlIdx: directModel.urlIdx ?? 0,
+								description:
+									matched?.info?.meta?.description ||
+									matched?.description ||
+									directModel.description,
+								info: {
+									...(directModel.info ?? {}),
+									...(matched?.info ?? {}),
+									meta: {
+										...(directModel.info?.meta ?? {}),
+										...(matched?.info?.meta ?? {})
+									}
+								}
+							}
+						: directModel;
+			}
 
-		models = Object.values(modelsMap);
+			models = Object.values(modelsMap);
+		} catch (err) {
+			console.error('Failed to process direct connection models:', err);
+		}
 	}
 
 	return models;

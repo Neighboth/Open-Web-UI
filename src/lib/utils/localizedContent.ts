@@ -118,20 +118,26 @@ export const valveTranslationSource = (schema: any, prefix: string): Record<stri
 };
 
 export const resolveLocalizedModelName = (model: any, locale?: string | null) => {
+	if (!model) return '';
 	const meta = model?.info?.meta ?? model?.meta;
 	const info = model?.info ?? model;
 	
-	const cleanModelId = (model?.id ?? '').replace(/^~/, '');
+	const modelId = typeof model?.id === 'string' ? model.id : String(model?.id ?? '');
+	const cleanModelId = modelId.replace(/^~/, '');
 	
+	const infoName = typeof info?.name === 'string' ? info.name : (info?.name ? String(info.name) : '');
+	const modelName = typeof model?.name === 'string' ? model.name : (model?.name ? String(model.name) : '');
+
 	const candidate =
-		info?.name && info.name !== model?.id && info.name !== cleanModelId && !info.name.startsWith('~')
-			? info.name
-			: model?.name && model.name !== model?.id && model.name !== cleanModelId && !model.name.startsWith('~')
-				? model.name
-				: model?.name ?? info?.name ?? model?.id ?? '';
+		infoName && infoName !== modelId && infoName !== cleanModelId && !infoName.startsWith('~')
+			? infoName
+			: modelName && modelName !== modelId && modelName !== cleanModelId && !modelName.startsWith('~')
+				? modelName
+				: modelName || infoName || modelId;
 				
 	const name = resolveLocalizedString(candidate, meta?.i18n, locale, 'name');
-	return name.startsWith('~') ? name.slice(1) : name;
+	const nameStr = typeof name === 'string' ? name : (name ? String(name) : '');
+	return nameStr.startsWith('~') ? nameStr.slice(1) : nameStr;
 };
 
 export const resolveLocalizedModelDescription = (model: any, locale?: string | null) => {

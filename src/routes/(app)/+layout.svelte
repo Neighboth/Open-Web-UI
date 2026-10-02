@@ -226,12 +226,11 @@
 				setTools().catch((e) => console.error('Failed to load tools:', e)),
 				setUserSettings(async () => {
 					await setModels().catch((e) => console.error('Failed to load models:', e));
-				})
+				}).catch((e) => console.error('Failed to load user settings:', e))
 			]);
 		} catch (e) {
 			console.error('Failed to load user settings:', e);
 			toast.error($i18n.t('Failed to load Interface settings'));
-			return;
 		}
 
 		selectedTerminalId.set(localStorage.selectedTerminalId ?? null);
@@ -353,7 +352,7 @@
 		setupKeyboardShortcuts();
 
 		if ($user?.role === 'admin' && ($settings?.showChangelog ?? true)) {
-			showChangelog.set($settings?.version !== $config.version);
+			showChangelog.set($settings?.version !== $config?.version);
 		}
 
 		if ($user?.role === 'admin' || ($user?.permissions?.chat?.temporary ?? true)) {

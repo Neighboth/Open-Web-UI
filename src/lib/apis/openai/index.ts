@@ -82,20 +82,26 @@ export const updateOpenAIConfig = async (token: string = '', config: OpenAIConfi
 export const getOpenAIModelsDirect = async (url: string, key: string) => {
 	let error = null;
 
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), 6000);
+
 	const res = await fetch(`${url}/models`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 			...(key && { authorization: `Bearer ${key}` })
-		}
+		},
+		signal: controller.signal
 	})
 		.then(async (res) => {
+			clearTimeout(timer);
 			if (!res.ok) throw await res.json();
 			return res.json();
 		})
 		.catch((err) => {
-			error = `OpenAI: ${err?.error?.message ?? 'Network Problem'}`;
+			clearTimeout(timer);
+			error = `OpenAI: ${err?.error?.message ?? err?.message ?? 'Network Problem'}`;
 			return [];
 		});
 
