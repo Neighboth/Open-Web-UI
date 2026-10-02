@@ -46,7 +46,8 @@
 		showFileNavPath,
 		showFileNavDir,
 		chatRequestQueues,
-		desktopEvent
+		desktopEvent,
+		agentLiveUrl
 	} from '$lib/stores';
 	import { refreshChatList, refreshFolderChatLists } from '$lib/stores/chatList';
 
@@ -128,6 +129,7 @@
 	import XMark from '../icons/XMark.svelte';
 	import EmbeddedChatHistoryDropdown from './EmbeddedChatHistoryDropdown.svelte';
 	import InputVariablesModal from './MessageInput/InputVariablesModal.svelte';
+	import LiveAgentPreview from './LiveAgentPreview.svelte';
 
 	export let chatIdProp = '';
 	export let embedded = false;
