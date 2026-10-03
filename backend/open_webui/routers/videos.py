@@ -9,11 +9,9 @@ from pydantic import BaseModel
 
 from open_webui.models.users import Users
 from open_webui.utils.auth import get_verified_user
-from open_webui.env import SRC_LOG_LEVELS
 from open_webui.models.config import Config
 
 log = logging.getLogger(__name__)
-log.setLevel(SRC_LOG_LEVELS['MODELS'])
 
 router = APIRouter()
 
