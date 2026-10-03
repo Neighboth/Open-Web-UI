@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from open_webui.models.users import Users
 from open_webui.utils.auth import get_verified_user
-from open_webui.utils.payload import apply_model_system_prompt_to_body
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.models.config import Config
 
