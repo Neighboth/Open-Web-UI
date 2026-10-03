@@ -143,8 +143,7 @@
 							bind:value={params.reasoning_effort}
 							class="w-full rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 py-1.5 text-xs text-gray-700 outline-hidden transition-colors dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:focus:border-blue-500"
 						>
-							<option value={null}>{$i18n.t('Auto / Default')}</option>
-							<option value="none">{$i18n.t('Off')}</option>
+							<option value={null}>{$i18n.t('Kapalı')}</option>
 							<option value="low">{$i18n.t('Low')}</option>
 							<option value="medium">{$i18n.t('Medium')}</option>
 							<option value="high">{$i18n.t('High')}</option>

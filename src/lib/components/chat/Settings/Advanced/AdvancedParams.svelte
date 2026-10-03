@@ -478,7 +478,7 @@
 					}}
 				>
 					{#if (params?.reasoning_effort ?? null) === null}
-						<span class="ml-2 self-center"> {$i18n.t('Default')} </span>
+						<span class="ml-2 self-center"> {$i18n.t('Off')} </span>
 					{:else}
 						<span class="ml-2 self-center"> {$i18n.t('Custom')} </span>
 					{/if}

@@ -1215,6 +1215,8 @@ async def get_tool_servers(request: Request):
                     request.app.state.TOOL_SERVERS = tool_servers
             except Exception as e:
                 log.error(f'Error fetching tool_servers from Redis: {e}')
+        else:
+            tool_servers = getattr(request.app.state, 'TOOL_SERVERS', None)
 
         if tool_servers is None:
             tool_servers = await set_tool_servers(request)

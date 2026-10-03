@@ -261,7 +261,7 @@
 				{/if}
 			</AdminSettingSection>
 
-			<div class="my-8 border-t border-gray-200 dark:border-gray-800"></div>
+			<hr class="my-10 border-t-2 border-gray-200 dark:border-gray-800" />
 
 			<AdminSettingSection
 				title={$i18n.t('settings.admin.codeExecution.sections.codeInterpreter.title')}
@@ -489,7 +489,7 @@
 				{/if}
 			</AdminSettingSection>
 		
-			<div class="my-8 border-t border-gray-200 dark:border-gray-800"></div>
+			<hr class="my-10 border-t-2 border-gray-200 dark:border-gray-800" />
 
 			<AdminSettingSection title={$i18n.t('Computer Use / Live Agent Preview (Browser & OS Sandbox)')}>
 				<AdminSettingRow

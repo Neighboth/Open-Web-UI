@@ -81,7 +81,7 @@
 	export let imageGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
 	export let codeInterpreterEnabled = false;
-	export let browserEnabled = false;
+	export let browserEnabled: boolean;
 
 	export let onShowValves: Function;
 	export let onClose: Function;
@@ -380,9 +380,9 @@
 						placement="top"
 						>
 						<div class="shrink-0">
-						{#if tools?.[toolId]?.meta?.icon}
+						{#if tools?.[toolId]?.icon}
 						<img
-						src={tools[toolId].meta.icon}
+						src={tools[toolId].icon}
 						alt={tools[toolId].name}
 						class="size-4 object-contain rounded-xs"
 						/>
