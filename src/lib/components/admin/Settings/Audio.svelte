@@ -293,7 +293,6 @@
 							class={inputClass}
 							placeholder={$i18n.t('settings.admin.audio.sttOpenaiApiBaseUrl.label')}
 							bind:value={STT_OPENAI_API_BASE_URL}
-
 						/>
 					</AdminSettingField>
 					<AdminSettingField label={$i18n.t('settings.admin.audio.sttOpenaiApiKey.label')}>
@@ -356,7 +355,6 @@
 						variant="settings"
 						placeholder={$i18n.t('settings.admin.audio.sttAzureApiKey.label')}
 						bind:value={STT_AZURE_API_KEY}
-
 					/>
 				</AdminSettingField>
 
@@ -397,7 +395,6 @@
 							class={inputClass}
 							placeholder={$i18n.t('settings.admin.audio.sttMistralApiBaseUrl.label')}
 							bind:value={STT_MISTRAL_API_BASE_URL}
-
 						/>
 					</AdminSettingField>
 					<AdminSettingField label={$i18n.t('settings.admin.audio.sttMistralApiKey.label')}>
@@ -526,7 +523,6 @@
 							class={inputClass}
 							placeholder={$i18n.t('settings.admin.audio.ttsOpenaiApiBaseUrl.label')}
 							bind:value={TTS_OPENAI_API_BASE_URL}
-
 						/>
 					</AdminSettingField>
 					<AdminSettingField label={$i18n.t('settings.admin.audio.ttsOpenaiApiKey.label')}>
@@ -543,7 +539,6 @@
 						variant="settings"
 						placeholder={$i18n.t('settings.admin.audio.ttsApiKey.label')}
 						bind:value={TTS_API_KEY}
-
 					/>
 				</AdminSettingField>
 			{:else if TTS_ENGINE === 'azure'}
@@ -552,7 +547,6 @@
 						variant="settings"
 						placeholder={$i18n.t('settings.admin.audio.ttsApiKey.label')}
 						bind:value={TTS_API_KEY}
-
 					/>
 				</AdminSettingField>
 
@@ -579,7 +573,6 @@
 							class={inputClass}
 							placeholder={$i18n.t('settings.admin.audio.ttsMistralApiBaseUrl.label')}
 							bind:value={TTS_MISTRAL_API_BASE_URL}
-
 						/>
 					</AdminSettingField>
 					<AdminSettingField label={$i18n.t('settings.admin.audio.ttsMistralApiKey.label')}>

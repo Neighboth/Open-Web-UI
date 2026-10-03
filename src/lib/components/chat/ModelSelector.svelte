@@ -53,7 +53,10 @@
 			// Check prefix variations (e.g. ~deepseek/... vs deepseek/...)
 			const stripped = model.startsWith('~') ? model.slice(1) : model;
 			const prefixed = `~${model}`;
-			const matched = modelIds.find((id) => id === stripped || id === prefixed || (id.startsWith('~') && id.slice(1) === stripped));
+			const matched = modelIds.find(
+				(id) =>
+					id === stripped || id === prefixed || (id.startsWith('~') && id.slice(1) === stripped)
+			);
 			if (matched) return matched;
 			return '';
 		});
@@ -66,7 +69,9 @@
 			});
 			if (settingModel) {
 				const stripped = settingModel.startsWith('~') ? settingModel.slice(1) : settingModel;
-				const resolved = modelIds.find((id) => id === settingModel || id === stripped || id === `~${stripped}`) || $models[0].id;
+				const resolved =
+					modelIds.find((id) => id === settingModel || id === stripped || id === `~${stripped}`) ||
+					$models[0].id;
 				_selectedModels[0] = resolved;
 			} else {
 				_selectedModels[0] = $models[0].id;

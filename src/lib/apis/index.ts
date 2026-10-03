@@ -146,7 +146,7 @@ export const getModels = async (
 
 			// Build lookup for backend custom models (by raw ID, normalized ID, and base_model_id)
 			const backendModelsMap: Record<string, any> = {};
-			for (const model of (Array.isArray(models) ? models : [])) {
+			for (const model of Array.isArray(models) ? models : []) {
 				if (!model || !model.id) continue;
 				backendModelsMap[model.id] = model;
 				const cleanId = String(model.id).replace(/^~/, '');
@@ -163,7 +163,7 @@ export const getModels = async (
 
 			// Merge direct models with backend models, prioritizing custom name and info from backend
 			const modelsMap: Record<string, any> = {};
-			for (const backendModel of (Array.isArray(models) ? models : [])) {
+			for (const backendModel of Array.isArray(models) ? models : []) {
 				if (backendModel?.id) {
 					modelsMap[backendModel.id] = { ...backendModel };
 				}
@@ -202,14 +202,17 @@ export const getModels = async (
 				};
 
 				const matchedIdClean = typeof matched?.id === 'string' ? matched.id.replace(/^~/, '') : '';
-				const existingIdClean = typeof existing?.id === 'string' ? existing.id.replace(/^~/, '') : '';
+				const existingIdClean =
+					typeof existing?.id === 'string' ? existing.id.replace(/^~/, '') : '';
 
 				const customName =
 					matched?.name && matched.name !== matched.id && matched.name !== matchedIdClean
 						? matched.name
 						: existing?.name && existing.name !== existing.id && existing.name !== existingIdClean
 							? existing.name
-							: localModel?.name && localModel.name !== localModel.id && localModel.name !== cleanLocalId
+							: localModel?.name &&
+								  localModel.name !== localModel.id &&
+								  localModel.name !== cleanLocalId
 								? localModel.name
 								: (matched?.name ?? existing?.name ?? localModel.name ?? localModel.id);
 

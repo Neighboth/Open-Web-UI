@@ -121,22 +121,26 @@ export const resolveLocalizedModelName = (model: any, locale?: string | null) =>
 	if (!model) return '';
 	const meta = model?.info?.meta ?? model?.meta;
 	const info = model?.info ?? model;
-	
+
 	const modelId = typeof model?.id === 'string' ? model.id : String(model?.id ?? '');
 	const cleanModelId = modelId.replace(/^~/, '');
-	
-	const infoName = typeof info?.name === 'string' ? info.name : (info?.name ? String(info.name) : '');
-	const modelName = typeof model?.name === 'string' ? model.name : (model?.name ? String(model.name) : '');
+
+	const infoName = typeof info?.name === 'string' ? info.name : info?.name ? String(info.name) : '';
+	const modelName =
+		typeof model?.name === 'string' ? model.name : model?.name ? String(model.name) : '';
 
 	const candidate =
 		infoName && infoName !== modelId && infoName !== cleanModelId && !infoName.startsWith('~')
 			? infoName
-			: modelName && modelName !== modelId && modelName !== cleanModelId && !modelName.startsWith('~')
+			: modelName &&
+				  modelName !== modelId &&
+				  modelName !== cleanModelId &&
+				  !modelName.startsWith('~')
 				? modelName
 				: modelName || infoName || modelId;
-				
+
 	const name = resolveLocalizedString(candidate, meta?.i18n, locale, 'name');
-	const nameStr = typeof name === 'string' ? name : (name ? String(name) : '');
+	const nameStr = typeof name === 'string' ? name : name ? String(name) : '';
 	return nameStr.startsWith('~') ? nameStr.slice(1) : nameStr;
 };
 
@@ -228,4 +232,3 @@ export const pruneEmptyLocaleEntries = (i18n: LocalizedMap | null | undefined) =
 			.filter(([_, entry]) => Object.keys(entry as LocaleEntry).length > 0)
 	);
 };
-

@@ -256,7 +256,10 @@ if (process.env.USE_SLIM === 'true') {
 		await downloadPyPIWheels();
 		await verifyBundledWheels();
 	} catch (err) {
-		console.warn('Pyodide offline packaging failed (likely network/SSL), falling back to CDN mode:', err?.message || err);
+		console.warn(
+			'Pyodide offline packaging failed (likely network/SSL), falling back to CDN mode:',
+			err?.message || err
+		);
 		await copyPyodide();
 		try {
 			const { version } = JSON.parse(await readFile('node_modules/pyodide/package.json', 'utf-8'));

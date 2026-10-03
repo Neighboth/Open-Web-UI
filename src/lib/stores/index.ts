@@ -397,4 +397,3 @@ export type SessionUser = {
 	role: string;
 	profile_image_url: string;
 };
-

@@ -654,9 +654,14 @@
 					if (directConnections) {
 						const urlIdx = model?.urlIdx ?? 0;
 
-						const OPENAI_API_URL = directConnections.OPENAI_API_BASE_URLS?.[urlIdx] ?? directConnections.OPENAI_API_BASE_URLS?.[0];
-						const OPENAI_API_KEY = directConnections.OPENAI_API_KEYS?.[urlIdx] ?? directConnections.OPENAI_API_KEYS?.[0];
-						const API_CONFIG = directConnections.OPENAI_API_CONFIGS?.[urlIdx] ?? directConnections.OPENAI_API_CONFIGS?.[0];
+						const OPENAI_API_URL =
+							directConnections.OPENAI_API_BASE_URLS?.[urlIdx] ??
+							directConnections.OPENAI_API_BASE_URLS?.[0];
+						const OPENAI_API_KEY =
+							directConnections.OPENAI_API_KEYS?.[urlIdx] ?? directConnections.OPENAI_API_KEYS?.[0];
+						const API_CONFIG =
+							directConnections.OPENAI_API_CONFIGS?.[urlIdx] ??
+							directConnections.OPENAI_API_CONFIGS?.[0];
 
 						try {
 							if (API_CONFIG?.prefix_id) {
@@ -684,7 +689,9 @@
 									}
 									const errStr = JSON.stringify(errData || {});
 									if (
-										(errStr.includes('reasoning_effort') || errStr.includes('reasoning') || errStr.includes('thinking')) &&
+										(errStr.includes('reasoning_effort') ||
+											errStr.includes('reasoning') ||
+											errStr.includes('thinking')) &&
 										(form_data?.reasoning_effort !== undefined || form_data?.thinking !== undefined)
 									) {
 										const retryFormData = { ...form_data };

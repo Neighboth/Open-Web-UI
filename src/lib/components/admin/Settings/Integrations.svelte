@@ -337,7 +337,8 @@
 							>
 								<div class="flex-1 min-w-0">
 									<div class="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
-										{skill.name} <span class="text-[0.6875rem] text-gray-400 font-mono">({skill.id})</span>
+										{skill.name}
+										<span class="text-[0.6875rem] text-gray-400 font-mono">({skill.id})</span>
 									</div>
 									{#if skill.description}
 										<div class="text-[0.6875rem] text-gray-500 truncate">

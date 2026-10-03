@@ -165,7 +165,9 @@
 					{#if config.CODE_EXECUTION_ENGINE === 'e2b'}
 						<AdminSettingField
 							label={$i18n.t('E2B API Key')}
-							description={$i18n.t('API Key from your e2b.dev account for sandboxed microVM execution.')}
+							description={$i18n.t(
+								'API Key from your e2b.dev account for sandboxed microVM execution.'
+							)}
 						>
 							<SensitiveInput
 								variant="settings"
@@ -189,17 +191,38 @@
 							/>
 						</AdminSettingField>
 
-						<div class="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3.5 text-xs text-blue-900 dark:text-blue-200 mt-2 mb-2 space-y-1.5">
+						<div
+							class="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3.5 text-xs text-blue-900 dark:text-blue-200 mt-2 mb-2 space-y-1.5"
+						>
 							<div class="font-semibold flex items-center gap-1.5">
-								<span>🚀</span> {$i18n.t('E2B Sandboxed Execution Setup Guide')}
+								<span>🚀</span>
+								{$i18n.t('E2B Sandboxed Execution Setup Guide')}
 							</div>
 							<p class="leading-relaxed">
-								{$i18n.t('E2B runs code and commands inside secure cloud microVMs with full OS capabilities, package management, and internet access.')}
+								{$i18n.t(
+									'E2B runs code and commands inside secure cloud microVMs with full OS capabilities, package management, and internet access.'
+								)}
 							</p>
 							<ol class="list-decimal pl-4 space-y-1">
-								<li>{$i18n.t('Create an account at')} <a href="https://e2b.dev" target="_blank" rel="noreferrer" class="underline font-medium hover:text-blue-600">e2b.dev</a>.</li>
-								<li>{$i18n.t('Copy your API Key from the dashboard and paste it into the field above.')}</li>
-								<li>{$i18n.t('Save settings. The model will now run Python and shell tools securely in dedicated E2B sandboxes.')}</li>
+								<li>
+									{$i18n.t('Create an account at')}
+									<a
+										href="https://e2b.dev"
+										target="_blank"
+										rel="noreferrer"
+										class="underline font-medium hover:text-blue-600">e2b.dev</a
+									>.
+								</li>
+								<li>
+									{$i18n.t(
+										'Copy your API Key from the dashboard and paste it into the field above.'
+									)}
+								</li>
+								<li>
+									{$i18n.t(
+										'Save settings. The model will now run Python and shell tools securely in dedicated E2B sandboxes.'
+									)}
+								</li>
 							</ol>
 						</div>
 					{/if}
@@ -244,17 +267,36 @@
 							/>
 						</AdminSettingField>
 
-						<div class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 mt-2 mb-2 space-y-1.5">
+						<div
+							class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 mt-2 mb-2 space-y-1.5"
+						>
 							<div class="font-semibold flex items-center gap-1.5">
-								<span>🐳</span> {$i18n.t('Self-Hosted Docker Sandbox Setup Guide')}
+								<span>🐳</span>
+								{$i18n.t('Self-Hosted Docker Sandbox Setup Guide')}
 							</div>
 							<p class="leading-relaxed">
-								{$i18n.t('Run your own isolated code runner container for private, on-premise execution.')}
+								{$i18n.t(
+									'Run your own isolated code runner container for private, on-premise execution.'
+								)}
 							</p>
 							<ol class="list-decimal pl-4 space-y-1">
-								<li>{$i18n.t('Start the runner container:')} <code class="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 font-mono">docker run -d -p 8080:8080 --name sandbox-runner openwebui/sandbox-runner:latest</code></li>
-								<li>{$i18n.t('Provide the container endpoint (e.g. http://localhost:8080 or docker network DNS).')}</li>
-								<li>{$i18n.t('Save settings to enable on-premise execution for code and terminal commands.')}</li>
+								<li>
+									{$i18n.t('Start the runner container:')}
+									<code class="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 font-mono"
+										>docker run -d -p 8080:8080 --name sandbox-runner
+										openwebui/sandbox-runner:latest</code
+									>
+								</li>
+								<li>
+									{$i18n.t(
+										'Provide the container endpoint (e.g. http://localhost:8080 or docker network DNS).'
+									)}
+								</li>
+								<li>
+									{$i18n.t(
+										'Save settings to enable on-premise execution for code and terminal commands.'
+									)}
+								</li>
 							</ol>
 						</div>
 					{/if}
@@ -378,7 +420,9 @@
 					{#if config.CODE_INTERPRETER_ENGINE === 'e2b'}
 						<AdminSettingField
 							label={$i18n.t('E2B API Key')}
-							description={$i18n.t('API Key from your e2b.dev account for sandboxed microVM execution.')}
+							description={$i18n.t(
+								'API Key from your e2b.dev account for sandboxed microVM execution.'
+							)}
 						>
 							<SensitiveInput
 								variant="settings"
@@ -402,17 +446,38 @@
 							/>
 						</AdminSettingField>
 
-						<div class="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3.5 text-xs text-blue-900 dark:text-blue-200 mt-2 mb-2 space-y-1.5">
+						<div
+							class="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3.5 text-xs text-blue-900 dark:text-blue-200 mt-2 mb-2 space-y-1.5"
+						>
 							<div class="font-semibold flex items-center gap-1.5">
-								<span>🚀</span> {$i18n.t('E2B Sandboxed Execution Setup Guide')}
+								<span>🚀</span>
+								{$i18n.t('E2B Sandboxed Execution Setup Guide')}
 							</div>
 							<p class="leading-relaxed">
-								{$i18n.t('E2B runs code and commands inside secure cloud microVMs with full OS capabilities, package management, and internet access.')}
+								{$i18n.t(
+									'E2B runs code and commands inside secure cloud microVMs with full OS capabilities, package management, and internet access.'
+								)}
 							</p>
 							<ol class="list-decimal pl-4 space-y-1">
-								<li>{$i18n.t('Create an account at')} <a href="https://e2b.dev" target="_blank" rel="noreferrer" class="underline font-medium hover:text-blue-600">e2b.dev</a>.</li>
-								<li>{$i18n.t('Copy your API Key from the dashboard and paste it into the field above.')}</li>
-								<li>{$i18n.t('Save settings. The model will now run Python and shell tools securely in dedicated E2B sandboxes.')}</li>
+								<li>
+									{$i18n.t('Create an account at')}
+									<a
+										href="https://e2b.dev"
+										target="_blank"
+										rel="noreferrer"
+										class="underline font-medium hover:text-blue-600">e2b.dev</a
+									>.
+								</li>
+								<li>
+									{$i18n.t(
+										'Copy your API Key from the dashboard and paste it into the field above.'
+									)}
+								</li>
+								<li>
+									{$i18n.t(
+										'Save settings. The model will now run Python and shell tools securely in dedicated E2B sandboxes.'
+									)}
+								</li>
 							</ol>
 						</div>
 					{/if}
@@ -457,17 +522,36 @@
 							/>
 						</AdminSettingField>
 
-						<div class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 mt-2 mb-2 space-y-1.5">
+						<div
+							class="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-900 dark:text-emerald-200 mt-2 mb-2 space-y-1.5"
+						>
 							<div class="font-semibold flex items-center gap-1.5">
-								<span>🐳</span> {$i18n.t('Self-Hosted Docker Sandbox Setup Guide')}
+								<span>🐳</span>
+								{$i18n.t('Self-Hosted Docker Sandbox Setup Guide')}
 							</div>
 							<p class="leading-relaxed">
-								{$i18n.t('Run your own isolated code runner container for private, on-premise execution.')}
+								{$i18n.t(
+									'Run your own isolated code runner container for private, on-premise execution.'
+								)}
 							</p>
 							<ol class="list-decimal pl-4 space-y-1">
-								<li>{$i18n.t('Start the runner container:')} <code class="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 font-mono">docker run -d -p 8080:8080 --name sandbox-runner openwebui/sandbox-runner:latest</code></li>
-								<li>{$i18n.t('Provide the container endpoint (e.g. http://localhost:8080 or docker network DNS).')}</li>
-								<li>{$i18n.t('Save settings to enable on-premise execution for code and terminal commands.')}</li>
+								<li>
+									{$i18n.t('Start the runner container:')}
+									<code class="px-1 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 font-mono"
+										>docker run -d -p 8080:8080 --name sandbox-runner
+										openwebui/sandbox-runner:latest</code
+									>
+								</li>
+								<li>
+									{$i18n.t(
+										'Provide the container endpoint (e.g. http://localhost:8080 or docker network DNS).'
+									)}
+								</li>
+								<li>
+									{$i18n.t(
+										'Save settings to enable on-premise execution for code and terminal commands.'
+									)}
+								</li>
 							</ol>
 						</div>
 					{/if}
@@ -488,13 +572,17 @@
 					</AdminSettingField>
 				{/if}
 			</AdminSettingSection>
-		
+
 			<hr class="my-10 border-t-2 border-gray-200 dark:border-gray-800" />
 
-			<AdminSettingSection title={$i18n.t('Computer Use / Live Agent Preview (Browser & OS Sandbox)')}>
+			<AdminSettingSection
+				title={$i18n.t('Computer Use / Live Agent Preview (Browser & OS Sandbox)')}
+			>
 				<AdminSettingRow
 					label={$i18n.t('Enable Browser / Computer Use Sandbox')}
-					description={$i18n.t('Allow models to control a headless or graphical browser and operating system session.')}
+					description={$i18n.t(
+						'Allow models to control a headless or graphical browser and operating system session.'
+					)}
 					let:labelId
 				>
 					<Switch bind:state={config.BROWSER_SANDBOX_ENABLE} ariaLabelledbyId={labelId} />
@@ -503,7 +591,9 @@
 				{#if config.BROWSER_SANDBOX_ENABLE}
 					<AdminSettingField
 						label={$i18n.t('Browser Sandbox URL / Endpoint')}
-						description={$i18n.t('Self-hosted Browserless / Chromium / Playwright container or cloud service (e.g. http://localhost:3000 or wss://chrome.browserless.io).')}
+						description={$i18n.t(
+							'Self-hosted Browserless / Chromium / Playwright container or cloud service (e.g. http://localhost:3000 or wss://chrome.browserless.io).'
+						)}
 					>
 						<input
 							class={inputClass}
@@ -529,7 +619,9 @@
 
 					<AdminSettingField
 						label={$i18n.t('Live Screen / Web VNC Stream URL')}
-						description={$i18n.t('URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).')}
+						description={$i18n.t(
+							'URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).'
+						)}
 					>
 						<input
 							class={inputClass}
@@ -541,16 +633,44 @@
 					</AdminSettingField>
 
 					<div class="px-1 text-sm text-gray-500 my-3 space-y-2">
-						<p>{$i18n.t('Open WebUI supports live UI preview for agents (like Gemini Spark or ChatGPT Agent). This allows models to open a browser or operating system interface on the right side of the chat screen, where you can watch the agent work live and take over manually if needed.')}</p>
-						
-						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">{$i18n.t('Per-User & Per-Chat Zero-Idle Sandbox Isolation:')}</p>
-						<p class="text-xs text-gray-600 dark:text-gray-400">{$i18n.t('Every chat runs in an isolated context directory (/data/browser_sessions/${userId}_${chatId}). Browser and container instances automatically freeze / spin-down after 5 minutes of inactivity (consuming 0 CPU and 0 RAM) and instantly resume when returning to the conversation, preserving cookies, logins, and session data permanently.')}</p>
+						<p>
+							{$i18n.t(
+								'Open WebUI supports live UI preview for agents (like Gemini Spark or ChatGPT Agent). This allows models to open a browser or operating system interface on the right side of the chat screen, where you can watch the agent work live and take over manually if needed.'
+							)}
+						</p>
 
-						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">{$i18n.t('Self-Hosted Browser Quickstart Guide:')}</p>
-						<ol class="list-decimal list-inside ml-2 space-y-1.5 text-xs text-gray-600 dark:text-gray-400">
-							<li>{$i18n.t('Run Browserless / Chrome via Docker:')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono">docker run -d -p 3000:3000 -e "CONCURRENT=10" ghcr.io/browserless/chromium</code></li>
-							<li>{$i18n.t('For full OS & GUI with VNC preview (noVNC):')} <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono">docker run -d -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc</code></li>
-							<li>{$i18n.t('Enter the endpoint and live VNC URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.')}</li>
+						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">
+							{$i18n.t('Per-User & Per-Chat Zero-Idle Sandbox Isolation:')}
+						</p>
+						<p class="text-xs text-gray-600 dark:text-gray-400">
+							{$i18n.t(
+								'Every chat runs in an isolated context directory (/data/browser_sessions/${userId}_${chatId}). Browser and container instances automatically freeze / spin-down after 5 minutes of inactivity (consuming 0 CPU and 0 RAM) and instantly resume when returning to the conversation, preserving cookies, logins, and session data permanently.'
+							)}
+						</p>
+
+						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">
+							{$i18n.t('Self-Hosted Browser Quickstart Guide:')}
+						</p>
+						<ol
+							class="list-decimal list-inside ml-2 space-y-1.5 text-xs text-gray-600 dark:text-gray-400"
+						>
+							<li>
+								{$i18n.t('Run Browserless / Chrome via Docker:')}
+								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono"
+									>docker run -d -p 3000:3000 -e "CONCURRENT=10" ghcr.io/browserless/chromium</code
+								>
+							</li>
+							<li>
+								{$i18n.t('For full OS & GUI with VNC preview (noVNC):')}
+								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono"
+									>docker run -d -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc</code
+								>
+							</li>
+							<li>
+								{$i18n.t(
+									'Enter the endpoint and live VNC URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.'
+								)}
+							</li>
 						</ol>
 					</div>
 				{/if}
@@ -566,8 +686,3 @@
 		</button>
 	</div>
 </form>
-
-
-
-
-

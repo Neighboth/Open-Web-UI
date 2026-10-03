@@ -121,8 +121,6 @@
 			config.ENABLE_IMAGE_GENERATION = false;
 
 			return null;
-		
-		
 		}
 
 		const res = await updateConfig(localStorage.token, {
@@ -334,7 +332,6 @@
 									class={inputClass}
 									bind:value={config.IMAGE_GENERATION_MODEL}
 									placeholder={$i18n.t('Select a model')}
-									
 								/>
 
 								<datalist id="model-list">
@@ -358,7 +355,6 @@
 										class={inputClass}
 										placeholder={$i18n.t('Enter Number of Steps (e.g. 50)')}
 										bind:value={config.IMAGE_STEPS}
-										
 									/>
 								</AdminSettingField>
 							{/if}
@@ -652,7 +648,6 @@
 															class="{inputClass} w-24"
 															placeholder={$i18n.t('Key')}
 															bind:value={node.key}
-															
 														/>
 													</Tooltip>
 												</div>
@@ -701,7 +696,6 @@
 								variant="settings"
 								placeholder={$i18n.t('settings.admin.images.imagesGeminiApiKey.label')}
 								bind:value={config.IMAGES_GEMINI_API_KEY}
-								
 							/>
 						</AdminSettingField>
 
@@ -955,7 +949,6 @@
 															class="{inputClass} w-24"
 															placeholder={$i18n.t('Key')}
 															bind:value={node.key}
-															
 														/>
 													</Tooltip>
 												</div>
@@ -1003,7 +996,6 @@
 									variant="settings"
 									placeholder={$i18n.t('settings.admin.images.imagesEditGeminiApiKey.label')}
 									bind:value={config.IMAGES_EDIT_GEMINI_API_KEY}
-									
 								/>
 							</AdminSettingField>
 						</div>

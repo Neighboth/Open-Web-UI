@@ -68,7 +68,8 @@
 		const userSettings = await getUserSettings(localStorage.token);
 
 		if (userSettings?.ui) {
-			const activeIntegrations = userSettings.ui?.activeIntegrations || userSettings?.activeIntegrations;
+			const activeIntegrations =
+				userSettings.ui?.activeIntegrations || userSettings?.activeIntegrations;
 			settings.set({
 				...userSettings.ui,
 				...(activeIntegrations ? { activeIntegrations } : {})

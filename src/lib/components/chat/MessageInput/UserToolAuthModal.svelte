@@ -17,7 +17,7 @@
 
 	$: if (show && tool) {
 		const existing = ($settings as any)?.tools?.[tool.id];
-		key = typeof existing === 'string' ? existing : existing?.key ?? '';
+		key = typeof existing === 'string' ? existing : (existing?.key ?? '');
 	}
 
 	const submitHandler = async () => {
@@ -68,14 +68,19 @@
 			</button>
 		</div>
 
-		<form class="flex flex-col w-full px-5 pb-5 dark:text-gray-200" on:submit|preventDefault={submitHandler}>
+		<form
+			class="flex flex-col w-full px-5 pb-5 dark:text-gray-200"
+			on:submit|preventDefault={submitHandler}
+		>
 			{#if tool?.meta?.user_provided_description}
 				<div class="text-xs text-gray-600 dark:text-gray-400 mb-3 whitespace-pre-wrap">
 					{tool.meta.user_provided_description}
 				</div>
 			{:else}
 				<div class="text-xs text-gray-600 dark:text-gray-400 mb-3">
-					{$i18n.t('This tool requires personal credentials. Please enter your API key or token below.')}
+					{$i18n.t(
+						'This tool requires personal credentials. Please enter your API key or token below.'
+					)}
 				</div>
 			{/if}
 

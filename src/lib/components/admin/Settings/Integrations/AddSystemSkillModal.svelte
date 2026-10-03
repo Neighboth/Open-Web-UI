@@ -139,7 +139,9 @@
 						</div>
 						<Textarea
 							className="w-full text-sm bg-transparent rounded-lg border border-gray-300 dark:border-gray-700 px-3 py-2 outline-hidden min-h-[120px]"
-							placeholder={$i18n.t('Instructions, guidelines or system prompt provided by this skill...')}
+							placeholder={$i18n.t(
+								'Instructions, guidelines or system prompt provided by this skill...'
+							)}
 							bind:value={content}
 						/>
 					</div>

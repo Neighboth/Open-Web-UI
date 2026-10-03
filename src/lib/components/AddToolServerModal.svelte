@@ -677,9 +677,7 @@
 						</div>
 
 						<div class="flex flex-col w-full mt-1 mb-1.5">
-							<label for="icon" class={`mb-0.5 text-xs text-gray-500`}
-								>{$i18n.t('Icon URL')}</label
-							>
+							<label for="icon" class={`mb-0.5 text-xs text-gray-500`}>{$i18n.t('Icon URL')}</label>
 
 							<div class="flex-1">
 								<input

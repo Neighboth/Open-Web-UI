@@ -36,11 +36,13 @@
 <Dropdown bind:show {closeOnOutsideClick}>
 	<Tooltip content={$i18n.t('Reasoning Effort')} placement="top">
 		<button
-			class="bg-transparent hover:bg-gray-100 {currentReasoning ? 'text-amber-500 dark:text-amber-400' : 'text-gray-700 dark:text-white'} dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0 transition"
+			class="bg-transparent hover:bg-gray-100 {currentReasoning
+				? 'text-amber-500 dark:text-amber-400'
+				: 'text-gray-700 dark:text-white'} dark:hover:bg-gray-800 rounded-full size-[1.875rem] flex justify-center items-center outline-hidden focus:outline-hidden shrink-0 transition"
 			aria-label={$i18n.t('Reasoning')}
 			type="button"
 		>
-			<LightBulb className="size-4.5" strokeWidth={currentReasoning ? "2" : "1.5"} />
+			<LightBulb className="size-4.5" strokeWidth={currentReasoning ? '2' : '1.5'} />
 		</button>
 	</Tooltip>
 	<div slot="content">
@@ -55,7 +57,11 @@
 						on:click={() => setReasoning(option.value)}
 					>
 						<div class="flex-1 text-left truncate">
-							{option.value === null ? ($i18n.language === 'tr-TR' ? 'Kapalı' : $i18n.t('Off')) : $i18n.t(option.label)}
+							{option.value === null
+								? $i18n.language === 'tr-TR'
+									? 'Kapalı'
+									: $i18n.t('Off')
+								: $i18n.t(option.label)}
 						</div>
 						{#if currentReasoning === option.value}
 							<div class="shrink-0 text-amber-500 dark:text-amber-400">
