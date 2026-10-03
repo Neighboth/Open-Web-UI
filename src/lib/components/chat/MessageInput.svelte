@@ -198,7 +198,7 @@
 	export let selectedFilterIds: string[] = [];
 
 	export let imageGenerationEnabled = false;
-															videoGenerationEnabled = false;
+	videoGenerationEnabled = false;
 	export let videoGenerationEnabled = false;
 	export let webSearchEnabled = false;
 	export let codeInterpreterEnabled = false;
@@ -815,17 +815,20 @@
 
 	let toggleFilters = [];
 	$: {
-		const targetModelIds = (atSelectedModel?.id ? [atSelectedModel.id] : (selectedModels ?? [])).filter(Boolean);
+		const targetModelIds = (
+			atSelectedModel?.id ? [atSelectedModel.id] : (selectedModels ?? [])
+		).filter(Boolean);
 		if (targetModelIds.length > 0 && ($models ?? []).length > 0) {
 			const modelFiltersList = targetModelIds.map(
 				(id) => ($models.find((model) => model.id === id) || {})?.filters ?? []
 			);
-			toggleFilters = modelFiltersList.length > 0
-				? modelFiltersList.reduce(
-						(acc, filters) => acc.filter((f1) => (filters ?? []).some((f2) => f2.id === f1.id)),
-						modelFiltersList[0] || []
-					)
-				: [];
+			toggleFilters =
+				modelFiltersList.length > 0
+					? modelFiltersList.reduce(
+							(acc, filters) => acc.filter((f1) => (filters ?? []).some((f2) => f2.id === f1.id)),
+							modelFiltersList[0] || []
+						)
+					: [];
 		} else {
 			toggleFilters = [];
 		}
@@ -2330,8 +2333,9 @@
 												bind:selectedFilterIds
 												bind:webSearchEnabled
 												bind:imageGenerationEnabled
-																						showVideoGenerationButton={.role === 'admin' || .permissions?.features?.video_generation}
-																						bind:videoGenerationEnabled
+												showVideoGenerationButton={$user?.role === 'admin' ||
+													$user?.permissions?.features?.video_generation}
+												bind:videoGenerationEnabled
 												bind:codeInterpreterEnabled
 												bind:browserEnabled
 												oauthRedirectHandler={(tool: {

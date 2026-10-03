@@ -44,7 +44,7 @@ body:
     attributes:
       label: Desired Behavior
       description: What would you like to happen instead?
-      placeholder: "I would like Open WebUI to..."
+      placeholder: 'I would like Open WebUI to...'
     validations:
       required: true
 

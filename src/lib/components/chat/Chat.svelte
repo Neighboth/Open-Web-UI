@@ -212,7 +212,11 @@
 			if (availableModels.includes(id)) return id;
 			const stripped = id.startsWith('~') ? id.slice(1) : id;
 			const prefixed = `~${id}`;
-			return availableModels.find((m) => m === stripped || m === prefixed || (m.startsWith('~') && m.slice(1) === stripped)) || null;
+			return (
+				availableModels.find(
+					(m) => m === stripped || m === prefixed || (m.startsWith('~') && m.slice(1) === stripped)
+				) || null
+			);
 		};
 
 		let normalized = (modelIds ?? [])
@@ -225,9 +229,7 @@
 				.filter(Boolean) as string[];
 		}
 		if (normalized.length === 0 && defaultModels.length > 0) {
-			normalized = defaultModels
-				.map((id) => findAvailableMatch(id))
-				.filter(Boolean) as string[];
+			normalized = defaultModels.map((id) => findAvailableMatch(id)).filter(Boolean) as string[];
 		}
 		if (normalized.length === 0) {
 			normalized = availableModels.length > 0 ? [availableModels[0]] : [''];
@@ -413,7 +415,10 @@
 
 	const restoreActiveIntegrations = () => {
 		isRestoringIntegrations = true;
-		const ai = $settings?.activeIntegrations ?? $settings?.ui?.activeIntegrations ?? getSavedActiveIntegrations();
+		const ai =
+			$settings?.activeIntegrations ??
+			$settings?.ui?.activeIntegrations ??
+			getSavedActiveIntegrations();
 		if (ai) {
 			selectedToolIds = Array.isArray(ai.selectedToolIds) ? [...ai.selectedToolIds] : [];
 			selectedSkillIds = Array.isArray(ai.selectedSkillIds) ? [...ai.selectedSkillIds] : [];
@@ -429,7 +434,17 @@
 		}, 200);
 	};
 
-	$: if (!isRestoringIntegrations && (selectedToolIds || selectedSkillIds || selectedFilterIds || webSearchEnabled !== undefined || imageGenerationEnabled !== undefined || videoGenerationEnabled !== undefined || codeInterpreterEnabled !== undefined || browserEnabled !== undefined)) {
+	$: if (
+		!isRestoringIntegrations &&
+		(selectedToolIds ||
+			selectedSkillIds ||
+			selectedFilterIds ||
+			webSearchEnabled !== undefined ||
+			imageGenerationEnabled !== undefined ||
+			videoGenerationEnabled !== undefined ||
+			codeInterpreterEnabled !== undefined ||
+			browserEnabled !== undefined)
+	) {
 		saveActiveIntegrations();
 	}
 
@@ -1117,9 +1132,7 @@
 				if (Array.isArray(model?.info?.meta?.toolIds) && model.info.meta.toolIds.length > 0) {
 					const defaultIds = [
 						...new Set(
-							[...(model.info.meta.toolIds ?? [])].filter((id) =>
-								$tools.find((t) => t.id === id)
-							)
+							[...(model.info.meta.toolIds ?? [])].filter((id) => $tools.find((t) => t.id === id))
 						)
 					];
 
@@ -1307,8 +1320,8 @@
 						message.statusHistory = [data];
 					}
 				} else if (type === 'live_agent_preview') {
-						agentLiveUrl.set(data?.url ?? null);
-					} else if (type === 'context_compaction') {
+					agentLiveUrl.set(data?.url ?? null);
+				} else if (type === 'context_compaction') {
 					handleContextCompactionStatus(data);
 				} else if (type === 'chat:active') {
 					if (!data?.active) {
@@ -4687,7 +4700,7 @@
 									bind:selectedSkillIds
 									bind:selectedFilterIds
 									bind:imageGenerationEnabled
-										bind:videoGenerationEnabled
+									bind:videoGenerationEnabled
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel

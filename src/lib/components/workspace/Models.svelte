@@ -378,12 +378,24 @@
 
 	const publicAllHandler = async () => {
 		const allModels = await fetchAllWorkspaceModels();
-		const modelsToMakePublic = allModels.filter((m) => !m.access_grants?.some(grant => grant.principal_type === 'user' && grant.principal_id === '*' && grant.permission === 'read'));
+		const modelsToMakePublic = allModels.filter(
+			(m) =>
+				!m.access_grants?.some(
+					(grant) =>
+						grant.principal_type === 'user' &&
+						grant.principal_id === '*' &&
+						grant.permission === 'read'
+				)
+		);
 		if (modelsToMakePublic.length === 0) return;
 		await Promise.all(
 			modelsToMakePublic.map((model) => {
 				const filtered = (model.access_grants ?? []).filter(
-					(grant) => !((grant.principal_type === 'user' || grant.principal_type === 'anyone') && grant.principal_id === '*')
+					(grant) =>
+						!(
+							(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
+							grant.principal_id === '*'
+						)
 				);
 				filtered.push({ principal_type: 'user', principal_id: '*', permission: 'read' });
 				model.access_grants = filtered;
@@ -396,12 +408,22 @@
 
 	const privateAllHandler = async () => {
 		const allModels = await fetchAllWorkspaceModels();
-		const modelsToMakePrivate = allModels.filter((m) => m.access_grants?.some(grant => (grant.principal_type === 'user' || grant.principal_type === 'anyone') && grant.principal_id === '*'));
+		const modelsToMakePrivate = allModels.filter((m) =>
+			m.access_grants?.some(
+				(grant) =>
+					(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
+					grant.principal_id === '*'
+			)
+		);
 		if (modelsToMakePrivate.length === 0) return;
 		await Promise.all(
 			modelsToMakePrivate.map((model) => {
 				const filtered = (model.access_grants ?? []).filter(
-					(grant) => !((grant.principal_type === 'user' || grant.principal_type === 'anyone') && grant.principal_id === '*')
+					(grant) =>
+						!(
+							(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
+							grant.principal_id === '*'
+						)
 				);
 				model.access_grants = filtered;
 				return updateModelById(localStorage.token, model.id, model);
