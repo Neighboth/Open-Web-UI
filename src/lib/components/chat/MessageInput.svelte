@@ -198,7 +198,6 @@
 	export let selectedFilterIds: string[] = [];
 
 	export let imageGenerationEnabled = false;
-	videoGenerationEnabled = false;
 	export let videoGenerationEnabled = false;
 	export let webSearchEnabled = false;
 	export let codeInterpreterEnabled = false;

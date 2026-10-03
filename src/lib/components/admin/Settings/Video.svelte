@@ -290,7 +290,7 @@
 	}}
 >
 	<h2 class="text-sm font-medium text-gray-900 dark:text-white mb-4">
-		{$i18n.t('settings.admin.videos.title')}
+		{$i18n.t('Video Generation Settings')}
 	</h2>
 
 	<div class="flex-1 min-h-0 overflow-y-auto scrollbar-hover pr-1.5">
@@ -298,18 +298,18 @@
 			<div class="flex flex-col">
 				<AdminSettingSection first>
 					<AdminSettingRow
-						label={$i18n.t('settings.admin.videos.videoGeneration.label')}
-						description={$i18n.t('settings.admin.videos.videoGeneration.description')}
+						label={$i18n.t('Video Generation')}
+						description={$i18n.t('Video Generation')}
 						let:labelId
 					>
 						<Switch bind:state={config.ENABLE_VIDEO_GENERATION} ariaLabelledbyId={labelId} />
 					</AdminSettingRow>
 				</AdminSettingSection>
 
-				<AdminSettingSection title={$i18n.t('settings.admin.videos.sections.createVideo.title')}>
+				<AdminSettingSection title={$i18n.t('Create Video')}>
 					<AdminSettingRow
-						label={$i18n.t('settings.admin.videos.videoGenerationEngine.label')}
-						description={$i18n.t('settings.admin.videos.videoGenerationEngine.description')}
+						label={$i18n.t('Video Generation Engine')}
+						description={$i18n.t('Video Generation Engine')}
 					>
 						<SettingsSelect
 							bind:value={config.VIDEO_GENERATION_ENGINE}
@@ -325,7 +325,7 @@
 					{#if config.ENABLE_VIDEO_GENERATION}
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.videoGenerationModel.label')}
+								label={$i18n.t('Video Generation Model')}
 							>
 								<input
 									list="model-list"
@@ -341,7 +341,7 @@
 								</datalist>
 							</AdminSettingField>
 
-							<AdminSettingField label={$i18n.t('settings.admin.videos.videoSize.label')}>
+							<AdminSettingField label={$i18n.t('Video Size')}>
 								<input
 									class={inputClass}
 									placeholder={$i18n.t('Enter Video Size (e.g. 512x512)')}
@@ -350,7 +350,7 @@
 							</AdminSettingField>
 
 							{#if ['comfyui', 'automatic1111', ''].includes(config?.VIDEO_GENERATION_ENGINE)}
-								<AdminSettingField label={$i18n.t('settings.admin.videos.steps.label')}>
+								<AdminSettingField label={$i18n.t('Steps')}>
 									<input
 										class={inputClass}
 										placeholder={$i18n.t('Enter Number of Steps (e.g. 50)')}
@@ -361,8 +361,8 @@
 						</div>
 
 						<AdminSettingRow
-							label={$i18n.t('settings.admin.videos.videoPromptGeneration.label')}
-							description={$i18n.t('settings.admin.videos.videoPromptGeneration.description')}
+							label={$i18n.t('Video Prompt Generation')}
+							description={$i18n.t('Video Prompt Generation')}
 							let:labelId
 						>
 							<Switch
@@ -375,19 +375,19 @@
 					{#if config?.VIDEO_GENERATION_ENGINE === 'openai'}
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.videosOpenaiApiBaseUrl.label')}
+								label={$i18n.t('Videos OpenAI API Base Url')}
 							>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('settings.admin.videos.videosOpenaiApiBaseUrl.label')}
+									placeholder={$i18n.t('Videos OpenAI API Base Url')}
 									bind:value={config.VIDEOS_OPENAI_API_BASE_URL}
 								/>
 							</AdminSettingField>
 
-							<AdminSettingField label={$i18n.t('settings.admin.videos.videosOpenaiApiKey.label')}>
+							<AdminSettingField label={$i18n.t('Videos OpenAI API Key')}>
 								<SensitiveInput
 									variant="settings"
-									placeholder={$i18n.t('settings.admin.videos.videosOpenaiApiKey.label')}
+									placeholder={$i18n.t('Videos OpenAI API Key')}
 									bind:value={config.VIDEOS_OPENAI_API_KEY}
 									required={false}
 								/>
@@ -395,18 +395,18 @@
 						</div>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosOpenaiApiVersion.label')}
+							label={$i18n.t('Videos OpenAI API Version')}
 						>
 							<input
 								class={inputClass}
-								placeholder={$i18n.t('settings.admin.videos.videosOpenaiApiVersion.label')}
+								placeholder={$i18n.t('Videos OpenAI API Version')}
 								bind:value={config.VIDEOS_OPENAI_API_VERSION}
 							/>
 						</AdminSettingField>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosOpenaiApiParams.label')}
-							description={$i18n.t('settings.admin.videos.videosOpenaiApiParams.description')}
+							label={$i18n.t('Videos OpenAI API Params')}
+							description={$i18n.t('Videos OpenAI API Params')}
 						>
 							<Textarea
 								className={textareaClass}
@@ -417,8 +417,8 @@
 						</AdminSettingField>
 					{:else if (config?.VIDEO_GENERATION_ENGINE ?? 'automatic1111') === 'automatic1111'}
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.automatic1111BaseUrl.label')}
-							description={$i18n.t('settings.admin.videos.automatic1111BaseUrl.description')}
+							label={$i18n.t('Automatic1111Base Url')}
+							description={$i18n.t('Automatic1111Base Url')}
 						>
 							<div class="flex w-full gap-2">
 								<input
@@ -429,7 +429,7 @@
 								<button
 									class="shrink-0 text-gray-400 transition-colors hover:text-gray-900 dark:text-gray-600 dark:hover:text-white"
 									type="button"
-									aria-label={$i18n.t('settings.admin.videos.verifyConnection.label')}
+									aria-label={$i18n.t('Verify Connection')}
 									on:click={async () => {
 										const res = await verifyConnection(localStorage.token, {
 											engine: 'automatic1111',
@@ -442,7 +442,7 @@
 
 										if (res) {
 											toast.success(
-												$i18n.t('settings.admin.videos.serverConnectionVerified.label')
+												$i18n.t('Server Connection Verified')
 											);
 										}
 									}}
@@ -464,8 +464,8 @@
 						</AdminSettingField>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.apiAuthString.label')}
-							description={$i18n.t('settings.admin.videos.apiAuthString.description')}
+							label={$i18n.t('API Auth String')}
+							description={$i18n.t('API Auth String')}
 						>
 							<SensitiveInput
 								variant="settings"
@@ -476,8 +476,8 @@
 						</AdminSettingField>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.automatic1111Params.label')}
-							description={$i18n.t('settings.admin.videos.automatic1111Params.description')}
+							label={$i18n.t('Automatic1111Params')}
+							description={$i18n.t('Automatic1111Params')}
 						>
 							<Textarea
 								className={textareaClass}
@@ -488,8 +488,8 @@
 						</AdminSettingField>
 					{:else if config?.VIDEO_GENERATION_ENGINE === 'comfyui'}
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.comfyuiBaseUrl.label')}
-							description={$i18n.t('settings.admin.videos.comfyuiBaseUrl.description')}
+							label={$i18n.t('ComfyUI Base Url')}
+							description={$i18n.t('ComfyUI Base Url')}
 						>
 							<div class="flex w-full gap-2">
 								<input
@@ -500,7 +500,7 @@
 								<button
 									class="shrink-0 text-gray-400 transition-colors hover:text-gray-900 dark:text-gray-600 dark:hover:text-white"
 									type="button"
-									aria-label={$i18n.t('settings.admin.videos.verifyConnection.label')}
+									aria-label={$i18n.t('Verify Connection')}
 									on:click={async () => {
 										const res = await verifyConnection(localStorage.token, {
 											engine: 'comfyui',
@@ -513,7 +513,7 @@
 
 										if (res) {
 											toast.success(
-												$i18n.t('settings.admin.videos.serverConnectionVerified.label')
+												$i18n.t('Server Connection Verified')
 											);
 										}
 									}}
@@ -535,8 +535,8 @@
 						</AdminSettingField>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.comfyuiApiKey.label')}
-							description={$i18n.t('settings.admin.videos.comfyuiApiKey.description')}
+							label={$i18n.t('ComfyUI API Key')}
+							description={$i18n.t('ComfyUI API Key')}
 						>
 							<SensitiveInput
 								variant="settings"
@@ -565,15 +565,15 @@
 								}}
 							/>
 							<AdminSettingRow
-								label={$i18n.t('settings.admin.videos.comfyuiComfyuiWorkflow.label')}
-								description={$i18n.t('settings.admin.videos.comfyuiComfyuiWorkflow.description')}
+								label={$i18n.t('ComfyUI ComfyUI Workflow')}
+								description={$i18n.t('ComfyUI ComfyUI Workflow')}
 							>
 								<div class="flex items-center justify-end gap-2">
 									{#if config.COMFYUI_WORKFLOW}
 										<button
 											class="text-xs text-gray-500 transition-colors hover:text-gray-900 hover:underline dark:text-gray-500 dark:hover:text-white"
 											type="button"
-											aria-label={$i18n.t('settings.admin.videos.editWorkflowJsonContent.label')}
+											aria-label={$i18n.t('Edit Workflow Json Content')}
 											on:click={() => {
 												// open code editor modal
 												showComfyUIWorkflowEditor = true;
@@ -585,14 +585,14 @@
 
 									<Tooltip
 										content={$i18n.t(
-											'settings.admin.videos.clickHereToUploadAWorkflowJsonFile.label'
+											'Click Here To Upload Aworkflow Json File'
 										)}
 									>
 										<button
 											class="text-xs text-gray-500 transition-colors hover:text-gray-900 hover:underline dark:text-gray-500 dark:hover:text-white"
 											type="button"
 											aria-label={$i18n.t(
-												'settings.admin.videos.clickHereToUploadAWorkflowJsonFile.label'
+												'Click Here To Upload Aworkflow Json File'
 											)}
 											on:click={() => {
 												document.getElementById('upload-comfyui-workflow-input')?.click();
@@ -629,8 +629,8 @@
 
 						{#if config.COMFYUI_WORKFLOW}
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.generationWorkflowNodes.label')}
-								description={$i18n.t('settings.admin.videos.generationWorkflowNodes.description')}
+								label={$i18n.t('Generation Workflow Nodes')}
+								description={$i18n.t('Generation Workflow Nodes')}
 							>
 								<div class="flex flex-col gap-1.5 text-xs">
 									{#each REQUIRED_WORKFLOW_NODES as node}
@@ -678,30 +678,30 @@
 						{/if}
 					{:else if config?.VIDEO_GENERATION_ENGINE === 'gemini'}
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosGeminiApiBaseUrl.label')}
-							description={$i18n.t('settings.admin.videos.videosGeminiApiBaseUrl.description')}
+							label={$i18n.t('Videos Gemini API Base Url')}
+							description={$i18n.t('Videos Gemini API Base Url')}
 						>
 							<input
 								class={inputClass}
-								placeholder={$i18n.t('settings.admin.videos.videosOpenaiApiBaseUrl.label')}
+								placeholder={$i18n.t('Videos OpenAI API Base Url')}
 								bind:value={config.VIDEOS_GEMINI_API_BASE_URL}
 							/>
 						</AdminSettingField>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosGeminiApiKey.label')}
-							description={$i18n.t('settings.admin.videos.videosGeminiApiKey.description')}
+							label={$i18n.t('Videos Gemini API Key')}
+							description={$i18n.t('Videos Gemini API Key')}
 						>
 							<SensitiveInput
 								variant="settings"
-								placeholder={$i18n.t('settings.admin.videos.videosGeminiApiKey.label')}
+								placeholder={$i18n.t('Videos Gemini API Key')}
 								bind:value={config.VIDEOS_GEMINI_API_KEY}
 							/>
 						</AdminSettingField>
 
 						<AdminSettingRow
-							label={$i18n.t('settings.admin.videos.geminiEndpointMethod.label')}
-							description={$i18n.t('settings.admin.videos.geminiEndpointMethod.description')}
+							label={$i18n.t('Gemini Endpoint Method')}
+							description={$i18n.t('Gemini Endpoint Method')}
 						>
 							<SettingsSelect
 								bind:value={config.VIDEOS_GEMINI_ENDPOINT_METHOD}
@@ -714,18 +714,18 @@
 					{/if}
 				</AdminSettingSection>
 
-				<AdminSettingSection title={$i18n.t('settings.admin.videos.sections.editVideo.title')}>
+				<AdminSettingSection title={$i18n.t('Edit Video')}>
 					<AdminSettingRow
-						label={$i18n.t('settings.admin.videos.videoEdit.label')}
-						description={$i18n.t('settings.admin.videos.videoEdit.description')}
+						label={$i18n.t('Video Edit')}
+						description={$i18n.t('Video Edit')}
 						let:labelId
 					>
 						<Switch bind:state={config.ENABLE_VIDEO_EDIT} ariaLabelledbyId={labelId} />
 					</AdminSettingRow>
 
 					<AdminSettingRow
-						label={$i18n.t('settings.admin.videos.videoEditEngine.label')}
-						description={$i18n.t('settings.admin.videos.videoEditEngine.description')}
+						label={$i18n.t('Video Edit Engine')}
+						description={$i18n.t('Video Edit Engine')}
 					>
 						<SettingsSelect
 							bind:value={config.VIDEO_EDIT_ENGINE}
@@ -739,7 +739,7 @@
 
 					{#if config?.ENABLE_VIDEO_GENERATION && config?.ENABLE_VIDEO_EDIT}
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-							<AdminSettingField label={$i18n.t('settings.admin.videos.videoEditModel.label')}>
+							<AdminSettingField label={$i18n.t('Video Edit Model')}>
 								<input
 									list="model-list"
 									class={inputClass}
@@ -754,7 +754,7 @@
 								</datalist>
 							</AdminSettingField>
 
-							<AdminSettingField label={$i18n.t('settings.admin.videos.videoEditSize.label')}>
+							<AdminSettingField label={$i18n.t('Video Edit Size')}>
 								<input
 									class={inputClass}
 									placeholder={$i18n.t('Enter Video Size (e.g. 512x512)')}
@@ -767,21 +767,21 @@
 					{#if config?.VIDEO_EDIT_ENGINE === 'openai'}
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.videosEditOpenaiApiBaseUrl.label')}
+								label={$i18n.t('Videos Edit OpenAI API Base Url')}
 							>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('settings.admin.videos.videosEditOpenaiApiBaseUrl.label')}
+									placeholder={$i18n.t('Videos Edit OpenAI API Base Url')}
 									bind:value={config.VIDEOS_EDIT_OPENAI_API_BASE_URL}
 								/>
 							</AdminSettingField>
 
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.videosEditOpenaiApiKey.label')}
+								label={$i18n.t('Videos Edit OpenAI API Key')}
 							>
 								<SensitiveInput
 									variant="settings"
-									placeholder={$i18n.t('settings.admin.videos.videosEditOpenaiApiKey.label')}
+									placeholder={$i18n.t('Videos Edit OpenAI API Key')}
 									bind:value={config.VIDEOS_EDIT_OPENAI_API_KEY}
 									required={false}
 								/>
@@ -789,18 +789,18 @@
 						</div>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosEditOpenaiApiVersion.label')}
+							label={$i18n.t('Videos Edit OpenAI API Version')}
 						>
 							<input
 								class={inputClass}
-								placeholder={$i18n.t('settings.admin.videos.videosEditOpenaiApiVersion.label')}
+								placeholder={$i18n.t('Videos Edit OpenAI API Version')}
 								bind:value={config.VIDEOS_EDIT_OPENAI_API_VERSION}
 							/>
 						</AdminSettingField>
 					{:else if config?.VIDEO_EDIT_ENGINE === 'comfyui'}
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosEditComfyuiBaseUrl.label')}
-							description={$i18n.t('settings.admin.videos.videosEditComfyuiBaseUrl.description')}
+							label={$i18n.t('Videos Edit ComfyUI Base Url')}
+							description={$i18n.t('Videos Edit ComfyUI Base Url')}
 						>
 							<div class="flex w-full gap-2">
 								<input
@@ -811,7 +811,7 @@
 								<button
 									class="shrink-0 text-gray-400 transition-colors hover:text-gray-900 dark:text-gray-600 dark:hover:text-white"
 									type="button"
-									aria-label={$i18n.t('settings.admin.videos.verifyConnection.label')}
+									aria-label={$i18n.t('Verify Connection')}
 									on:click={async () => {
 										const res = await verifyConnection(localStorage.token, {
 											engine: 'comfyui',
@@ -824,7 +824,7 @@
 
 										if (res) {
 											toast.success(
-												$i18n.t('settings.admin.videos.serverConnectionVerified.label')
+												$i18n.t('Server Connection Verified')
 											);
 										}
 									}}
@@ -846,8 +846,8 @@
 						</AdminSettingField>
 
 						<AdminSettingField
-							label={$i18n.t('settings.admin.videos.videosEditComfyuiApiKey.label')}
-							description={$i18n.t('settings.admin.videos.videosEditComfyuiApiKey.description')}
+							label={$i18n.t('Videos Edit ComfyUI API Key')}
+							description={$i18n.t('Videos Edit ComfyUI API Key')}
 						>
 							<SensitiveInput
 								variant="settings"
@@ -876,15 +876,15 @@
 								}}
 							/>
 							<AdminSettingRow
-								label={$i18n.t('settings.admin.videos.comfyuiComfyuiWorkflow.label')}
-								description={$i18n.t('settings.admin.videos.comfyuiComfyuiWorkflow.description')}
+								label={$i18n.t('ComfyUI ComfyUI Workflow')}
+								description={$i18n.t('ComfyUI ComfyUI Workflow')}
 							>
 								<div class="flex items-center justify-end gap-2">
 									{#if config.VIDEOS_EDIT_COMFYUI_WORKFLOW}
 										<button
 											class="text-xs text-gray-500 transition-colors hover:text-gray-900 hover:underline dark:text-gray-500 dark:hover:text-white"
 											type="button"
-											aria-label={$i18n.t('settings.admin.videos.editWorkflowJsonContent.label')}
+											aria-label={$i18n.t('Edit Workflow Json Content')}
 											on:click={() => {
 												// open code editor modal
 												showComfyUIEditWorkflowEditor = true;
@@ -896,14 +896,14 @@
 
 									<Tooltip
 										content={$i18n.t(
-											'settings.admin.videos.clickHereToUploadAWorkflowJsonFile.label'
+											'Click Here To Upload Aworkflow Json File'
 										)}
 									>
 										<button
 											class="text-xs text-gray-500 transition-colors hover:text-gray-900 hover:underline dark:text-gray-500 dark:hover:text-white"
 											type="button"
 											aria-label={$i18n.t(
-												'settings.admin.videos.clickHereToUploadAWorkflowJsonFile.label'
+												'Click Here To Upload Aworkflow Json File'
 											)}
 											on:click={() => {
 												document.getElementById('upload-comfyui-edit-workflow-input')?.click();
@@ -930,8 +930,8 @@
 
 						{#if config.VIDEOS_EDIT_COMFYUI_WORKFLOW}
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.editingWorkflowNodes.label')}
-								description={$i18n.t('settings.admin.videos.editingWorkflowNodes.description')}
+								label={$i18n.t('Editing Workflow Nodes')}
+								description={$i18n.t('Editing Workflow Nodes')}
 							>
 								<div class="flex flex-col gap-1.5 text-xs">
 									{#each REQUIRED_EDIT_WORKFLOW_NODES as node}
@@ -980,21 +980,21 @@
 					{:else if config?.VIDEO_EDIT_ENGINE === 'gemini'}
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.videosEditGeminiApiBaseUrl.label')}
+								label={$i18n.t('Videos Edit Gemini API Base Url')}
 							>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('settings.admin.videos.videosOpenaiApiBaseUrl.label')}
+									placeholder={$i18n.t('Videos OpenAI API Base Url')}
 									bind:value={config.VIDEOS_EDIT_GEMINI_API_BASE_URL}
 								/>
 							</AdminSettingField>
 
 							<AdminSettingField
-								label={$i18n.t('settings.admin.videos.videosEditGeminiApiKey.label')}
+								label={$i18n.t('Videos Edit Gemini API Key')}
 							>
 								<SensitiveInput
 									variant="settings"
-									placeholder={$i18n.t('settings.admin.videos.videosEditGeminiApiKey.label')}
+									placeholder={$i18n.t('Videos Edit Gemini API Key')}
 									bind:value={config.VIDEOS_EDIT_GEMINI_API_KEY}
 								/>
 							</AdminSettingField>

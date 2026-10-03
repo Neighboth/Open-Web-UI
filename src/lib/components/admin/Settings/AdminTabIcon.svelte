@@ -13,6 +13,7 @@
 	import SoundHigh from '$lib/components/icons/SoundHigh.svelte';
 	import UserCircle from '$lib/components/icons/UserCircle.svelte';
 	import WrenchAlt from '$lib/components/icons/WrenchAlt.svelte';
+	import Camera from '$lib/components/icons/Camera.svelte';
 
 	export let id: string;
 	export let className = 'size-3.5';
@@ -81,6 +82,8 @@
 	<Computer {className} {strokeWidth} />
 {:else if id === 'audio'}
 	<SoundHigh {className} {strokeWidth} />
+{:else if id === 'video'}
+	<Camera {className} {strokeWidth} />
 {:else if id === 'images'}
 	<Photo {className} {strokeWidth} />
 {:else if id === 'pipelines'}

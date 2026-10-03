@@ -250,6 +250,61 @@
 		await init();
 	};
 
+	const publicAllHandler = async () => {
+		const modelsToMakePublic = filteredModels.filter(
+			(m) =>
+				!m.access_grants?.some(
+					(grant) =>
+						grant.principal_type === 'user' &&
+						grant.principal_id === '*' &&
+						grant.permission === 'read'
+				)
+		);
+		if (modelsToMakePublic.length === 0) return;
+		await Promise.all(
+			modelsToMakePublic.map((model) => {
+				const filtered = (model.access_grants ?? []).filter(
+					(grant) =>
+						!(
+							(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
+							grant.principal_id === '*'
+						)
+				);
+				filtered.push({ principal_type: 'user', principal_id: '*', permission: 'read' });
+				return upsertModelHandler(model, { access_grants: filtered }, false);
+			})
+		);
+		toast.success($i18n.t('All models are now public'));
+		await tick();
+		await init();
+	};
+
+	const privateAllHandler = async () => {
+		const modelsToMakePrivate = filteredModels.filter((m) =>
+			m.access_grants?.some(
+				(grant) =>
+					(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
+					grant.principal_id === '*'
+			)
+		);
+		if (modelsToMakePrivate.length === 0) return;
+		await Promise.all(
+			modelsToMakePrivate.map((model) => {
+				const filtered = (model.access_grants ?? []).filter(
+					(grant) =>
+						!(
+							(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
+							grant.principal_id === '*'
+						)
+				);
+				return upsertModelHandler(model, { access_grants: filtered }, false);
+			})
+		);
+		toast.success($i18n.t('All models are now private'));
+		await tick();
+		await init();
+	};
+
 	const downloadModels = async (models) => {
 		try {
 			const exported = [];
@@ -926,6 +981,28 @@
 										<div class="flex items-center">
 											{$i18n.t('settings.admin.models.disableAllModels.label')}
 										</div>
+									</button>
+
+									<button
+										class="flex h-[1.6875rem] w-full cursor-pointer select-none items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
+										type="button"
+										on:click={() => {
+											publicAllHandler();
+										}}
+									>
+										<GlobeAlt className="size-3.5" />
+										<div class="flex items-center">{$i18n.t('Public All')}</div>
+									</button>
+
+									<button
+										class="flex h-[1.6875rem] w-full cursor-pointer select-none items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
+										type="button"
+										on:click={() => {
+											privateAllHandler();
+										}}
+									>
+										<LockClosed className="size-3.5" />
+										<div class="flex items-center">{$i18n.t('Private All')}</div>
 									</button>
 
 									<hr class="mx-1 my-0.5 border-gray-100 dark:border-gray-800" />
