@@ -57,6 +57,7 @@
 	import AdminCodeExecution from '$lib/components/admin/Settings/CodeExecution.svelte';
 	import AdminInterface from '$lib/components/admin/Settings/Interface.svelte';
 	import AdminAudio from '$lib/components/admin/Settings/Audio.svelte';
+	import AdminVideo from '$lib/components/admin/Settings/Video.svelte';
 	import AdminImages from '$lib/components/admin/Settings/Images.svelte';
 	import AdminPipelines from '$lib/components/admin/Settings/Pipelines.svelte';
 	import AdminDatabase from '$lib/components/admin/Settings/Database.svelte';
@@ -169,6 +170,7 @@
 		'admin:pipelines': $i18n.t('Tools'),
 		'admin:interface': $i18n.t('Experience'),
 		'admin:audio': $i18n.t('Experience'),
+		'admin:video': $i18n.t('Experience'),
 		'admin:images': $i18n.t('Experience'),
 		'admin:db': $i18n.t('Data')
 	};
@@ -306,6 +308,12 @@
 			titleKey: 'settings.admin.audio.title',
 			title: $i18n.t('settings.admin.audio.title'),
 			searchPrefixes: ['settings.admin.audio.']
+		},
+		{
+			id: 'admin:video',
+			titleKey: 'settings.admin.video.title',
+			title: 'Video',
+			searchPrefixes: ['settings.admin.video.']
 		},
 		{
 			id: 'admin:images',
@@ -884,6 +892,12 @@
 				/>
 			{:else if selectedTab === 'admin:audio'}
 				<AdminAudio
+					saveHandler={() => {
+						toast.success($i18n.t('Settings saved successfully!'));
+					}}
+				/>
+			{:else if selectedTab === 'admin:video'}
+				<AdminVideo
 					saveHandler={() => {
 						toast.success($i18n.t('Settings saved successfully!'));
 					}}

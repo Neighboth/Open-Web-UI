@@ -60,6 +60,8 @@
 	import Eye from '../icons/Eye.svelte';
 	import ChevronDown from '../icons/ChevronDown.svelte';
 	import ChevronUp from '../icons/ChevronUp.svelte';
+	import GlobeAlt from '../icons/GlobeAlt.svelte';
+	import LockClosed from '../icons/LockClosed.svelte';
 
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
 	import DropdownMenu from '$lib/components/common/DropdownMenu.svelte';
@@ -374,6 +376,41 @@
 		await getModelList();
 	};
 
+	const publicAllHandler = async () => {
+		const allModels = await fetchAllWorkspaceModels();
+		const modelsToMakePublic = allModels.filter((m) => !m.access_grants?.some(grant => grant.principal_type === 'user' && grant.principal_id === '*' && grant.permission === 'read'));
+		if (modelsToMakePublic.length === 0) return;
+		await Promise.all(
+			modelsToMakePublic.map((model) => {
+				const filtered = (model.access_grants ?? []).filter(
+					(grant) => !((grant.principal_type === 'user' || grant.principal_type === 'anyone') && grant.principal_id === '*')
+				);
+				filtered.push({ principal_type: 'user', principal_id: '*', permission: 'read' });
+				model.access_grants = filtered;
+				return updateModelById(localStorage.token, model.id, model);
+			})
+		);
+		await getModelList();
+		toast.success($i18n.t('All models are now public'));
+	};
+
+	const privateAllHandler = async () => {
+		const allModels = await fetchAllWorkspaceModels();
+		const modelsToMakePrivate = allModels.filter((m) => m.access_grants?.some(grant => (grant.principal_type === 'user' || grant.principal_type === 'anyone') && grant.principal_id === '*'));
+		if (modelsToMakePrivate.length === 0) return;
+		await Promise.all(
+			modelsToMakePrivate.map((model) => {
+				const filtered = (model.access_grants ?? []).filter(
+					(grant) => !((grant.principal_type === 'user' || grant.principal_type === 'anyone') && grant.principal_id === '*')
+				);
+				model.access_grants = filtered;
+				return updateModelById(localStorage.token, model.id, model);
+			})
+		);
+		await getModelList();
+		toast.success($i18n.t('All models are now private'));
+	};
+
 	const showAllHandler = async () => {
 		const allModels = await fetchAllWorkspaceModels();
 		const modelsToShow = allModels.filter((m) => m?.meta?.hidden === true);
@@ -628,6 +665,28 @@
 							>
 								<Minus className="size-3.5" />
 								<div class="flex items-center">{$i18n.t('Disable All')}</div>
+							</button>
+
+							<button
+								class="flex h-[1.6875rem] w-full cursor-pointer select-none items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
+								type="button"
+								on:click={() => {
+									publicAllHandler();
+								}}
+							>
+								<GlobeAlt className="size-3.5" />
+								<div class="flex items-center">{$i18n.t('Public All')}</div>
+							</button>
+
+							<button
+								class="flex h-[1.6875rem] w-full cursor-pointer select-none items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] hover:text-gray-900 dark:hover:text-gray-100"
+								type="button"
+								on:click={() => {
+									privateAllHandler();
+								}}
+							>
+								<LockClosed className="size-3.5" />
+								<div class="flex items-center">{$i18n.t('Private All')}</div>
 							</button>
 
 							<hr class="mx-1 my-0.5 border-gray-100 dark:border-gray-800" />

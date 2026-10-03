@@ -365,6 +365,7 @@
 	let pendingOAuthTools = [];
 
 	let imageGenerationEnabled = Boolean(initialIntegrations?.imageGenerationEnabled);
+	let videoGenerationEnabled = Boolean(initialIntegrations?.videoGenerationEnabled);
 	let webSearchEnabled = Boolean(initialIntegrations?.webSearchEnabled);
 	let codeInterpreterEnabled = Boolean(initialIntegrations?.codeInterpreterEnabled);
 	let browserEnabled = Boolean(initialIntegrations?.browserEnabled);
@@ -386,6 +387,7 @@
 				selectedFilterIds,
 				webSearchEnabled,
 				imageGenerationEnabled,
+				videoGenerationEnabled,
 				codeInterpreterEnabled,
 				browserEnabled
 			};
@@ -418,6 +420,7 @@
 			selectedFilterIds = Array.isArray(ai.selectedFilterIds) ? [...ai.selectedFilterIds] : [];
 			webSearchEnabled = Boolean(ai.webSearchEnabled);
 			imageGenerationEnabled = Boolean(ai.imageGenerationEnabled);
+			videoGenerationEnabled = Boolean(ai.videoGenerationEnabled);
 			codeInterpreterEnabled = Boolean(ai.codeInterpreterEnabled);
 			browserEnabled = Boolean(ai.browserEnabled);
 		}
@@ -426,7 +429,7 @@
 		}, 200);
 	};
 
-	$: if (!isRestoringIntegrations && (selectedToolIds || selectedSkillIds || selectedFilterIds || webSearchEnabled !== undefined || imageGenerationEnabled !== undefined || codeInterpreterEnabled !== undefined || browserEnabled !== undefined)) {
+	$: if (!isRestoringIntegrations && (selectedToolIds || selectedSkillIds || selectedFilterIds || webSearchEnabled !== undefined || imageGenerationEnabled !== undefined || videoGenerationEnabled !== undefined || codeInterpreterEnabled !== undefined || browserEnabled !== undefined)) {
 		saveActiveIntegrations();
 	}
 
@@ -865,6 +868,7 @@
 			}
 			if (input.webSearchEnabled) webSearchEnabled = true;
 			if (input.imageGenerationEnabled) imageGenerationEnabled = true;
+			if (input.videoGenerationEnabled) videoGenerationEnabled = true;
 			if (input.codeInterpreterEnabled) codeInterpreterEnabled = true;
 			if (input.browserEnabled) browserEnabled = true;
 			if (input.toolApprovalMode) {
@@ -4526,6 +4530,7 @@
 										bind:selectedSkillIds
 										bind:selectedFilterIds
 										bind:imageGenerationEnabled
+										bind:videoGenerationEnabled
 										bind:codeInterpreterEnabled
 										bind:browserEnabled
 										{pendingOAuthTools}
@@ -4619,6 +4624,7 @@
 										bind:selectedSkillIds
 										bind:selectedFilterIds
 										bind:imageGenerationEnabled
+										bind:videoGenerationEnabled
 										bind:codeInterpreterEnabled
 										bind:browserEnabled
 										{pendingOAuthTools}
@@ -4681,6 +4687,7 @@
 									bind:selectedSkillIds
 									bind:selectedFilterIds
 									bind:imageGenerationEnabled
+										bind:videoGenerationEnabled
 									bind:codeInterpreterEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel

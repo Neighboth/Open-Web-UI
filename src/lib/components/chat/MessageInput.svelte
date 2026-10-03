@@ -198,6 +198,8 @@
 	export let selectedFilterIds: string[] = [];
 
 	export let imageGenerationEnabled = false;
+															videoGenerationEnabled = false;
+	export let videoGenerationEnabled = false;
 	export let webSearchEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let browserEnabled: boolean;
@@ -255,6 +257,7 @@
 		selectedSkillIds,
 		selectedFilterIds,
 		imageGenerationEnabled,
+		videoGenerationEnabled,
 		webSearchEnabled,
 		codeInterpreterEnabled,
 		toolApprovalMode
@@ -2189,6 +2192,7 @@
 
 															webSearchEnabled = false;
 															imageGenerationEnabled = false;
+															videoGenerationEnabled = false;
 															codeInterpreterEnabled = false;
 														}
 													}}
@@ -2326,6 +2330,8 @@
 												bind:selectedFilterIds
 												bind:webSearchEnabled
 												bind:imageGenerationEnabled
+																						showVideoGenerationButton={.role === 'admin' || .permissions?.features?.video_generation}
+																						bind:videoGenerationEnabled
 												bind:codeInterpreterEnabled
 												bind:browserEnabled
 												oauthRedirectHandler={(tool: {

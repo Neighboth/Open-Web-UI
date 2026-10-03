@@ -2220,7 +2220,7 @@ Generate a concise title summarizing the chat history.
 - The title should clearly represent the main theme or subject of the conversation.
 - Keep it short: 2-4 words is best.
 - Do not use emojis, quotation marks, or special formatting.
-- Write the title in the chat's primary language; default to English if multilingual.
+- You MUST ALWAYS generate the title in the exact same language that the user is currently speaking (e.g. if the user speaks Turkish, the title MUST be in Turkish).
 - Prioritize accuracy over creativity.
 - Your entire response must consist solely of the JSON object, without any introductory or concluding text.
 - The output must be a single, raw JSON object, without any markdown code fences or other encapsulating text.

@@ -79,6 +79,8 @@
 	export let webSearchEnabled = false;
 	export let showImageGenerationButton = false;
 	export let imageGenerationEnabled = false;
+	export let showVideoGenerationButton = false;
+	export let videoGenerationEnabled = false;
 	export let showCodeInterpreterButton = false;
 	export let codeInterpreterEnabled = false;
 	export let browserEnabled: boolean;
@@ -380,9 +382,9 @@
 						placement="top"
 						>
 						<div class="shrink-0">
-						{#if tools?.[toolId]?.icon}
+						{#if tools?.[toolId]?.icon || tools?.[toolId]?.meta?.icon}
 						<img
-						src={tools[toolId].icon}
+						src={tools[toolId].icon || tools[toolId].meta?.icon}
 						alt={tools[toolId].name}
 						class="size-4 object-contain rounded-xs"
 						/>
@@ -666,6 +668,33 @@
 
 								<div class=" shrink-0" inert>
 									<Switch state={imageGenerationEnabled} />
+								</div>
+							</button>
+						</Tooltip>
+					{/if}
+
+					{#if showVideoGenerationButton}
+						<Tooltip content={$i18n.t('Generate a video')} placement="top-start">
+							<button
+								class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+								aria-pressed={videoGenerationEnabled}
+								on:click={() => {
+									videoGenerationEnabled = !videoGenerationEnabled;
+								}}
+							>
+								<div class="flex-1 truncate">
+									<div class="flex flex-1 gap-2 items-center">
+										<div class="shrink-0">
+											<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+  												<path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+											</svg>
+										</div>
+										<div class="truncate">{$i18n.t('Video Generation')}</div>
+									</div>
+								</div>
+
+								<div class=" shrink-0" inert>
+									<Switch state={videoGenerationEnabled} />
 								</div>
 							</button>
 						</Tooltip>
