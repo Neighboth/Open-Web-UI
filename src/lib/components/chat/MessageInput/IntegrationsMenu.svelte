@@ -696,7 +696,7 @@
 												/>
 											</svg>
 										</div>
-										<div class="truncate">{$i18n.t('Video Generation')}</div>
+										<div class="truncate">{$i18n.t('Video')}</div>
 									</div>
 								</div>
 

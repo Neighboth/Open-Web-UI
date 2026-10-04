@@ -380,6 +380,39 @@ export const updateModelAccessGrants = async (
 	return res;
 };
 
+export const updateModelsAccessBatch = async (
+	token: string,
+	modelIds: string[],
+	isPublic: boolean
+) => {
+	let error = null;
+
+	const res = await fetch(`${WEBUI_API_BASE_URL}/models/access/batch`, {
+		method: 'POST',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			authorization: `Bearer ${token}`
+		},
+		body: JSON.stringify({ model_ids: modelIds, is_public: isPublic })
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			error = err;
+			console.error(err);
+			return null;
+		});
+
+	if (error) {
+		throw error;
+	}
+
+	return res;
+};
+
 export const deleteModelById = async (token: string, id: string) => {
 	let error = null;
 

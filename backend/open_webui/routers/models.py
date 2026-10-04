@@ -1109,6 +1109,55 @@ async def update_model_access_by_id(
     return model
 
 
+class BatchModelAccessForm(BaseModel):
+    model_ids: list[str]
+    is_public: bool
+
+
+@router.post('/access/batch')
+async def update_models_access_batch(
+    request: Request,
+    form_data: BatchModelAccessForm,
+    user=Depends(get_admin_user),
+    db: AsyncSession = Depends(get_async_session),
+):
+    public_grant = [{'principal_type': 'user', 'principal_id': '*', 'permission': 'read'}]
+
+    for model_id in form_data.model_ids:
+        try:
+            model = await Models.get_model_by_id(model_id, db=db)
+            if not model:
+                model = await Models.insert_new_model(
+                    ModelForm(
+                        id=model_id,
+                        name=model_id,
+                        meta=ModelMeta(),
+                        params=ModelParams(),
+                    ),
+                    user.id,
+                    db=db,
+                )
+
+            current_grants = await AccessGrants.get_grants_by_resource('model', model_id, db=db)
+            filtered = [
+                {'principal_type': g.principal_type, 'principal_id': g.principal_id, 'permission': g.permission}
+                for g in current_grants
+                if not ((g.principal_type in ('user', 'anyone')) and g.principal_id == '*')
+            ]
+
+            if form_data.is_public:
+                new_grants = filtered + public_grant
+            else:
+                new_grants = filtered
+
+            await AccessGrants.set_access_grants('model', model_id, new_grants, db=db)
+            await Models.update_model_updated_at_by_id(model_id, db=db)
+        except Exception as e:
+            log.exception(f"Failed to update access for model {model_id}: {e}")
+
+    return {"status": True}
+
+
 ############################
 # DeleteModelById
 ############################

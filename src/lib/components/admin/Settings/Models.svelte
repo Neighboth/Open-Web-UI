@@ -24,6 +24,7 @@
 		toggleModelById,
 		updateModelById,
 		updateModelAccessGrants,
+		updateModelsAccessBatch,
 		importModels
 	} from '$lib/apis/models';
 	import { copyToClipboard } from '$lib/utils';
@@ -257,44 +258,35 @@
 			return;
 		}
 
-		const publicGrant = [{ principal_type: 'user', principal_id: '*', permission: 'read' }];
+		const modelIds = targetModels.map((m) => m.id);
+		const res = await updateModelsAccessBatch(localStorage.token, modelIds, true).catch((err) => {
+			toast.error(`${err}`);
+			return null;
+		});
 
-		await Promise.all(
-			targetModels.map(async (model) => {
-				const existing = (model?.access_grants ?? []).filter(
+		if (res) {
+			const publicGrant = [{ principal_type: 'user', principal_id: '*', permission: 'read' }];
+			targetModels.forEach((m) => {
+				const existing = (m.access_grants ?? []).filter(
 					(g) =>
 						!(
 							(g.principal_type === 'user' || g.principal_type === 'anyone') &&
 							g.principal_id === '*'
 						)
 				);
-				const nextGrants = [...existing, ...publicGrant];
-				const res = await updateModelAccessGrants(
+				m.access_grants = [...existing, ...publicGrant];
+			});
+			models = models;
+			_models.set(
+				await getModels(
 					localStorage.token,
-					model.id,
-					model.name || model.id,
-					nextGrants
-				).catch((err) => {
-					console.error('Failed to update access for', model.id, err);
-					return null;
-				});
-
-				if (res) {
-					model.access_grants = res.access_grants ?? nextGrants;
-				}
-			})
-		);
-
-		models = models;
-		_models.set(
-			await getModels(
-				localStorage.token,
-				$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
-			)
-		);
-		toast.success($i18n.t('All models are now public'));
-		await tick();
-		await init();
+					$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+				)
+			);
+			toast.success($i18n.t('All models are now public'));
+			await tick();
+			await init();
+		}
 	};
 
 	const privateAllHandler = async () => {
@@ -304,41 +296,33 @@
 			return;
 		}
 
-		await Promise.all(
-			targetModels.map(async (model) => {
-				const nextGrants = (model?.access_grants ?? []).filter(
+		const modelIds = targetModels.map((m) => m.id);
+		const res = await updateModelsAccessBatch(localStorage.token, modelIds, false).catch((err) => {
+			toast.error(`${err}`);
+			return null;
+		});
+
+		if (res) {
+			targetModels.forEach((m) => {
+				m.access_grants = (m.access_grants ?? []).filter(
 					(g) =>
 						!(
 							(g.principal_type === 'user' || g.principal_type === 'anyone') &&
 							g.principal_id === '*'
 						)
 				);
-				const res = await updateModelAccessGrants(
+			});
+			models = models;
+			_models.set(
+				await getModels(
 					localStorage.token,
-					model.id,
-					model.name || model.id,
-					nextGrants
-				).catch((err) => {
-					console.error('Failed to update access for', model.id, err);
-					return null;
-				});
-
-				if (res) {
-					model.access_grants = res.access_grants ?? nextGrants;
-				}
-			})
-		);
-
-		models = models;
-		_models.set(
-			await getModels(
-				localStorage.token,
-				$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
-			)
-		);
-		toast.success($i18n.t('All models are now private'));
-		await tick();
-		await init();
+					$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+				)
+			);
+			toast.success($i18n.t('All models are now private'));
+			await tick();
+			await init();
+		}
 	};
 
 	const downloadModels = async (models) => {
