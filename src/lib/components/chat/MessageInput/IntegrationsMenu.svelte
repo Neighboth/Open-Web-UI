@@ -741,10 +741,7 @@
 						</Tooltip>
 					{/if}
 
-					<Tooltip
-						content={$i18n.t('Select Browser')}
-						placement="top-start"
-					>
+					<Tooltip content={$i18n.t('Select Browser')} placement="top-start">
 						<button
 							class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
 							aria-pressed={browserEnabled}
@@ -761,7 +758,10 @@
 									<div class="truncate">
 										{$i18n.t('Web Browser')}
 										{#if selectedBrowser}
-											<span class="text-[0.6875rem] text-gray-400 dark:text-gray-500 font-normal ml-1 capitalize">({selectedBrowser})</span>
+											<span
+												class="text-[0.6875rem] text-gray-400 dark:text-gray-500 font-normal ml-1 capitalize"
+												>({selectedBrowser})</span
+											>
 										{/if}
 									</div>
 								</div>
@@ -787,7 +787,6 @@
 						</button>
 					</Tooltip>
 				</div>
-
 			{/if}
 		</DropdownMenu>
 	</div>

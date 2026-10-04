@@ -115,8 +115,7 @@
 	const isPublicModel = (model) => {
 		return (model?.access_grants ?? []).some(
 			(g) =>
-				(g.principal_type === 'user' || g.principal_type === 'anyone') &&
-				g.principal_id === '*'
+				(g.principal_type === 'user' || g.principal_type === 'anyone') && g.principal_id === '*'
 		);
 	};
 
@@ -1025,7 +1024,9 @@
 										}}
 									>
 										<GlobeAlt className="size-3.5 shrink-0" />
-										<div class="flex items-center whitespace-nowrap">{$i18n.t('Make All Public')}</div>
+										<div class="flex items-center whitespace-nowrap">
+											{$i18n.t('Make All Public')}
+										</div>
 									</button>
 
 									<button
@@ -1036,9 +1037,10 @@
 										}}
 									>
 										<LockClosed className="size-3.5 shrink-0" />
-										<div class="flex items-center whitespace-nowrap">{$i18n.t('Make All Private')}</div>
+										<div class="flex items-center whitespace-nowrap">
+											{$i18n.t('Make All Private')}
+										</div>
 									</button>
-
 
 									<hr class="mx-1 my-0.5 border-gray-100 dark:border-gray-800" />
 

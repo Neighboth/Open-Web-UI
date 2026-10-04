@@ -727,7 +727,7 @@ async def get_builtin_tools(
         builtin_functions.append(edit_image)
         
     if (
-        config.get('video_generation.enable')
+        config.get('video_generation.enable', True)
         and features.get('video_generation')
     ):
         builtin_functions.append(generate_video)

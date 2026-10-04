@@ -883,9 +883,12 @@
 				selectedFilterIds = input.selectedFilterIds;
 			}
 			if (input.webSearchEnabled !== undefined) webSearchEnabled = input.webSearchEnabled;
-			if (input.imageGenerationEnabled !== undefined) imageGenerationEnabled = input.imageGenerationEnabled;
-			if (input.videoGenerationEnabled !== undefined) videoGenerationEnabled = input.videoGenerationEnabled;
-			if (input.codeInterpreterEnabled !== undefined) codeInterpreterEnabled = input.codeInterpreterEnabled;
+			if (input.imageGenerationEnabled !== undefined)
+				imageGenerationEnabled = input.imageGenerationEnabled;
+			if (input.videoGenerationEnabled !== undefined)
+				videoGenerationEnabled = input.videoGenerationEnabled;
+			if (input.codeInterpreterEnabled !== undefined)
+				codeInterpreterEnabled = input.codeInterpreterEnabled;
 			if (input.browserEnabled !== undefined) browserEnabled = input.browserEnabled;
 			if (input.toolApprovalMode) {
 				await handleToolApprovalModeChange(input.toolApprovalMode);
@@ -2406,7 +2409,11 @@
 				});
 
 				let _chatModels = chatContent?.models;
-				selectedModels = Array.isArray(_chatModels) ? _chatModels : (_chatModels ? [_chatModels] : ['']);
+				selectedModels = Array.isArray(_chatModels)
+					? _chatModels
+					: _chatModels
+						? [_chatModels]
+						: [''];
 
 				// An empty model list is not evidence that the chat's models are gone.
 				if ($models.length > 0) {
@@ -3504,9 +3511,8 @@
 				web_search: webSearchActive,
 				browser: browserEnabled,
 				browser_id:
-					(typeof localStorage !== 'undefined'
-						? localStorage.getItem('selected_browser')
-						: null) || 'chrome'
+					(typeof localStorage !== 'undefined' ? localStorage.getItem('selected_browser') : null) ||
+					'chrome'
 			};
 
 		if ($settings?.memory ?? $config?.features?.enable_memories ?? false) {
@@ -4786,10 +4792,9 @@
 						{codeInterpreterEnabled}
 					/>
 				{/if}
+				<LiveAgentPreview />
 			</div>
 		</div>
-		<LiveAgentPreview />
-	</div>
 	{:else if loading}
 		<div class=" flex items-center justify-center h-full w-full">
 			<div class="m-auto">

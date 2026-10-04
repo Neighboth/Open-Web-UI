@@ -610,7 +610,8 @@
 							placeholder={$i18n.t('Select Provider')}
 						>
 							<option value="browserless">{$i18n.t('Browserless (Chromium / Playwright)')}</option>
-							<option value="kasm">{$i18n.t('Kasm Workspaces (KasmVNC / Isolated Desktop)')}</option>
+							<option value="kasm">{$i18n.t('Kasm Workspaces (KasmVNC / Isolated Desktop)')}</option
+							>
 							<option value="vnc">{$i18n.t('Generic noVNC / Linux Desktop')}</option>
 						</SettingsSelect>
 					</AdminSettingRow>
@@ -619,7 +620,9 @@
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
 							<AdminSettingField
 								label={$i18n.t('Kasm Web / Stream URL')}
-								description={$i18n.t('Kasm Workspaces or KasmVNC web endpoint (e.g. https://localhost:6901)')}
+								description={$i18n.t(
+									'Kasm Workspaces or KasmVNC web endpoint (e.g. https://localhost:6901)'
+								)}
 							>
 								<input
 									class={inputClass}
@@ -660,7 +663,9 @@
 
 							<AdminSettingField
 								label={$i18n.t('Remote Debugging / CDP Endpoint')}
-								description={$i18n.t('Chromium CDP port for automation (e.g. http://localhost:9222)')}
+								description={$i18n.t(
+									'Chromium CDP port for automation (e.g. http://localhost:9222)'
+								)}
 							>
 								<input
 									class={inputClass}
@@ -675,7 +680,9 @@
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<AdminSettingField
 								label={$i18n.t('Kasm API Key (On-Demand Mode)')}
-								description={$i18n.t('Optional API Key for auto-spawning containers via /request_kasm')}
+								description={$i18n.t(
+									'Optional API Key for auto-spawning containers via /request_kasm'
+								)}
 							>
 								<SensitiveInput
 									variant="settings"
@@ -702,7 +709,9 @@
 
 						<AdminSettingField
 							label={$i18n.t('Live Screen / Web Preview URL')}
-							description={$i18n.t('Live streaming URL rendered in chat side-panel (auto-login supported).')}
+							description={$i18n.t(
+								'Live streaming URL rendered in chat side-panel (auto-login supported).'
+							)}
 						>
 							<input
 								class={inputClass}
@@ -712,7 +721,6 @@
 								autocomplete="off"
 							/>
 						</AdminSettingField>
-
 					{:else if config.BROWSER_SANDBOX_PROVIDER === 'vnc'}
 						<AdminSettingField
 							label={$i18n.t('Live Screen / Web VNC Stream URL')}
@@ -728,7 +736,6 @@
 								autocomplete="off"
 							/>
 						</AdminSettingField>
-
 					{:else}
 						<AdminSettingField
 							label={$i18n.t('Browser Sandbox URL / Endpoint')}
@@ -796,10 +803,18 @@
 						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
 							{#if config.BROWSER_SANDBOX_PROVIDER === 'browserless'}
 								{$i18n.t('Browserless provides a fast CDP interface for Chrome automation.')}
-								<a href="https://github.com/browserless/browserless" target="_blank" class="text-blue-500 hover:underline">{$i18n.t('View Repository')}</a>
+								<a
+									href="https://github.com/browserless/browserless"
+									target="_blank"
+									class="text-blue-500 hover:underline">{$i18n.t('View Repository')}</a
+								>
 							{:else if config.BROWSER_SANDBOX_PROVIDER === 'kasm'}
 								{$i18n.t('Kasm Workspaces provides isolated, streaming browser environments.')}
-								<a href="https://kasmweb.com/docs/latest/index.html" target="_blank" class="text-blue-500 hover:underline">{$i18n.t('View Documentation')}</a>
+								<a
+									href="https://kasmweb.com/docs/latest/index.html"
+									target="_blank"
+									class="text-blue-500 hover:underline">{$i18n.t('View Documentation')}</a
+								>
 							{:else}
 								{$i18n.t('Connect to any custom VNC or CDP endpoint.')}
 							{/if}

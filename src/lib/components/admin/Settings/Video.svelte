@@ -268,7 +268,8 @@
 
 			REQUIRED_EDIT_WORKFLOW_NODES = REQUIRED_EDIT_WORKFLOW_NODES.map((node) => {
 				const n =
-					(config.VIDEOS_EDIT_COMFYUI_WORKFLOW_NODES ?? []).find((n) => n.type === node.type) ?? node;
+					(config.VIDEOS_EDIT_COMFYUI_WORKFLOW_NODES ?? []).find((n) => n.type === node.type) ??
+					node;
 				return {
 					type: n.type,
 					key: n.key,
@@ -322,9 +323,7 @@
 						</AdminSettingRow>
 
 						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
-							<AdminSettingField
-								label={$i18n.t('Video Generation Model')}
-							>
+							<AdminSettingField label={$i18n.t('Video Generation Model')}>
 								<input
 									list="model-list"
 									class={inputClass}
@@ -395,9 +394,7 @@
 								</AdminSettingField>
 							</div>
 
-							<AdminSettingField
-								label={$i18n.t('Videos OpenAI API Version')}
-							>
+							<AdminSettingField label={$i18n.t('Videos OpenAI API Version')}>
 								<input
 									class={inputClass}
 									placeholder={$i18n.t('API Version (optional)')}
@@ -417,9 +414,7 @@
 								/>
 							</AdminSettingField>
 						{:else if (config?.VIDEO_GENERATION_ENGINE ?? 'automatic1111') === 'automatic1111'}
-							<AdminSettingField
-								label={$i18n.t('Automatic1111 Base Url')}
-							>
+							<AdminSettingField label={$i18n.t('Automatic1111 Base Url')}>
 								<div class="flex w-full gap-2">
 									<input
 										class={inputClass}
@@ -441,9 +436,7 @@
 											});
 
 											if (res) {
-												toast.success(
-													$i18n.t('Server Connection Verified')
-												);
+												toast.success($i18n.t('Server Connection Verified'));
 											}
 										}}
 									>
@@ -463,9 +456,7 @@
 								</div>
 							</AdminSettingField>
 
-							<AdminSettingField
-								label={$i18n.t('API Auth String')}
-							>
+							<AdminSettingField label={$i18n.t('API Auth String')}>
 								<SensitiveInput
 									variant="settings"
 									placeholder={$i18n.t('Enter api auth string (e.g. username:password)')}
@@ -474,9 +465,7 @@
 								/>
 							</AdminSettingField>
 
-							<AdminSettingField
-								label={$i18n.t('Automatic1111 Params')}
-							>
+							<AdminSettingField label={$i18n.t('Automatic1111 Params')}>
 								<Textarea
 									className={textareaClass}
 									bind:value={config.AUTOMATIC1111_PARAMS}
@@ -485,9 +474,7 @@
 								/>
 							</AdminSettingField>
 						{:else if config?.VIDEO_GENERATION_ENGINE === 'comfyui'}
-							<AdminSettingField
-								label={$i18n.t('ComfyUI Base Url')}
-							>
+							<AdminSettingField label={$i18n.t('ComfyUI Base Url')}>
 								<div class="flex w-full gap-2">
 									<input
 										class={inputClass}
@@ -509,9 +496,7 @@
 											});
 
 											if (res) {
-												toast.success(
-													$i18n.t('Server Connection Verified')
-												);
+												toast.success($i18n.t('Server Connection Verified'));
 											}
 										}}
 									>
@@ -531,9 +516,7 @@
 								</div>
 							</AdminSettingField>
 
-							<AdminSettingField
-								label={$i18n.t('ComfyUI API Key')}
-							>
+							<AdminSettingField label={$i18n.t('ComfyUI API Key')}>
 								<SensitiveInput
 									variant="settings"
 									placeholder={$i18n.t('API Key (optional)')}
@@ -578,9 +561,7 @@
 											</button>
 										{/if}
 
-										<Tooltip
-											content={$i18n.t('Upload workflow JSON file')}
-										>
+										<Tooltip content={$i18n.t('Upload workflow JSON file')}>
 											<button
 												class="text-xs text-gray-500 transition-colors hover:text-gray-900 hover:underline dark:text-gray-500 dark:hover:text-white"
 												type="button"
@@ -607,14 +588,14 @@
 							</div>
 
 							{#if config.COMFYUI_WORKFLOW}
-								<AdminSettingField
-									label={$i18n.t('Generation Workflow Nodes')}
-								>
+								<AdminSettingField label={$i18n.t('Generation Workflow Nodes')}>
 									<div class="flex flex-col gap-1.5 text-xs">
 										{#each REQUIRED_WORKFLOW_NODES as node}
 											<div class="flex w-full flex-col">
 												<div class="shrink-0">
-													<div class="capitalize line-clamp-1 w-20 text-gray-400 dark:text-gray-500">
+													<div
+														class="capitalize line-clamp-1 w-20 text-gray-400 dark:text-gray-500"
+													>
 														{node.type}{node.type === 'prompt' ? '*' : ''}
 													</div>
 												</div>
@@ -651,9 +632,7 @@
 								</AdminSettingField>
 							{/if}
 						{:else if config?.VIDEO_GENERATION_ENGINE === 'gemini'}
-							<AdminSettingField
-								label={$i18n.t('Videos Gemini API Base Url')}
-							>
+							<AdminSettingField label={$i18n.t('Videos Gemini API Base Url')}>
 								<input
 									class={inputClass}
 									placeholder={$i18n.t('Direct Connection (optional)')}
@@ -661,9 +640,7 @@
 								/>
 							</AdminSettingField>
 
-							<AdminSettingField
-								label={$i18n.t('Videos Gemini API Key')}
-							>
+							<AdminSettingField label={$i18n.t('Videos Gemini API Key')}>
 								<SensitiveInput
 									variant="settings"
 									placeholder={$i18n.t('API Key')}
@@ -671,9 +648,7 @@
 								/>
 							</AdminSettingField>
 
-							<AdminSettingRow
-								label={$i18n.t('Gemini Endpoint Method')}
-							>
+							<AdminSettingRow label={$i18n.t('Gemini Endpoint Method')}>
 								<SettingsSelect
 									bind:value={config.VIDEOS_GEMINI_ENDPOINT_METHOD}
 									placeholder={$i18n.t('Select Method')}
@@ -762,9 +737,7 @@
 									</AdminSettingField>
 								</div>
 
-								<AdminSettingField
-									label={$i18n.t('Videos Edit OpenAI API Version')}
-								>
+								<AdminSettingField label={$i18n.t('Videos Edit OpenAI API Version')}>
 									<input
 										class={inputClass}
 										placeholder={$i18n.t('API Version (optional)')}
@@ -772,9 +745,7 @@
 									/>
 								</AdminSettingField>
 							{:else if config?.VIDEO_EDIT_ENGINE === 'comfyui'}
-								<AdminSettingField
-									label={$i18n.t('Videos Edit ComfyUI Base Url')}
-								>
+								<AdminSettingField label={$i18n.t('Videos Edit ComfyUI Base Url')}>
 									<div class="flex w-full gap-2">
 										<input
 											class={inputClass}
@@ -796,9 +767,7 @@
 												});
 
 												if (res) {
-													toast.success(
-														$i18n.t('Server Connection Verified')
-													);
+													toast.success($i18n.t('Server Connection Verified'));
 												}
 											}}
 										>
@@ -818,9 +787,7 @@
 									</div>
 								</AdminSettingField>
 
-								<AdminSettingField
-									label={$i18n.t('Videos Edit ComfyUI API Key')}
-								>
+								<AdminSettingField label={$i18n.t('Videos Edit ComfyUI API Key')}>
 									<SensitiveInput
 										variant="settings"
 										placeholder={$i18n.t('API Key (optional)')}
@@ -865,17 +832,13 @@
 												</button>
 											{/if}
 
-											<Tooltip
-												content={$i18n.t('Upload workflow JSON file')}
-											>
+											<Tooltip content={$i18n.t('Upload workflow JSON file')}>
 												<button
 													class="text-xs text-gray-500 transition-colors hover:text-gray-900 hover:underline dark:text-gray-500 dark:hover:text-white"
 													type="button"
 													aria-label={$i18n.t('Upload')}
 													on:click={() => {
-														document
-															.getElementById('upload-comfyui-edit-workflow-input')
-															?.click();
+														document.getElementById('upload-comfyui-edit-workflow-input')?.click();
 													}}
 												>
 													{$i18n.t('Upload')}
@@ -896,14 +859,14 @@
 								</div>
 
 								{#if config.VIDEOS_EDIT_COMFYUI_WORKFLOW}
-									<AdminSettingField
-										label={$i18n.t('Editing Workflow Nodes')}
-									>
+									<AdminSettingField label={$i18n.t('Editing Workflow Nodes')}>
 										<div class="flex flex-col gap-1.5 text-xs">
 											{#each REQUIRED_EDIT_WORKFLOW_NODES as node}
 												<div class="flex w-full flex-col">
 													<div class="shrink-0">
-														<div class="capitalize line-clamp-1 w-20 text-gray-400 dark:text-gray-500">
+														<div
+															class="capitalize line-clamp-1 w-20 text-gray-400 dark:text-gray-500"
+														>
 															{node.type}{node.type === 'prompt' ? '*' : ''}
 														</div>
 													</div>
@@ -941,9 +904,7 @@
 								{/if}
 							{:else if config?.VIDEO_EDIT_ENGINE === 'gemini'}
 								<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
-									<AdminSettingField
-										label={$i18n.t('Videos Edit Gemini API Base Url')}
-									>
+									<AdminSettingField label={$i18n.t('Videos Edit Gemini API Base Url')}>
 										<input
 											class={inputClass}
 											placeholder={$i18n.t('Direct Connection (optional)')}
@@ -951,9 +912,7 @@
 										/>
 									</AdminSettingField>
 
-									<AdminSettingField
-										label={$i18n.t('Videos Edit Gemini API Key')}
-									>
+									<AdminSettingField label={$i18n.t('Videos Edit Gemini API Key')}>
 										<SensitiveInput
 											variant="settings"
 											placeholder={$i18n.t('API Key')}

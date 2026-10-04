@@ -3098,6 +3098,7 @@ DEFAULT_CONFIG = {
     'videos.edit.comfyui.api_key': '',
     'videos.edit.comfyui.workflow': '',
     'videos.edit.comfyui.nodes': [],
+    'browser_sandbox.enable': True,
     'browser_sandbox.provider': 'kasm',
     'browser_sandbox.kasm.url': '',
     'browser_sandbox.kasm.user': 'kasm_user',
