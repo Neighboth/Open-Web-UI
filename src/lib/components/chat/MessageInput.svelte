@@ -259,6 +259,7 @@
 		videoGenerationEnabled,
 		webSearchEnabled,
 		codeInterpreterEnabled,
+		browserEnabled,
 		toolApprovalMode
 	};
 

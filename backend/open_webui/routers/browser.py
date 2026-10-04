@@ -60,6 +60,13 @@ DEFAULT_BROWSERS = [
         'default': False,
     },
     {
+        'id': 'vivaldi',
+        'name': 'Vivaldi Browser',
+        'image': 'kasmweb/vivaldi:1.16.0',
+        'description': 'Vivaldi customizable feature-rich browser',
+        'default': False,
+    },
+    {
         'id': 'edge',
         'name': 'Microsoft Edge',
         'image': 'kasmweb/edge:1.16.0',
@@ -166,7 +173,13 @@ async def get_available_browsers(user=Depends(get_verified_user)):
     """Returns the list of available browsers configured by admin or system defaults."""
     custom_browsers = await Config.get('browser_sandbox.kasm.browsers', None)
     if custom_browsers and isinstance(custom_browsers, list) and len(custom_browsers) > 0:
-        return custom_browsers
+        if isinstance(custom_browsers[0], str):
+            # List of enabled browser IDs
+            filtered = [b for b in DEFAULT_BROWSERS if b['id'] in custom_browsers]
+            if filtered:
+                return filtered
+        elif isinstance(custom_browsers[0], dict):
+            return custom_browsers
     return DEFAULT_BROWSERS
 
 
@@ -221,23 +234,40 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
                 async with session.post(api_endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                     data = await resp.json()
-                    kasm_id = data.get('kasm_id')
-                    share_id = data.get('share_id')
-                    kasm_live_url = data.get('kasm_url')
 
+                    if resp.status != 200 or data.get('error_message'):
+                        err = data.get('error_message') or f"Kasm API error (HTTP {resp.status})"
+                        log.error(f"Failed to start Kasm container: {err}")
+                        return {
+                            'status': False,
+                            'error': err,
+                            'provider': 'kasm'
+                        }
+
+                    kasm_id = data.get('kasm_id') or (data.get('kasm') or {}).get('kasm_id')
+                    share_id = data.get('share_id') or (data.get('kasm') or {}).get('share_id')
+                    kasm_live_url = data.get('kasm_url') or (data.get('kasm') or {}).get('kasm_url')
+                    session_token = (
+                        data.get('session_token')
+                        or data.get('operational_token')
+                        or (data.get('kasm') or {}).get('session_token')
+                        or (data.get('kasm') or {}).get('operational_token')
+                    )
+
+                    base_url = kasm_url.rstrip('/')
                     if share_id:
-                        kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{share_id}"
+                        kasm_live_url = f"{base_url}/#/cast/{share_id}"
                     elif kasm_live_url:
-                        # Use direct returned operational URL
-                        pass
+                        if not (kasm_live_url.startswith('http://') or kasm_live_url.startswith('https://')):
+                            kasm_live_url = f"{base_url}{kasm_live_url if kasm_live_url.startswith('/') else '/' + kasm_live_url}"
+                        if session_token and 'token=' not in kasm_live_url:
+                            delimiter = '&' if '?' in kasm_live_url else '?'
+                            kasm_live_url = f"{kasm_live_url}{delimiter}token={quote(session_token)}"
                     elif kasm_id:
-                        operational_token = data.get('operational_token') or (data.get('kasm') or {}).get('operational_token')
-                        if operational_token:
-                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/session/{kasm_id}?token={quote(operational_token)}"
-                        else:
-                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/session/{kasm_id}"
+                        token_param = f"?token={quote(session_token)}" if session_token else ""
+                        kasm_live_url = f"{base_url}/#/session/{kasm_id}{token_param}"
                     else:
-                        kasm_live_url = kasm_url
+                        kasm_live_url = base_url
 
                     ACTIVE_KASM_SESSIONS[session_key] = {
                         'kasm_id': kasm_id,

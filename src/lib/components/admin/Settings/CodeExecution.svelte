@@ -18,6 +18,15 @@
 	let config: any = null;
 
 	let engines = ['pyodide', 'jupyter', 'e2b', 'self_hosted'];
+	const availableKasmBrowsers = [
+		{ id: 'chrome', name: 'Google Chrome', image: 'kasmweb/chrome:1.16.0' },
+		{ id: 'vivaldi', name: 'Vivaldi Browser', image: 'kasmweb/vivaldi:1.16.0' },
+		{ id: 'firefox', name: 'Mozilla Firefox', image: 'kasmweb/firefox:1.16.0' },
+		{ id: 'chromium', name: 'Chromium', image: 'kasmweb/chromium:1.16.0' },
+		{ id: 'brave', name: 'Brave Browser', image: 'kasmweb/brave:1.16.0' },
+		{ id: 'tor', name: 'Tor Browser', image: 'kasmweb/tor-browser:1.16.0' },
+		{ id: 'edge', name: 'Microsoft Edge', image: 'kasmweb/edge:1.16.0' }
+	];
 	const inputClass =
 		'w-full h-7 rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 text-xs text-gray-700 outline-hidden transition-colors placeholder:text-gray-300 focus:border-blue-400 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:placeholder:text-gray-700 dark:focus:border-blue-500';
 	const textareaClass =
@@ -44,6 +53,9 @@
 
 		if (res) {
 			config = res;
+			if (!Array.isArray(config.KASM_ENABLED_BROWSERS) || config.KASM_ENABLED_BROWSERS.length === 0) {
+				config.KASM_ENABLED_BROWSERS = ['chrome', 'vivaldi', 'firefox'];
+			}
 		}
 	});
 </script>
@@ -721,6 +733,44 @@
 								autocomplete="off"
 							/>
 						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('Enabled Browsers in Chat')}
+							description={$i18n.t(
+								'Select which browser images are selectable by users in the chat interface.'
+							)}
+						>
+							<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+								{#each availableKasmBrowsers as browser}
+									<label
+										class="flex items-center gap-2 p-2 rounded-lg border border-gray-100/50 bg-gray-50/40 dark:border-white/[0.04] dark:bg-white/[0.03] cursor-pointer hover:bg-gray-100/50 dark:hover:bg-white/[0.06] transition"
+									>
+										<input
+											type="checkbox"
+											class="rounded text-blue-500 focus:ring-blue-400"
+											checked={config.KASM_ENABLED_BROWSERS?.includes(browser.id)}
+											on:change={(e) => {
+												const checked = e.currentTarget.checked;
+												if (checked) {
+													if (!config.KASM_ENABLED_BROWSERS) config.KASM_ENABLED_BROWSERS = [];
+													if (!config.KASM_ENABLED_BROWSERS.includes(browser.id)) {
+														config.KASM_ENABLED_BROWSERS = [...config.KASM_ENABLED_BROWSERS, browser.id];
+													}
+												} else {
+													config.KASM_ENABLED_BROWSERS = (config.KASM_ENABLED_BROWSERS || []).filter(
+														(id) => id !== browser.id
+													);
+												}
+											}}
+										/>
+										<div class="text-xs truncate">
+											<div class="font-medium text-gray-800 dark:text-gray-200">{browser.name}</div>
+											<div class="text-[0.6875rem] text-gray-400 font-mono truncate">{browser.image}</div>
+										</div>
+									</label>
+								{/each}
+							</div>
+						</AdminSettingField>
 					{:else if config.BROWSER_SANDBOX_PROVIDER === 'vnc'}
 						<AdminSettingField
 							label={$i18n.t('Live Screen / Web VNC Stream URL')}
@@ -781,44 +831,46 @@
 						</AdminSettingField>
 					{/if}
 
-					<div class="px-1 text-sm text-gray-500 my-3 space-y-2">
-						<p>
+					<div
+						class="px-3 py-2.5 rounded-xl border border-gray-100/50 bg-gray-50/40 dark:border-white/[0.04] dark:bg-white/[0.02] text-xs text-gray-600 dark:text-gray-400 my-3 flex items-center justify-between gap-3"
+					>
+						<div>
+							<span class="font-medium text-gray-700 dark:text-gray-300">
+								{$i18n.t('Browser Sandbox & Agent Live Preview:')}
+							</span>
 							{$i18n.t(
-								'Open WebUI supports live UI preview for agents (like Gemini Spark or ChatGPT Agent). This allows models to open a browser or operating system interface on the right side of the chat screen, where you can watch the agent work live and take over manually if needed.'
+								'Provides isolated browser environments for chat models with real-time screen streaming.'
 							)}
-						</p>
-
-						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">
-							{$i18n.t('Per-User & Per-Chat Zero-Idle Sandbox Isolation:')}
-						</p>
-						<p class="text-xs text-gray-600 dark:text-gray-400">
-							{$i18n.t(
-								'Every chat runs in an isolated context directory (/data/browser_sessions/${userId}_${chatId}). Browser and container instances automatically freeze / spin-down after 5 minutes of inactivity (consuming 0 CPU and 0 RAM) and instantly resume when returning to the conversation, preserving cookies, logins, and session data permanently.'
-							)}
-						</p>
-
-						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">
-							{$i18n.t('Setup Guide')}
-						</p>
-						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-							{#if config.BROWSER_SANDBOX_PROVIDER === 'browserless'}
-								{$i18n.t('Browserless provides a fast CDP interface for Chrome automation.')}
-								<a
-									href="https://github.com/browserless/browserless"
-									target="_blank"
-									class="text-blue-500 hover:underline">{$i18n.t('View Repository')}</a
-								>
-							{:else if config.BROWSER_SANDBOX_PROVIDER === 'kasm'}
-								{$i18n.t('Kasm Workspaces provides isolated, streaming browser environments.')}
+						</div>
+						<div class="shrink-0 flex items-center gap-3">
+							{#if config.BROWSER_SANDBOX_PROVIDER === 'kasm'}
 								<a
 									href="https://kasmweb.com/docs/latest/index.html"
 									target="_blank"
-									class="text-blue-500 hover:underline">{$i18n.t('View Documentation')}</a
+									rel="noreferrer"
+									class="text-blue-500 hover:underline font-medium"
 								>
-							{:else}
-								{$i18n.t('Connect to any custom VNC or CDP endpoint.')}
+									{$i18n.t('Kasm Docs')} ↗
+								</a>
+							{:else if config.BROWSER_SANDBOX_PROVIDER === 'browserless'}
+								<a
+									href="https://github.com/browserless/browserless"
+									target="_blank"
+									rel="noreferrer"
+									class="text-blue-500 hover:underline font-medium"
+								>
+									{$i18n.t('Browserless GitHub')} ↗
+								</a>
 							{/if}
-						</p>
+							<a
+								href="https://docs.openwebui.com"
+								target="_blank"
+								rel="noreferrer"
+								class="text-gray-500 hover:underline"
+							>
+								{$i18n.t('Open WebUI Docs')} ↗
+							</a>
+						</div>
 					</div>
 				{/if}
 			</AdminSettingSection>

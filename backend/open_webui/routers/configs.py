@@ -79,6 +79,7 @@ CODE_EXECUTION_CONFIG_KEYS = {
     'KASM_WORKSPACES_API_KEY': 'browser_sandbox.kasm.api_key',
     'KASM_WORKSPACES_API_SECRET': 'browser_sandbox.kasm.api_secret',
     'KASM_CDP_URL': 'browser_sandbox.kasm.cdp_url',
+    'KASM_ENABLED_BROWSERS': 'browser_sandbox.kasm.browsers',
 }
 MODELS_CONFIG_KEYS = {
     'DEFAULT_MODELS': 'ui.default_models',

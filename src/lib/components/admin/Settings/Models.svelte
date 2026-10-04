@@ -50,6 +50,7 @@
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 	import Check from '$lib/components/icons/Check.svelte';
 	import CheckCircle from '$lib/components/icons/CheckCircle.svelte';
+	import XCircle from '$lib/components/icons/XCircle.svelte';
 	import GarbageBin from '$lib/components/icons/GarbageBin.svelte';
 	import Minus from '$lib/components/icons/Minus.svelte';
 	import DocumentArrowUp from '$lib/components/icons/DocumentArrowUp.svelte';
@@ -932,7 +933,7 @@
 							</Tooltip>
 
 							<div slot="content">
-								<DropdownMenu className="w-[10.625rem] shadow-sm">
+								<DropdownMenu className="w-max min-w-[13.5rem] max-w-xs shadow-sm">
 									{#if $user?.role === 'admin'}
 										<button
 											class="flex h-[1.6875rem] w-full cursor-pointer select-none items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] disabled:pointer-events-none disabled:opacity-40 hover:text-gray-900 dark:hover:text-gray-100"
@@ -942,8 +943,8 @@
 												modelsImportInputElement?.click();
 											}}
 										>
-											<DocumentArrowUp className="size-3.5" />
-											<div class="flex items-center">
+											<DocumentArrowUp className="size-3.5 shrink-0" />
+											<div class="flex items-center whitespace-nowrap">
 												{$i18n.t('settings.admin.models.importModels.label')}
 											</div>
 										</button>
@@ -955,8 +956,8 @@
 												downloadModels(models ?? []);
 											}}
 										>
-											<Download className="size-3.5" />
-											<div class="flex items-center">
+											<Download className="size-3.5 shrink-0" />
+											<div class="flex items-center whitespace-nowrap">
 												{$i18n.t('settings.admin.models.exportModels.label')}
 											</div>
 										</button>
@@ -969,8 +970,8 @@
 											showManageModal = true;
 										}}
 									>
-										<Wrench className="size-3.5" />
-										<div class="flex items-center">
+										<Wrench className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.manageModels.label')}
 										</div>
 									</button>
@@ -982,8 +983,8 @@
 											showResetModal = true;
 										}}
 									>
-										<GarbageBin className="size-3.5" />
-										<div class="flex items-center">
+										<GarbageBin className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.resetModels.label')}
 										</div>
 									</button>
@@ -1010,7 +1011,7 @@
 											disableAllHandler();
 										}}
 									>
-										<EyeSlash className="size-3.5 shrink-0" />
+										<XCircle className="size-3.5 shrink-0" />
 										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.disableAllModels.label')}
 										</div>
@@ -1051,8 +1052,8 @@
 											showAllHandler();
 										}}
 									>
-										<Eye className="size-3.5" />
-										<div class="flex items-center">
+										<Eye className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.showAllModels.label')}
 										</div>
 									</button>
@@ -1064,8 +1065,8 @@
 											hideAllHandler();
 										}}
 									>
-										<EyeSlash className="size-3.5" />
-										<div class="flex items-center">
+										<EyeSlash className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.hideAllModels.label')}
 										</div>
 									</button>

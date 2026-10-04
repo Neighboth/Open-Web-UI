@@ -382,23 +382,23 @@
 
 	const saveActiveIntegrations = () => {
 		if (isRestoringIntegrations) return;
+		const activeIntegrations = {
+			selectedToolIds,
+			selectedSkillIds,
+			selectedFilterIds,
+			webSearchEnabled,
+			imageGenerationEnabled,
+			videoGenerationEnabled,
+			codeInterpreterEnabled,
+			browserEnabled
+		};
+		try {
+			if (typeof localStorage !== 'undefined') {
+				localStorage.setItem('activeIntegrations', JSON.stringify(activeIntegrations));
+			}
+		} catch (e) {}
 		if (saveIntegrationsTimer) clearTimeout(saveIntegrationsTimer);
 		saveIntegrationsTimer = setTimeout(async () => {
-			const activeIntegrations = {
-				selectedToolIds,
-				selectedSkillIds,
-				selectedFilterIds,
-				webSearchEnabled,
-				imageGenerationEnabled,
-				videoGenerationEnabled,
-				codeInterpreterEnabled,
-				browserEnabled
-			};
-			try {
-				if (typeof localStorage !== 'undefined') {
-					localStorage.setItem('activeIntegrations', JSON.stringify(activeIntegrations));
-				}
-			} catch (e) {}
 			settings.set({
 				...$settings,
 				activeIntegrations
@@ -416,10 +416,9 @@
 
 	const restoreActiveIntegrations = () => {
 		isRestoringIntegrations = true;
-		const ai =
-			$settings?.activeIntegrations ??
-			$settings?.ui?.activeIntegrations ??
-			getSavedActiveIntegrations();
+		const localAi = getSavedActiveIntegrations();
+		const serverAi = $settings?.activeIntegrations ?? $settings?.ui?.activeIntegrations;
+		const ai = localAi ?? serverAi;
 		if (ai) {
 			selectedToolIds = Array.isArray(ai.selectedToolIds) ? [...ai.selectedToolIds] : [];
 			selectedSkillIds = Array.isArray(ai.selectedSkillIds) ? [...ai.selectedSkillIds] : [];

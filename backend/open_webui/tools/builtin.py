@@ -4731,7 +4731,6 @@ async def generate_video(
         from open_webui.models.users import UserModel
         from open_webui.routers.videos import video_generations
         from open_webui.models.chats import Chats
-        from open_webui.utils.chat import is_saved_chat_id
         
         user = UserModel(**__user__) if __user__ else None
 
@@ -4809,6 +4808,20 @@ async def request_browser_session(
             form_data=StartSessionForm(chat_id=__chat_id__ or 'tool_session'),
             user=user
         )
+
+        if not res.get('status'):
+            err = res.get('error') or 'Could not start browser session.'
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        'type': 'status',
+                        'data': {
+                            'description': f"Browser Session Error: {err}",
+                            'done': True,
+                        },
+                    }
+                )
+            return JSONCodec.dumps({'error': err}, ensure_ascii=False)
 
         live_url = res.get('live_url')
         cdp_url = res.get('cdp_url')
