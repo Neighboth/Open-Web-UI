@@ -2523,6 +2523,7 @@
 	"settings.admin.images.serverConnectionVerified.label": "Server connection verified",
 	"settings.admin.images.steps.label": "Steps",
 	"settings.admin.images.title": "Images",
+	"settings.admin.video.title": "Video",
 	"settings.admin.images.verifyConnection.label": "verify connection",
 	"settings.admin.integrations.addConnection.label": "Add Connection",
 	"settings.admin.integrations.externalKnowledge.addConnection.label": "Add Connection",

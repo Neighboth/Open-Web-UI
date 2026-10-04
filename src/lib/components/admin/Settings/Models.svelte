@@ -251,28 +251,46 @@
 	};
 
 	const publicAllHandler = async () => {
-		const modelsToMakePublic = filteredModels.filter(
-			(m) =>
-				!m.access_grants?.some(
-					(grant) =>
-						grant.principal_type === 'user' &&
-						grant.principal_id === '*' &&
-						grant.permission === 'read'
-				)
-		);
-		if (modelsToMakePublic.length === 0) return;
+		const targetModels = (filteredModels ?? []).filter((m) => !isPublicModel(m));
+		if (targetModels.length === 0) {
+			toast.info($i18n.t('All models are already public'));
+			return;
+		}
+
+		const publicGrant = [{ principal_type: 'user', principal_id: '*', permission: 'read' }];
+
 		await Promise.all(
-			modelsToMakePublic.map((model) => {
-				const filtered = (model.access_grants ?? []).filter(
-					(grant) =>
+			targetModels.map(async (model) => {
+				const existing = (model?.access_grants ?? []).filter(
+					(g) =>
 						!(
-							(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
-							grant.principal_id === '*'
+							(g.principal_type === 'user' || g.principal_type === 'anyone') &&
+							g.principal_id === '*'
 						)
 				);
-				filtered.push({ principal_type: 'user', principal_id: '*', permission: 'read' });
-				return upsertModelHandler(model, { access_grants: filtered }, false);
+				const nextGrants = [...existing, ...publicGrant];
+				const res = await updateModelAccessGrants(
+					localStorage.token,
+					model.id,
+					model.name || model.id,
+					nextGrants
+				).catch((err) => {
+					console.error('Failed to update access for', model.id, err);
+					return null;
+				});
+
+				if (res) {
+					model.access_grants = res.access_grants ?? nextGrants;
+				}
 			})
+		);
+
+		models = models;
+		_models.set(
+			await getModels(
+				localStorage.token,
+				$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+			)
 		);
 		toast.success($i18n.t('All models are now public'));
 		await tick();
@@ -280,25 +298,43 @@
 	};
 
 	const privateAllHandler = async () => {
-		const modelsToMakePrivate = filteredModels.filter((m) =>
-			m.access_grants?.some(
-				(grant) =>
-					(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
-					grant.principal_id === '*'
-			)
-		);
-		if (modelsToMakePrivate.length === 0) return;
+		const targetModels = (filteredModels ?? []).filter((m) => isPublicModel(m));
+		if (targetModels.length === 0) {
+			toast.info($i18n.t('All models are already private'));
+			return;
+		}
+
 		await Promise.all(
-			modelsToMakePrivate.map((model) => {
-				const filtered = (model.access_grants ?? []).filter(
-					(grant) =>
+			targetModels.map(async (model) => {
+				const nextGrants = (model?.access_grants ?? []).filter(
+					(g) =>
 						!(
-							(grant.principal_type === 'user' || grant.principal_type === 'anyone') &&
-							grant.principal_id === '*'
+							(g.principal_type === 'user' || g.principal_type === 'anyone') &&
+							g.principal_id === '*'
 						)
 				);
-				return upsertModelHandler(model, { access_grants: filtered }, false);
+				const res = await updateModelAccessGrants(
+					localStorage.token,
+					model.id,
+					model.name || model.id,
+					nextGrants
+				).catch((err) => {
+					console.error('Failed to update access for', model.id, err);
+					return null;
+				});
+
+				if (res) {
+					model.access_grants = res.access_grants ?? nextGrants;
+				}
 			})
+		);
+
+		models = models;
+		_models.set(
+			await getModels(
+				localStorage.token,
+				$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+			)
 		);
 		toast.success($i18n.t('All models are now private'));
 		await tick();
