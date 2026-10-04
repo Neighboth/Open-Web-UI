@@ -2,7 +2,7 @@
 	import { agentLiveUrl, chatId } from '$lib/stores';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import GlobeAlt from '$lib/components/icons/GlobeAlt.svelte';
-	import { getContext } from 'svelte';
+	import { getContext, onDestroy } from 'svelte';
 	import { stopBrowserSession } from '$lib/apis/browser';
 
 	const i18n = getContext('i18n');
@@ -17,6 +17,16 @@
 			}
 		}
 	};
+
+	onDestroy(() => {
+		if ($agentLiveUrl && $chatId) {
+			try {
+				stopBrowserSession(localStorage.token, $chatId);
+			} catch (e) {
+				console.debug('Failed to stop browser session on destroy:', e);
+			}
+		}
+	});
 </script>
 
 {#if $agentLiveUrl}

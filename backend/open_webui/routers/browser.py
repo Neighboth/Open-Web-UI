@@ -79,7 +79,9 @@ class StopSessionForm(BaseModel):
 
 
 def get_session_dir(user_id: str, chat_id: str) -> Path:
-    base = Path(DATA_DIR) / 'browser_sessions' / f"{user_id}_{chat_id}"
+    safe_user = ''.join(c for c in user_id if c.isalnum() or c in '-_') or 'user'
+    safe_chat = ''.join(c for c in chat_id if c.isalnum() or c in '-_') or 'session'
+    base = Path(DATA_DIR) / 'browser_sessions' / f"{safe_user}_{safe_chat}"
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -105,7 +107,10 @@ def restore_profile_archive(session_dir: Path):
         try:
             profile_dir.mkdir(parents=True, exist_ok=True)
             with tarfile.open(archive_path, 'r:gz') as tar:
-                tar.extractall(path=profile_dir)
+                if hasattr(tarfile, 'data_filter'):
+                    tar.extractall(path=profile_dir, filter='data')
+                else:
+                    tar.extractall(path=profile_dir)
             log.info(f"Restored profile archive from {archive_path}")
         except Exception as e:
             log.warning(f"Failed to unpack profile archive: {e}")
@@ -144,11 +149,11 @@ async def cleanup_chat_browser_session(user_id: str, chat_id: str):
         kasm_url = await Config.get('browser_sandbox.kasm.url', '')
         api_key = await Config.get('browser_sandbox.kasm.api_key', '')
         api_secret = await Config.get('browser_sandbox.kasm.api_secret', '')
-        await destroy_kasm_container(active['kasm_id'], user_id, kasm_url, api_key, api_secret)
+        await destroy_kasm_container(active['kasm_id'], active.get('kasm_user_id', user_id), kasm_url, api_key, api_secret)
 
     # Wipe session files on disk
     try:
-        session_dir = Path(DATA_DIR) / 'browser_sessions' / session_key
+        session_dir = get_session_dir(user_id, chat_id)
         if session_dir.exists() and session_dir.is_dir():
             shutil.rmtree(session_dir, ignore_errors=True)
             log.info(f"Wiped browser session directory on chat deletion: {session_dir}")
@@ -203,10 +208,11 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     # Case 1: Kasm Workspaces API Mode (On-demand container creation)
     if provider == 'kasm' and kasm_url and kasm_api_key and kasm_api_secret:
         api_endpoint = f"{kasm_url.rstrip('/')}/api/public/request_kasm"
+        kasm_user_id = kasm_user or user.id
         payload = {
             'api_key': kasm_api_key,
             'api_key_secret': kasm_api_secret,
-            'user_id': user.id,
+            'user_id': kasm_user_id,
             'image_id': image_identifier,
             'enable_sharing': True,
         }
@@ -230,6 +236,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         'kasm_id': kasm_id,
                         'live_url': kasm_live_url,
                         'user_id': user.id,
+                        'kasm_user_id': kasm_user_id,
                         'chat_id': chat_id,
                         'browser_id': browser_id,
                         'provider': 'kasm_api',
@@ -310,6 +317,6 @@ async def stop_browser_session(request: Request, form_data: StopSessionForm, use
         kasm_url = await Config.get('browser_sandbox.kasm.url', '')
         api_key = await Config.get('browser_sandbox.kasm.api_key', '')
         api_secret = await Config.get('browser_sandbox.kasm.api_secret', '')
-        await destroy_kasm_container(active['kasm_id'], user.id, kasm_url, api_key, api_secret)
+        await destroy_kasm_container(active['kasm_id'], active.get('kasm_user_id', user.id), kasm_url, api_key, api_secret)
 
     return {'status': True, 'message': 'Browser session stopped and resources freed.'}

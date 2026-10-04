@@ -645,9 +645,21 @@
 
 	const toggleModelPrivacyHandler = async (model) => {
 		const nextAccessGrants = isPublicModel(model)
-			? []
+			? (model?.access_grants ?? []).filter(
+					(g) =>
+						!(
+							(g.principal_type === 'user' || g.principal_type === 'anyone') &&
+							g.principal_id === '*'
+						)
+				)
 			: [
-					...(model?.access_grants ?? []),
+					...(model?.access_grants ?? []).filter(
+						(g) =>
+							!(
+								(g.principal_type === 'user' || g.principal_type === 'anyone') &&
+								g.principal_id === '*'
+							)
+					),
 					{
 						principal_type: 'user',
 						principal_id: '*',
