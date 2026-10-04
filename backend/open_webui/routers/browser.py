@@ -236,18 +236,28 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     ) as uresp:
                         if uresp.status == 200:
                             udata = await uresp.json()
-                            users_list = udata.get('users', [])
+                            target_uname = (kasm_user or '').strip().lower()
                             matched_user = next(
                                 (
                                     u for u in users_list
-                                    if (kasm_user and u.get('username') == kasm_user)
-                                    or u.get('username') == 'user@kasm.local'
+                                    if target_uname and (
+                                        (u.get('username') or '').lower() == target_uname
+                                        or target_uname in (u.get('username') or '').lower()
+                                    )
                                 ),
-                                users_list[0] if users_list else None,
+                                None,
                             )
+                            if not matched_user:
+                                matched_user = next(
+                                    (
+                                        u for u in users_list
+                                        if (u.get('username') or '').lower() in ['salih', 'user@kasm.local']
+                                    ),
+                                    users_list[0] if users_list else None,
+                                )
                             if matched_user and matched_user.get('user_id'):
                                 kasm_user_id = matched_user['user_id']
-                                log.info(f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}'")
+                                log.info(f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}' ({matched_user.get('username')})")
             except Exception as e:
                 log.warning(f"Failed to auto-resolve Kasm user: {e}")
 
