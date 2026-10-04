@@ -12,6 +12,7 @@
 	import { get, type Unsubscriber, type Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
 	import { WEBUI_BASE_URL } from '$lib/constants';
+	import { startBrowserSession } from '$lib/apis/browser';
 	import equal from 'fast-deep-equal';
 
 	import {
@@ -3490,12 +3491,22 @@
 					($user?.role === 'admin' || $user?.permissions?.features?.image_generation)
 						? imageGenerationEnabled
 						: false,
+				video_generation:
+					Boolean($config?.features?.enable_video_generation ?? true) &&
+					($user?.role === 'admin' || ($user?.permissions?.features?.video_generation ?? true))
+						? videoGenerationEnabled
+						: false,
 				code_interpreter:
 					$config?.features?.enable_code_interpreter &&
 					($user?.role === 'admin' || $user?.permissions?.features?.code_interpreter)
 						? codeInterpreterEnabled
 						: false,
-				web_search: webSearchActive
+				web_search: webSearchActive,
+				browser: browserEnabled,
+				browser_id:
+					(typeof localStorage !== 'undefined'
+						? localStorage.getItem('selected_browser')
+						: null) || 'chrome'
 			};
 
 		if ($settings?.memory ?? $config?.features?.enable_memories ?? false) {
@@ -3662,6 +3673,20 @@
 		const terminalEnabled = model.info?.meta?.capabilities?.terminal ?? true;
 		const useChatVariablesFallback =
 			!_chatId || $temporaryChatEnabled || isTemporaryChatId(_chatId);
+
+		if (browserEnabled && _chatId) {
+			const browserId =
+				(typeof localStorage !== 'undefined'
+					? localStorage.getItem('selected_browser')
+					: null) || 'chrome';
+			startBrowserSession(localStorage.token, _chatId, browserId)
+				.then((res) => {
+					if (res && res.live_url && !$agentLiveUrl) {
+						agentLiveUrl.set(res.live_url);
+					}
+				})
+				.catch((err) => console.debug('Browser start error:', err));
+		}
 
 		const res = await generateOpenAIChatCompletion(
 			localStorage.token,

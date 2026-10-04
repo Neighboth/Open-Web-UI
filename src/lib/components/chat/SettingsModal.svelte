@@ -312,7 +312,7 @@
 		{
 			id: 'admin:video',
 			titleKey: 'settings.admin.video.title',
-			title: $i18n.t('settings.admin.video.title') || 'Video',
+			title: $i18n.t('Video'),
 			searchPrefixes: ['settings.admin.video.']
 		},
 		{

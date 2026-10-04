@@ -114,7 +114,9 @@
 
 	const isPublicModel = (model) => {
 		return (model?.access_grants ?? []).some(
-			(g) => g.principal_type === 'user' && g.principal_id === '*' && g.permission === 'read'
+			(g) =>
+				(g.principal_type === 'user' || g.principal_type === 'anyone') &&
+				g.principal_id === '*'
 		);
 	};
 
@@ -252,7 +254,7 @@
 	};
 
 	const publicAllHandler = async () => {
-		const targetModels = (filteredModels ?? []).filter((m) => !isPublicModel(m));
+		const targetModels = (models ?? []).filter((m) => !isPublicModel(m));
 		if (targetModels.length === 0) {
 			toast.info($i18n.t('All models are already public'));
 			return;
@@ -266,7 +268,7 @@
 
 		if (res) {
 			const publicGrant = [{ principal_type: 'user', principal_id: '*', permission: 'read' }];
-			targetModels.forEach((m) => {
+			models.forEach((m) => {
 				const existing = (m.access_grants ?? []).filter(
 					(g) =>
 						!(
@@ -276,7 +278,7 @@
 				);
 				m.access_grants = [...existing, ...publicGrant];
 			});
-			models = models;
+			models = [...models];
 			_models.set(
 				await getModels(
 					localStorage.token,
@@ -290,7 +292,7 @@
 	};
 
 	const privateAllHandler = async () => {
-		const targetModels = (filteredModels ?? []).filter((m) => isPublicModel(m));
+		const targetModels = (models ?? []).filter((m) => isPublicModel(m));
 		if (targetModels.length === 0) {
 			toast.info($i18n.t('All models are already private'));
 			return;
@@ -303,7 +305,7 @@
 		});
 
 		if (res) {
-			targetModels.forEach((m) => {
+			models.forEach((m) => {
 				m.access_grants = (m.access_grants ?? []).filter(
 					(g) =>
 						!(
@@ -312,7 +314,7 @@
 						)
 				);
 			});
-			models = models;
+			models = [...models];
 			_models.set(
 				await getModels(
 					localStorage.token,
@@ -1237,8 +1239,8 @@
 
 										<Tooltip
 											content={isPublicModel(model)
-												? $i18n.t('Make Private')
-												: $i18n.t('Make Public')}
+												? $i18n.t('Public (Click to make Private)')
+												: $i18n.t('Private (Click to make Public)')}
 										>
 											<button
 												class="self-center w-fit text-sm p-1.5 rounded-xl text-gray-500 hover:bg-black/5 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-white"
@@ -1251,9 +1253,9 @@
 												}}
 											>
 												{#if isPublicModel(model)}
-													<LockClosed className="size-3.5" />
+													<GlobeAlt className="size-3.5 text-blue-500" />
 												{:else}
-													<GlobeAlt className="size-3.5" />
+													<LockClosed className="size-3.5 text-gray-400" />
 												{/if}
 											</button>
 										</Tooltip>

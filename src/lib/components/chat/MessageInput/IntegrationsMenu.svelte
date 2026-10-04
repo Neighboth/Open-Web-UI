@@ -45,6 +45,7 @@
 	import LinkSlash from '$lib/components/icons/LinkSlash.svelte';
 	import Cog6 from '$lib/components/icons/Cog6.svelte';
 	import UserToolAuthModal from './UserToolAuthModal.svelte';
+	import BrowserSelectModal from './BrowserSelectModal.svelte';
 
 	const i18n = getContext('i18n') as any;
 
@@ -95,6 +96,13 @@
 
 	let showUserToolAuthModal = false;
 	let authSelectedTool: any = null;
+
+	let showBrowserSelectModal = false;
+	let selectedBrowser = 'chrome';
+
+	$: if (show && typeof localStorage !== 'undefined') {
+		selectedBrowser = localStorage.getItem('selected_browser') || 'chrome';
+	}
 
 	let tools: Record<string, IntegrationItem> | null = null;
 	let skills: Record<string, IntegrationItem> | null = null;
@@ -733,9 +741,23 @@
 						</Tooltip>
 					{/if}
 
-					<Tooltip content={$i18n.t('Web Browser (Live Agent & Sandbox)')} placement="top-start">
+					<div
+						class="flex w-full items-center justify-between gap-1 h-[1.6875rem] px-1 rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+					>
+						<Tooltip content={$i18n.t('Select Browser')} placement="top">
+							<button
+								type="button"
+								class="p-1 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition shrink-0"
+								on:click|stopPropagation={() => {
+									showBrowserSelectModal = true;
+								}}
+							>
+								<Cog6 className="size-3.5" />
+							</button>
+						</Tooltip>
+
 						<button
-							class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+							class="flex flex-1 justify-between gap-2 items-center text-[0.8125rem] font-normal cursor-pointer rounded-lg px-1 truncate"
 							aria-pressed={browserEnabled}
 							on:click={() => {
 								browserEnabled = !browserEnabled;
@@ -747,15 +769,20 @@
 										<GlobeAlt className="size-3.5 text-blue-500" strokeWidth="1.75" />
 									</div>
 
-									<div class=" truncate">{$i18n.t('Web Browser')}</div>
+									<div class="truncate">
+										{$i18n.t('Web Browser')}
+										{#if selectedBrowser}
+											<span class="text-[0.6875rem] text-gray-400 dark:text-gray-500 font-normal ml-1 capitalize">({selectedBrowser})</span>
+										{/if}
+									</div>
 								</div>
 							</div>
 
-							<div class=" shrink-0" inert>
+							<div class="shrink-0" inert>
 								<Switch state={browserEnabled} />
 							</div>
 						</button>
-					</Tooltip>
+					</div>
 				</div>
 			{/if}
 		</DropdownMenu>
@@ -769,5 +796,13 @@
 		if (authSelectedTool?.id && !selectedToolIds.includes(authSelectedTool.id)) {
 			selectedToolIds = [...selectedToolIds, authSelectedTool.id];
 		}
+	}}
+/>
+
+<BrowserSelectModal
+	bind:show={showBrowserSelectModal}
+	bind:selectedBrowser
+	onSelect={(id) => {
+		selectedBrowser = id;
 	}}
 />

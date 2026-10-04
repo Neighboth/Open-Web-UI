@@ -1605,7 +1605,14 @@ async def delete_chat_by_id(
     else:
         result = await Chats.delete_chat_by_id_and_user_id(id, user.id, db=db)
 
-    # Clean up browser/sandbox session directories to prevent lingering storage
+    # Clean up browser/sandbox session directories and active Kasm containers to prevent lingering storage
+    try:
+        from open_webui.routers.browser import cleanup_chat_browser_session
+        owner_id = chat.user_id if chat else user.id
+        await cleanup_chat_browser_session(owner_id, id)
+    except Exception as kasm_err:
+        log.debug('Error cleaning up Kasm browser container on chat deletion: %s', kasm_err)
+
     try:
         import shutil
         from pathlib import Path

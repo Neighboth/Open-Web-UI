@@ -855,8 +855,8 @@
 
 	let showVideoGenerationButton = false;
 	$: showVideoGenerationButton =
-		$config?.features?.enable_video_generation &&
-		($_user.role === 'admin' || $_user?.permissions?.features?.video_generation);
+		Boolean($config?.features?.enable_video_generation ?? true) &&
+		($_user.role === 'admin' || ($_user?.permissions?.features?.video_generation ?? true));
 
 	let showCodeInterpreterButton = false;
 	$: showCodeInterpreterButton =

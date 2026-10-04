@@ -672,6 +672,34 @@
 							</AdminSettingField>
 						</div>
 
+						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+							<AdminSettingField
+								label={$i18n.t('Kasm API Key (On-Demand Mode)')}
+								description={$i18n.t('Optional API Key for auto-spawning containers via /request_kasm')}
+							>
+								<SensitiveInput
+									variant="settings"
+									type="text"
+									placeholder={$i18n.t('Enter Kasm API Key')}
+									bind:value={config.KASM_WORKSPACES_API_KEY}
+									autocomplete="off"
+								/>
+							</AdminSettingField>
+
+							<AdminSettingField
+								label={$i18n.t('Kasm API Secret (On-Demand Mode)')}
+								description={$i18n.t('API Secret to authorize container requests & destruction')}
+							>
+								<SensitiveInput
+									variant="settings"
+									type="text"
+									placeholder={$i18n.t('Enter Kasm API Secret')}
+									bind:value={config.KASM_WORKSPACES_API_SECRET}
+									autocomplete="off"
+								/>
+							</AdminSettingField>
+						</div>
+
 						<AdminSettingField
 							label={$i18n.t('Live Screen / Web Preview URL')}
 							description={$i18n.t('Live streaming URL rendered in chat side-panel (auto-login supported).')}

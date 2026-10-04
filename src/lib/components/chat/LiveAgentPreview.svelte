@@ -1,10 +1,22 @@
 <script>
-	import { agentLiveUrl } from '$lib/stores';
+	import { agentLiveUrl, chatId } from '$lib/stores';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import GlobeAlt from '$lib/components/icons/GlobeAlt.svelte';
 	import { getContext } from 'svelte';
+	import { stopBrowserSession } from '$lib/apis/browser';
 
 	const i18n = getContext('i18n');
+
+	const handleClose = async () => {
+		agentLiveUrl.set(null);
+		if ($chatId) {
+			try {
+				await stopBrowserSession(localStorage.token, $chatId);
+			} catch (e) {
+				console.debug('Failed to stop browser session:', e);
+			}
+		}
+	};
 </script>
 
 {#if $agentLiveUrl}
@@ -40,7 +52,7 @@
 					>
 				</a>
 				<button
-					on:click={() => agentLiveUrl.set(null)}
+					on:click={handleClose}
 					class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500"
 				>
 					<XMark className="size-4" />
