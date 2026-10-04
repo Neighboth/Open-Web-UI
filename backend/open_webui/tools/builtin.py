@@ -4712,7 +4712,7 @@ async def delete_calendar_event(
 
 async def generate_video(
     prompt: str,
-    mode: Optional[str] = 'std',
+    mode: Optional[str] = None,
     __request__: Request = None,
     __user__: dict = None,
     __event_emitter__: callable = None,
@@ -4723,7 +4723,7 @@ async def generate_video(
     Generate a video based on a text prompt.
 
     :param prompt: A detailed description of the video to generate
-    :param mode: Video generation mode ('std' for standard or 'pro' for professional quality), default is 'std'
+    :param mode: Optional video quality mode ('std' or 'pro') if supported by the model. Do not provide if unsure or if the model does not require it.
     :return: Confirmation that the video was generated, or an error message
     """
     if __request__ is None:
@@ -4736,9 +4736,13 @@ async def generate_video(
         
         user = UserModel(**__user__) if __user__ else None
 
+        v_form = {"prompt": prompt}
+        if mode:
+            v_form["mode"] = mode
+
         videos = await video_generations(
             request=__request__,
-            form_data={"prompt": prompt, "mode": mode or "std"},
+            form_data=v_form,
             user=user,
         )
 
@@ -4786,15 +4790,18 @@ async def generate_video(
 
 async def request_browser_session(
     action: str = 'start',
+    browser_id: Optional[str] = None,
     __request__: Request = None,
     __user__: dict = None,
     __event_emitter__: callable = None,
     __chat_id__: str = None,
+    __features__: dict = None,
 ) -> str:
     """
     Request a secure browser sandbox session. This tool will start a remote browser and return the CDP (Chrome DevTools Protocol) URL for remote control, as well as open a live preview window for the user.
 
     :param action: The action to perform, e.g., 'start'
+    :param browser_id: The browser to launch (e.g. 'chrome', 'firefox', 'vivaldi'). If omitted, defaults to the user's selected browser.
     :return: JSON containing the CDP URL to connect to the browser.
     """
     if __request__ is None:
@@ -4805,9 +4812,11 @@ async def request_browser_session(
         from open_webui.routers.browser import start_browser_session, StartSessionForm
         user = UserModel(**__user__) if __user__ else None
 
+        chosen_browser = browser_id or (__features__ or {}).get('browser_id') or 'chrome'
+
         res = await start_browser_session(
             request=__request__,
-            form_data=StartSessionForm(chat_id=__chat_id__ or 'tool_session'),
+            form_data=StartSessionForm(chat_id=__chat_id__ or 'tool_session', browser_id=chosen_browser),
             user=user
         )
 

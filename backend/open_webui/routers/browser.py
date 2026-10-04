@@ -179,15 +179,24 @@ async def cleanup_chat_browser_session(user_id: str, chat_id: str):
 async def get_available_browsers(user=Depends(get_verified_user)):
     """Returns the list of available browsers configured by admin or system defaults."""
     custom_browsers = await Config.get('browser_sandbox.kasm.browsers', None)
-    if custom_browsers and isinstance(custom_browsers, list) and len(custom_browsers) > 0:
+    if custom_browsers is None:
+        custom_browsers = ['chrome', 'vivaldi', 'firefox']
+    elif isinstance(custom_browsers, str):
+        try:
+            custom_browsers = json.loads(custom_browsers)
+        except Exception:
+            custom_browsers = [b.strip() for b in custom_browsers.split(',') if b.strip()]
+
+    if isinstance(custom_browsers, list) and len(custom_browsers) > 0:
         if isinstance(custom_browsers[0], str):
             # List of enabled browser IDs
-            filtered = [b for b in DEFAULT_BROWSERS if b['id'] in custom_browsers]
+            enabled_ids = set(custom_browsers)
+            filtered = [b for b in DEFAULT_BROWSERS if b['id'] in enabled_ids]
             if filtered:
                 return filtered
         elif isinstance(custom_browsers[0], dict):
             return custom_browsers
-    return DEFAULT_BROWSERS
+    return [b for b in DEFAULT_BROWSERS if b['id'] in ['chrome', 'vivaldi', 'firefox']]
 
 
 @router.post('/session/start')
@@ -197,21 +206,6 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     browser_id = form_data.browser_id or 'chrome'
     session_key = f"{user.id}_{chat_id}"
 
-    # Return already active session if running
-    if session_key in ACTIVE_KASM_SESSIONS:
-        active = ACTIVE_KASM_SESSIONS[session_key]
-        return {
-            'status': True,
-            'live_url': active.get('live_url'),
-            'kasm_id': active.get('kasm_id'),
-            'provider': active.get('provider', 'kasm'),
-            'browser_id': active.get('browser_id', browser_id),
-        }
-
-    session_dir = get_session_dir(user.id, chat_id)
-    # Restore any existing profile archive (cookies, sessions, login state)
-    restore_profile_archive(session_dir)
-
     provider = await Config.get('browser_sandbox.provider', 'browserless')
     kasm_url = await Config.get('browser_sandbox.kasm.url', '')
     kasm_api_key = await Config.get('browser_sandbox.kasm.api_key', '')
@@ -219,6 +213,33 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     kasm_user = await Config.get('browser_sandbox.kasm.user', 'kasm_user')
     kasm_password = await Config.get('browser_sandbox.kasm.password', '')
     kasm_cdp_url = await Config.get('browser_sandbox.kasm.cdp_url', '')
+
+    # Return already active session if running the same browser
+    if session_key in ACTIVE_KASM_SESSIONS:
+        active = ACTIVE_KASM_SESSIONS[session_key]
+        if active.get('browser_id') == browser_id:
+            return {
+                'status': True,
+                'live_url': active.get('live_url'),
+                'kasm_id': active.get('kasm_id'),
+                'provider': active.get('provider', 'kasm'),
+                'browser_id': active.get('browser_id', browser_id),
+            }
+        else:
+            # Different browser selected: destroy old container and spin up new one
+            old_kasm_id = active.get('kasm_id')
+            old_kasm_user = active.get('kasm_user_id', user.id)
+            del ACTIVE_KASM_SESSIONS[session_key]
+            if old_kasm_id and kasm_url and kasm_api_key and kasm_api_secret:
+                try:
+                    await destroy_kasm_container(old_kasm_id, old_kasm_user, kasm_url, kasm_api_key, kasm_api_secret)
+                    log.info(f"Destroyed previous Kasm container {old_kasm_id} when switching browser to {browser_id}")
+                except Exception as e:
+                    log.warning(f"Failed to destroy old container on browser switch: {e}")
+
+    session_dir = get_session_dir(user.id, chat_id)
+    # Restore any existing profile archive (cookies, sessions, login state)
+    restore_profile_archive(session_dir)
 
     # Map browser_id to docker image or image ID
     browsers = await get_available_browsers(user)
@@ -230,9 +251,10 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
         api_endpoint = f"{kasm_url.rstrip('/')}/api/public/request_kasm"
 
         # Auto-resolve Kasm user_id: if username or email provided, lookup real Kasm UUID
-        kasm_user_id = kasm_user or ''
+        kasm_user_id = (kasm_user or '').strip()
         clean_uid = kasm_user_id.replace('-', '')
-        if not (len(clean_uid) == 32 and all(c in '0123456789abcdefABCDEF' for c in clean_uid)):
+        is_already_uuid = (len(clean_uid) == 32 and all(c in '0123456789abcdefABCDEF' for c in clean_uid))
+        if not is_already_uuid:
             try:
                 users_url = f"{kasm_url.rstrip('/')}/api/public/get_users"
                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
@@ -243,7 +265,9 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     ) as uresp:
                         if uresp.status == 200:
                             udata = await uresp.json()
+                            users_list = udata.get('users', [])
                             target_uname = (kasm_user or '').strip().lower()
+                            # 1. Match configured username / email
                             matched_user = next(
                                 (
                                     u for u in users_list
@@ -254,14 +278,31 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                                 ),
                                 None,
                             )
+                            # 2. Match administrator account
                             if not matched_user:
                                 matched_user = next(
                                     (
                                         u for u in users_list
-                                        if (u.get('username') or '').lower() in ['salih', 'user@kasm.local']
+                                        if any(
+                                            isinstance(g, dict) and g.get('name') == 'Administrators'
+                                            for g in u.get('groups', [])
+                                        )
                                     ),
-                                    users_list[0] if users_list else None,
+                                    None,
                                 )
+                            # 3. Match any active non-anonymous user
+                            if not matched_user:
+                                matched_user = next(
+                                    (
+                                        u for u in users_list
+                                        if not u.get('anonymous') and not u.get('disabled')
+                                    ),
+                                    None,
+                                )
+                            # 4. Fallback to first user in list
+                            if not matched_user and users_list:
+                                matched_user = users_list[0]
+
                             if matched_user and matched_user.get('user_id'):
                                 kasm_user_id = matched_user['user_id']
                                 log.info(f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}' ({matched_user.get('username')})")
@@ -292,7 +333,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         )
                         if matched_img and matched_img.get('image_id'):
                             actual_image_id = matched_img['image_id']
-                            log.info(f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}'")
+                            log.info(f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}' ({matched_img.get('friendly_name')})")
         except Exception as e:
             log.warning(f"Failed to auto-resolve Kasm image: {e}")
 

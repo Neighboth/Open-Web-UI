@@ -73,6 +73,8 @@
 			src={$agentLiveUrl}
 			class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"
 			title="Agent Preview"
+			allow="fullscreen; clipboard-read; clipboard-write; autoplay; camera; microphone; display-capture"
+			referrerpolicy="no-referrer"
 		></iframe>
 	</div>
 {/if}

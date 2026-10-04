@@ -196,17 +196,22 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     url = f'{base_url}/video/generations'
 
     model = form_data.get('model') or config.get('VIDEO_GENERATION_MODEL') or 'kling-video'
-    raw_mode = str(form_data.get('mode') or config.get('VIDEO_GENERATION_MODE') or 'std').strip().lower()
-    if raw_mode in ['pro', 'professional', 'high']:
-        mode = 'pro'
-    else:
-        mode = 'std'
-
     payload = {
         'model': model,
         'prompt': form_data.get('prompt', ''),
-        'mode': mode,
     }
+
+    # Only include mode if explicitly requested and model is not Agnes (Agnes API rejects 'mode' param)
+    raw_mode = form_data.get('mode')
+    if raw_mode and 'agnes' not in str(model).lower():
+        raw_mode_str = str(raw_mode).strip().lower()
+        if raw_mode_str in ['pro', 'professional', 'high']:
+            payload['mode'] = 'pro'
+        elif raw_mode_str in ['std', 'standard']:
+            payload['mode'] = 'std'
+        else:
+            payload['mode'] = raw_mode
+
     if form_data.get('size') or config.get('VIDEO_SIZE'):
         payload['size'] = form_data.get('size') or config.get('VIDEO_SIZE')
     if form_data.get('duration'):

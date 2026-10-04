@@ -23,38 +23,6 @@
 			default: true
 		},
 		{
-			id: 'chromium',
-			name: 'Chromium',
-			image: 'kasmweb/chromium:1.16.0',
-			logo: '/assets/browsers/chromium.png',
-			description: 'Fast open-source Chromium Browser',
-			default: false
-		},
-		{
-			id: 'firefox',
-			name: 'Mozilla Firefox',
-			image: 'kasmweb/firefox:1.16.0',
-			logo: '/assets/browsers/firefox.png',
-			description: 'Mozilla Firefox with privacy protections',
-			default: false
-		},
-		{
-			id: 'brave',
-			name: 'Brave',
-			image: 'kasmweb/brave:1.16.0',
-			logo: '/assets/browsers/brave.png',
-			description: 'Brave Privacy Browser with ad-blocking',
-			default: false
-		},
-		{
-			id: 'tor',
-			name: 'Tor Browser',
-			image: 'kasmweb/tor-browser:1.16.0',
-			logo: '/assets/browsers/tor.png',
-			description: 'Tor Anonymous & Onion Routing Browser',
-			default: false
-		},
-		{
 			id: 'vivaldi',
 			name: 'Vivaldi Browser',
 			image: 'kasmweb/vivaldi:1.16.0',
@@ -63,11 +31,11 @@
 			default: false
 		},
 		{
-			id: 'edge',
-			name: 'Microsoft Edge',
-			image: 'kasmweb/edge:1.16.0',
-			logo: '/assets/browsers/edge.png',
-			description: 'Microsoft Edge Browser',
+			id: 'firefox',
+			name: 'Mozilla Firefox',
+			image: 'kasmweb/firefox:1.16.0',
+			logo: '/assets/browsers/firefox.png',
+			description: 'Mozilla Firefox with privacy protections',
 			default: false
 		}
 	];
@@ -78,7 +46,7 @@
 		loading = true;
 		try {
 			const res = await getAvailableBrowsers(localStorage.token);
-			if (res && res.length > 0) {
+			if (res && Array.isArray(res) && res.length > 0) {
 				browsers = res;
 			}
 		} catch (e) {
@@ -87,6 +55,10 @@
 			loading = false;
 		}
 	};
+
+	onMount(() => {
+		loadBrowsers();
+	});
 
 	$: if (show) {
 		selectedBrowser = localStorage.getItem('selected_browser') || 'chrome';
