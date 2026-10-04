@@ -882,11 +882,11 @@
 			if (Array.isArray(input.selectedFilterIds) && input.selectedFilterIds.length > 0) {
 				selectedFilterIds = input.selectedFilterIds;
 			}
-			if (input.webSearchEnabled) webSearchEnabled = true;
-			if (input.imageGenerationEnabled) imageGenerationEnabled = true;
-			if (input.videoGenerationEnabled) videoGenerationEnabled = true;
-			if (input.codeInterpreterEnabled) codeInterpreterEnabled = true;
-			if (input.browserEnabled) browserEnabled = true;
+			if (input.webSearchEnabled !== undefined) webSearchEnabled = input.webSearchEnabled;
+			if (input.imageGenerationEnabled !== undefined) imageGenerationEnabled = input.imageGenerationEnabled;
+			if (input.videoGenerationEnabled !== undefined) videoGenerationEnabled = input.videoGenerationEnabled;
+			if (input.codeInterpreterEnabled !== undefined) codeInterpreterEnabled = input.codeInterpreterEnabled;
+			if (input.browserEnabled !== undefined) browserEnabled = input.browserEnabled;
 			if (input.toolApprovalMode) {
 				await handleToolApprovalModeChange(input.toolApprovalMode);
 			}
@@ -1366,6 +1366,8 @@
 					message.content = data.content;
 				} else if (type === 'chat:message:files' || type === 'files') {
 					message.files = data.files;
+				} else if (type === 'browser_session') {
+					agentLiveUrl.set(data.live_url);
 				} else if (type === 'chat:message:tasks') {
 					chatTasks = data.tasks;
 				} else if (type === 'chat:message:embeds' || type === 'embeds') {
@@ -2403,10 +2405,8 @@
 					messageCount: Object.keys(chatContent?.history?.messages ?? {}).length
 				});
 
-				selectedModels =
-					(chatContent?.models ?? undefined) !== undefined
-						? chatContent.models
-						: [chatContent.models ?? ''];
+				let _chatModels = chatContent?.models;
+				selectedModels = Array.isArray(_chatModels) ? _chatModels : (_chatModels ? [_chatModels] : ['']);
 
 				// An empty model list is not evidence that the chat's models are gone.
 				if ($models.length > 0) {
@@ -3674,19 +3674,7 @@
 		const useChatVariablesFallback =
 			!_chatId || $temporaryChatEnabled || isTemporaryChatId(_chatId);
 
-		if (browserEnabled && _chatId) {
-			const browserId =
-				(typeof localStorage !== 'undefined'
-					? localStorage.getItem('selected_browser')
-					: null) || 'chrome';
-			startBrowserSession(localStorage.token, _chatId, browserId)
-				.then((res) => {
-					if (res && res.live_url && !$agentLiveUrl) {
-						agentLiveUrl.set(res.live_url);
-					}
-				})
-				.catch((err) => console.debug('Browser start error:', err));
-		}
+		// The browser session is now requested by the LLM via the request_browser_session tool.
 
 		const res = await generateOpenAIChatCompletion(
 			localStorage.token,
@@ -4799,8 +4787,9 @@
 					/>
 				{/if}
 			</div>
-			<LiveAgentPreview />
 		</div>
+		<LiveAgentPreview />
+	</div>
 	{:else if loading}
 		<div class=" flex items-center justify-center h-full w-full">
 			<div class="m-auto">

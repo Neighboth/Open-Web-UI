@@ -741,23 +741,12 @@
 						</Tooltip>
 					{/if}
 
-					<div
-						class="flex w-full items-center justify-between gap-1 h-[1.6875rem] px-1 rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
+					<Tooltip
+						content={$i18n.t('Select Browser')}
+						placement="top-start"
 					>
-						<Tooltip content={$i18n.t('Select Browser')} placement="top">
-							<button
-								type="button"
-								class="p-1 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 transition shrink-0"
-								on:click|stopPropagation={() => {
-									showBrowserSelectModal = true;
-								}}
-							>
-								<Cog6 className="size-3.5" />
-							</button>
-						</Tooltip>
-
 						<button
-							class="flex flex-1 justify-between gap-2 items-center text-[0.8125rem] font-normal cursor-pointer rounded-lg px-1 truncate"
+							class="flex w-full justify-between gap-2 items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer rounded-xl hover:bg-gray-50/40 dark:hover:bg-gray-800/40"
 							aria-pressed={browserEnabled}
 							on:click={() => {
 								browserEnabled = !browserEnabled;
@@ -778,12 +767,27 @@
 								</div>
 							</div>
 
+							<div class="shrink-0">
+								<Tooltip content={$i18n.t('Settings')}>
+									<button
+										class="self-center w-fit text-sm text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition rounded-full"
+										on:click|stopPropagation={(e) => {
+											e.preventDefault();
+											showBrowserSelectModal = true;
+										}}
+									>
+										<Cog6 className="size-3.5" />
+									</button>
+								</Tooltip>
+							</div>
+
 							<div class="shrink-0" inert>
 								<Switch state={browserEnabled} />
 							</div>
 						</button>
-					</div>
+					</Tooltip>
 				</div>
+
 			{/if}
 		</DropdownMenu>
 	</div>

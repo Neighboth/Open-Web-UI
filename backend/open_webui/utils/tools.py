@@ -63,6 +63,8 @@ from open_webui.tools.builtin import (
     list_directory,
     fetch_url,
     generate_image,
+    generate_video,
+    request_browser_session,
     get_current_timestamp,
     grep_chat_files,
     grep_knowledge_files,
@@ -565,6 +567,8 @@ async def get_builtin_tools(
         'web.search.enable',
         'image_generation.enable',
         'images.edit.enable',
+        'video_generation.enable',
+        'browser_sandbox.enable',
         'code_interpreter.enable',
         'notes.enable',
         'channels.enable',
@@ -721,6 +725,18 @@ async def get_builtin_tools(
         and await has_user_permission('image_generation')
     ):
         builtin_functions.append(edit_image)
+        
+    if (
+        config.get('video_generation.enable')
+        and features.get('video_generation')
+    ):
+        builtin_functions.append(generate_video)
+
+    if (
+        config.get('browser_sandbox.enable', True)
+        and features.get('browser')
+    ):
+        builtin_functions.append(request_browser_session)
 
     # Add code interpreter tool if builtin category enabled,
     # globally enabled, and allowed by model capability.

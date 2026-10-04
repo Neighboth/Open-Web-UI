@@ -31,7 +31,7 @@
 
 {#if $agentLiveUrl}
 	<div
-		class="h-full w-full max-w-[50vw] bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col relative transition-all duration-300 z-50"
+		class="h-full w-full max-w-[50vw] bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 flex flex-col relative transition-all duration-300 shrink-0"
 	>
 		<div
 			class="h-12 flex items-center justify-between px-3 border-b border-gray-200 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-950"

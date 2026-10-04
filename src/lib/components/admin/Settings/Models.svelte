@@ -998,8 +998,8 @@
 											enableAllHandler();
 										}}
 									>
-										<CheckCircle className="size-3.5" />
-										<div class="flex items-center">
+										<CheckCircle className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.enableAllModels.label')}
 										</div>
 									</button>
@@ -1011,8 +1011,8 @@
 											disableAllHandler();
 										}}
 									>
-										<Minus className="size-3.5" />
-										<div class="flex items-center">
+										<EyeSlash className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">
 											{$i18n.t('settings.admin.models.disableAllModels.label')}
 										</div>
 									</button>
@@ -1024,8 +1024,8 @@
 											publicAllHandler();
 										}}
 									>
-										<GlobeAlt className="size-3.5" />
-										<div class="flex items-center">{$i18n.t('Public All')}</div>
+										<GlobeAlt className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">{$i18n.t('Make All Public')}</div>
 									</button>
 
 									<button
@@ -1035,9 +1035,10 @@
 											privateAllHandler();
 										}}
 									>
-										<LockClosed className="size-3.5" />
-										<div class="flex items-center">{$i18n.t('Private All')}</div>
+										<LockClosed className="size-3.5 shrink-0" />
+										<div class="flex items-center whitespace-nowrap">{$i18n.t('Make All Private')}</div>
 									</button>
+
 
 									<hr class="mx-1 my-0.5 border-gray-100 dark:border-gray-800" />
 

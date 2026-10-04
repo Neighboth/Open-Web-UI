@@ -4705,3 +4705,134 @@ async def delete_calendar_event(
     except Exception as e:
         log.exception(f'delete_calendar_event error: {e}')
         return JSONCodec.dumps({'error': str(e)})
+
+# =============================================================================
+# VIDEO GENERATION TOOLS
+# =============================================================================
+
+async def generate_video(
+    prompt: str,
+    __request__: Request = None,
+    __user__: dict = None,
+    __event_emitter__: callable = None,
+    __chat_id__: str = None,
+    __message_id__: str = None,
+) -> str:
+    "\""
+    Generate a video based on a text prompt.
+
+    :param prompt: A detailed description of the video to generate
+    :return: Confirmation that the video was generated, or an error message
+    "\""
+    if __request__ is None:
+        return JSONCodec.dumps({'error': 'Request context not available'})
+
+    try:
+        from open_webui.models.users import UserModel
+        from open_webui.routers.videos import video_generations
+        from open_webui.models.chats import Chats
+        from open_webui.utils.chat import is_saved_chat_id
+        
+        user = UserModel(**__user__) if __user__ else None
+
+        videos = await video_generations(
+            request=__request__,
+            form_data={"prompt": prompt},
+            user=user,
+        )
+
+        # Prepare file entries for the videos
+        video_files = [{'type': 'video', 'url': v.get('url'), 'id': v.get('id', '')} for v in videos]
+
+        # Persist files to DB if chat context is available
+        if is_saved_chat_id(__chat_id__) and __message_id__ and video_files:
+            db_files = await Chats.add_message_files_by_id_and_message_id(
+                __chat_id__,
+                __message_id__,
+                video_files,
+            )
+            if db_files is not None:
+                video_files = db_files
+
+        # Emit the videos to the UI if event emitter is available
+        if __event_emitter__ and video_files:
+            await __event_emitter__(
+                {
+                    'type': 'chat:message:files',
+                    'data': {
+                        'files': video_files,
+                    },
+                }
+            )
+            return JSONCodec.dumps(
+                {
+                    'status': 'success',
+                    'message': 'The video has been successfully generated and is already visible to the user in the chat. You do not need to display or embed the video again - just acknowledge that it has been created.',
+                    'videos': videos,
+                },
+                ensure_ascii=False,
+            )
+
+        return JSONCodec.dumps({'status': 'success', 'videos': videos}, ensure_ascii=False)
+    except Exception as e:
+        log.exception(f'generate_video error: {e}')
+        return JSONCodec.dumps({'error': str(e)})
+
+
+# =============================================================================
+# BROWSER SANDBOX TOOLS
+# =============================================================================
+
+async def request_browser_session(
+    action: str = 'start',
+    __request__: Request = None,
+    __user__: dict = None,
+    __event_emitter__: callable = None,
+    __chat_id__: str = None,
+) -> str:
+    "\""
+    Request a secure browser sandbox session. This tool will start a remote browser and return the CDP (Chrome DevTools Protocol) URL for remote control, as well as open a live preview window for the user.
+
+    :param action: The action to perform, e.g., 'start'
+    :return: JSON containing the CDP URL to connect to the browser.
+    "\""
+    if __request__ is None:
+        return JSONCodec.dumps({'error': 'Request context not available'})
+
+    try:
+        from open_webui.models.users import UserModel
+        from open_webui.routers.browser import start_browser_session, StartSessionForm
+        user = UserModel(**__user__) if __user__ else None
+
+        res = await start_browser_session(
+            request=__request__,
+            form_data=StartSessionForm(chat_id=__chat_id__ or 'tool_session'),
+            user=user
+        )
+
+        live_url = res.get('live_url')
+        cdp_url = res.get('cdp_url')
+        
+        if __event_emitter__ and live_url:
+            await __event_emitter__(
+                {
+                    'type': 'browser_session',
+                    'data': {
+                        'live_url': live_url,
+                    },
+                }
+            )
+
+        return JSONCodec.dumps(
+            {
+                'status': 'success',
+                'message': 'Browser session started. A live preview has been opened for the user.',
+                'cdp_url': cdp_url,
+                'live_url': live_url,
+            },
+            ensure_ascii=False,
+        )
+    except Exception as e:
+        log.exception(f'request_browser_session error: {e}')
+        return JSONCodec.dumps({'error': str(e)})
+

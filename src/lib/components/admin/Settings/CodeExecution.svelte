@@ -791,35 +791,19 @@
 						</p>
 
 						<p class="font-medium text-gray-700 dark:text-gray-300 mt-2">
-							{$i18n.t('Self-Hosted Browser Quickstart Guide:')}
+							{$i18n.t('Setup Guide')}
 						</p>
-						<ol
-							class="list-decimal list-inside ml-2 space-y-2 text-xs text-gray-600 dark:text-gray-400"
-						>
-							<li>
-								<strong>{$i18n.t('Kasm Workspaces / KasmVNC (Isolated Chrome with CDP Automation):')}</strong>
-								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-[11px] block mt-0.5"
-									>docker run --rm -d --shm-size=512m -p 6901:6901 -p 9222:9222 -e VNC_PW=password -e APP_ARGS="--remote-debugging-port=9222 --remote-debugging-address=0.0.0.0" kasmweb/chrome:1.16.0</code
-								>
-							</li>
-							<li>
-								<strong>{$i18n.t('Run Browserless / Chrome via Docker:')}</strong>
-								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-[11px] block mt-0.5"
-									>docker run -d -p 3000:3000 -e "CONCURRENT=10" ghcr.io/browserless/chromium</code
-								>
-							</li>
-							<li>
-								<strong>{$i18n.t('For full Linux OS & GUI with VNC preview (noVNC):')}</strong>
-								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-[11px] block mt-0.5"
-									>docker run -d -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc</code
-								>
-							</li>
-							<li>
-								{$i18n.t(
-									'Enter the endpoint and live VNC/Kasm URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.'
-								)}
-							</li>
-						</ol>
+						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+							{#if config.BROWSER_SANDBOX_PROVIDER === 'browserless'}
+								{$i18n.t('Browserless provides a fast CDP interface for Chrome automation.')}
+								<a href="https://github.com/browserless/browserless" target="_blank" class="text-blue-500 hover:underline">{$i18n.t('View Repository')}</a>
+							{:else if config.BROWSER_SANDBOX_PROVIDER === 'kasm'}
+								{$i18n.t('Kasm Workspaces provides isolated, streaming browser environments.')}
+								<a href="https://kasmweb.com/docs/latest/index.html" target="_blank" class="text-blue-500 hover:underline">{$i18n.t('View Documentation')}</a>
+							{:else}
+								{$i18n.t('Connect to any custom VNC or CDP endpoint.')}
+							{/if}
+						</p>
 					</div>
 				{/if}
 			</AdminSettingSection>

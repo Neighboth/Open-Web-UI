@@ -35,7 +35,7 @@ export const getConfig = async (token: string = '') => {
 export const updateConfig = async (token: string = '', config: object) => {
 	let error = null;
 
-	const res = await fetch(`${VIDEOS_API_BASE_URL}/config/update`, {
+	const res = await fetch(`${VIDEOS_API_BASE_URL}/config`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',
@@ -138,7 +138,7 @@ export const getVideoGenerationConfig = async (token: string = '') => {
 export const updateVideoGenerationConfig = async (token: string = '', config: object) => {
 	let error = null;
 
-	const res = await fetch(`${VIDEOS_API_BASE_URL}/video/config/update`, {
+	const res = await fetch(`${VIDEOS_API_BASE_URL}/config`, {
 		method: 'POST',
 		headers: {
 			Accept: 'application/json',

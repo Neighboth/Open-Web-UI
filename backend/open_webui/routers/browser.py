@@ -222,15 +222,20 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                 async with session.post(api_endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                     data = await resp.json()
                     kasm_id = data.get('kasm_id')
+                    share_id = data.get('share_id')
                     kasm_live_url = data.get('kasm_url')
 
                     if not kasm_live_url and 'kasm' in data:
                         kasm_live_url = data['kasm'].get('kasm_url')
                         kasm_id = data['kasm'].get('kasm_id')
+                        share_id = data['kasm'].get('share_id', share_id)
 
                     if not kasm_live_url:
                         # Fallback to direct Kasm URL if API didn't return URL
-                        kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{kasm_id}" if kasm_id else kasm_url
+                        if share_id:
+                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{share_id}"
+                        else:
+                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{kasm_id}" if kasm_id else kasm_url
 
                     ACTIVE_KASM_SESSIONS[session_key] = {
                         'kasm_id': kasm_id,
