@@ -225,17 +225,19 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     share_id = data.get('share_id')
                     kasm_live_url = data.get('kasm_url')
 
-                    if not kasm_live_url and 'kasm' in data:
-                        kasm_live_url = data['kasm'].get('kasm_url')
-                        kasm_id = data['kasm'].get('kasm_id')
-                        share_id = data['kasm'].get('share_id', share_id)
-
-                    if not kasm_live_url:
-                        # Fallback to direct Kasm URL if API didn't return URL
-                        if share_id:
-                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{share_id}"
+                    if share_id:
+                        kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{share_id}"
+                    elif kasm_live_url:
+                        # Use direct returned operational URL
+                        pass
+                    elif kasm_id:
+                        operational_token = data.get('operational_token') or (data.get('kasm') or {}).get('operational_token')
+                        if operational_token:
+                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/session/{kasm_id}?token={quote(operational_token)}"
                         else:
-                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/cast/{kasm_id}" if kasm_id else kasm_url
+                            kasm_live_url = f"{kasm_url.rstrip('/')}/#/session/{kasm_id}"
+                    else:
+                        kasm_live_url = kasm_url
 
                     ACTIVE_KASM_SESSIONS[session_key] = {
                         'kasm_id': kasm_id,
