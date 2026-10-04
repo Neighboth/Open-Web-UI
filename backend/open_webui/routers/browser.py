@@ -221,14 +221,72 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     # Case 1: Kasm Workspaces API Mode (On-demand container creation)
     if provider == 'kasm' and kasm_url and kasm_api_key and kasm_api_secret:
         api_endpoint = f"{kasm_url.rstrip('/')}/api/public/request_kasm"
-        kasm_user_id = kasm_user or user.id
+
+        # Auto-resolve Kasm user_id: if username or email provided, lookup real Kasm UUID
+        kasm_user_id = kasm_user or ''
+        clean_uid = kasm_user_id.replace('-', '')
+        if not (len(clean_uid) == 32 and all(c in '0123456789abcdefABCDEF' for c in clean_uid)):
+            try:
+                users_url = f"{kasm_url.rstrip('/')}/api/public/get_users"
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                    async with session.post(
+                        users_url,
+                        json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
+                        timeout=aiohttp.ClientTimeout(total=8),
+                    ) as uresp:
+                        if uresp.status == 200:
+                            udata = await uresp.json()
+                            users_list = udata.get('users', [])
+                            matched_user = next(
+                                (
+                                    u for u in users_list
+                                    if (kasm_user and u.get('username') == kasm_user)
+                                    or u.get('username') == 'user@kasm.local'
+                                ),
+                                users_list[0] if users_list else None,
+                            )
+                            if matched_user and matched_user.get('user_id'):
+                                kasm_user_id = matched_user['user_id']
+                                log.info(f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}'")
+            except Exception as e:
+                log.warning(f"Failed to auto-resolve Kasm user: {e}")
+
+        # Auto-resolve Kasm workspace image_id via get_images
+        actual_image_id = image_identifier
+        try:
+            images_url = f"{kasm_url.rstrip('/')}/api/public/get_images"
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                async with session.post(
+                    images_url,
+                    json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
+                    timeout=aiohttp.ClientTimeout(total=8),
+                ) as iresp:
+                    if iresp.status == 200:
+                        idata = await iresp.json()
+                        img_list = idata.get('images', [])
+                        target_name = browser_id.lower()
+                        matched_img = next(
+                            (
+                                img for img in img_list
+                                if target_name in (img.get('friendly_name') or '').lower()
+                                or target_name in (img.get('docker_image') or '').lower()
+                            ),
+                            None,
+                        )
+                        if matched_img and matched_img.get('image_id'):
+                            actual_image_id = matched_img['image_id']
+                            log.info(f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}'")
+        except Exception as e:
+            log.warning(f"Failed to auto-resolve Kasm image: {e}")
+
         payload = {
             'api_key': kasm_api_key,
             'api_key_secret': kasm_api_secret,
-            'user_id': kasm_user_id,
-            'image_id': image_identifier,
+            'image_id': actual_image_id,
             'enable_sharing': True,
         }
+        if kasm_user_id:
+            payload['user_id'] = kasm_user_id
 
         try:
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
