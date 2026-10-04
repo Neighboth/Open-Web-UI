@@ -50,6 +50,13 @@
 			default: false
 		},
 		{
+			id: 'vivaldi',
+			name: 'Vivaldi Browser',
+			image: 'kasmweb/vivaldi:1.16.0',
+			description: 'Vivaldi customizable feature-rich browser',
+			default: false
+		},
+		{
 			id: 'edge',
 			name: 'Microsoft Edge',
 			image: 'kasmweb/edge:1.16.0',

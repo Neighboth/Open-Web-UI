@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from typing import Optional, Any
 
@@ -194,10 +195,54 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
 
     url = f'{base_url}/video/generations'
 
+    model = form_data.get('model') or config.get('VIDEO_GENERATION_MODEL') or 'sora'
+    payload = {
+        'model': model,
+        'prompt': form_data.get('prompt', ''),
+    }
+    if form_data.get('size') or config.get('VIDEO_SIZE'):
+        payload['size'] = form_data.get('size') or config.get('VIDEO_SIZE')
+    if form_data.get('duration'):
+        payload['duration'] = form_data.get('duration')
+    if form_data.get('aspect_ratio'):
+        payload['aspect_ratio'] = form_data.get('aspect_ratio')
+
+    extra_params = config.get('VIDEOS_OPENAI_API_PARAMS') or {}
+    if isinstance(extra_params, dict):
+        payload.update(extra_params)
+    for k, v in form_data.items():
+        if k not in ['prompt', 'model']:
+            payload[k] = v
+
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.post(url, headers=headers, json=form_data) as response:
-                response.raise_for_status()
-                return await response.json()
+            async with session.post(url, headers=headers, json=payload) as response:
+                if response.status >= 400:
+                    err_text = await response.text()
+                    log.error(f"Video generation upstream error ({response.status}): {err_text}")
+                    try:
+                        err_json = json.loads(err_text)
+                        err_msg = (
+                            err_json.get('error', {}).get('message')
+                            if isinstance(err_json.get('error'), dict)
+                            else err_json.get('error') or err_json.get('detail') or err_text
+                        )
+                    except Exception:
+                        err_msg = err_text
+                    raise HTTPException(status_code=response.status, detail=f"API Error ({response.status}): {err_msg}")
+
+                res_data = await response.json()
+                if isinstance(res_data, list):
+                    return res_data
+                if isinstance(res_data, dict):
+                    if 'data' in res_data and isinstance(res_data['data'], list):
+                        return res_data['data']
+                    if 'url' in res_data:
+                        return [res_data]
+                    if 'video' in res_data:
+                        return [{'url': res_data['video']}]
+                return [res_data]
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

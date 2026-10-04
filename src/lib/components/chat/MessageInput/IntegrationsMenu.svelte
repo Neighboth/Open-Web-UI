@@ -684,6 +684,9 @@
 								aria-pressed={videoGenerationEnabled}
 								on:click={() => {
 									videoGenerationEnabled = !videoGenerationEnabled;
+									try {
+										localStorage.setItem('videoGenerationEnabled', String(videoGenerationEnabled));
+									} catch (e) {}
 								}}
 							>
 								<div class="flex-1 truncate">
@@ -747,6 +750,9 @@
 							aria-pressed={browserEnabled}
 							on:click={() => {
 								browserEnabled = !browserEnabled;
+								try {
+									localStorage.setItem('browserEnabled', String(browserEnabled));
+								} catch (e) {}
 							}}
 						>
 							<div class="flex-1 truncate">

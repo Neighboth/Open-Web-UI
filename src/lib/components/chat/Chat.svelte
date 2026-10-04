@@ -368,10 +368,16 @@
 	let pendingOAuthTools = [];
 
 	let imageGenerationEnabled = Boolean(initialIntegrations?.imageGenerationEnabled);
-	let videoGenerationEnabled = Boolean(initialIntegrations?.videoGenerationEnabled);
+	let videoGenerationEnabled =
+		typeof localStorage !== 'undefined' && localStorage.getItem('videoGenerationEnabled') !== null
+			? localStorage.getItem('videoGenerationEnabled') === 'true'
+			: Boolean(initialIntegrations?.videoGenerationEnabled);
 	let webSearchEnabled = Boolean(initialIntegrations?.webSearchEnabled);
 	let codeInterpreterEnabled = Boolean(initialIntegrations?.codeInterpreterEnabled);
-	let browserEnabled = Boolean(initialIntegrations?.browserEnabled);
+	let browserEnabled =
+		typeof localStorage !== 'undefined' && localStorage.getItem('browserEnabled') !== null
+			? localStorage.getItem('browserEnabled') === 'true'
+			: Boolean(initialIntegrations?.browserEnabled);
 	let webSearchActive = false;
 	let showWebSearchConfirm = false;
 	let pendingWebSearchPrompt: string | null = null;
@@ -395,6 +401,8 @@
 		try {
 			if (typeof localStorage !== 'undefined') {
 				localStorage.setItem('activeIntegrations', JSON.stringify(activeIntegrations));
+				localStorage.setItem('videoGenerationEnabled', String(videoGenerationEnabled));
+				localStorage.setItem('browserEnabled', String(browserEnabled));
 			}
 		} catch (e) {}
 		if (saveIntegrationsTimer) clearTimeout(saveIntegrationsTimer);
@@ -425,9 +433,15 @@
 			selectedFilterIds = Array.isArray(ai.selectedFilterIds) ? [...ai.selectedFilterIds] : [];
 			webSearchEnabled = Boolean(ai.webSearchEnabled);
 			imageGenerationEnabled = Boolean(ai.imageGenerationEnabled);
-			videoGenerationEnabled = Boolean(ai.videoGenerationEnabled);
+			videoGenerationEnabled =
+				typeof localStorage !== 'undefined' && localStorage.getItem('videoGenerationEnabled') !== null
+					? localStorage.getItem('videoGenerationEnabled') === 'true'
+					: Boolean(ai.videoGenerationEnabled);
 			codeInterpreterEnabled = Boolean(ai.codeInterpreterEnabled);
-			browserEnabled = Boolean(ai.browserEnabled);
+			browserEnabled =
+				typeof localStorage !== 'undefined' && localStorage.getItem('browserEnabled') !== null
+					? localStorage.getItem('browserEnabled') === 'true'
+					: Boolean(ai.browserEnabled);
 		}
 		setTimeout(() => {
 			isRestoringIntegrations = false;
@@ -4720,6 +4734,7 @@
 									bind:imageGenerationEnabled
 									bind:videoGenerationEnabled
 									bind:codeInterpreterEnabled
+									bind:browserEnabled
 									bind:webSearchEnabled
 									bind:atSelectedModel
 									bind:showCommands

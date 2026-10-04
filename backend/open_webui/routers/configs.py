@@ -754,6 +754,7 @@ class CodeInterpreterConfigForm(BaseModel):
     KASM_WORKSPACES_API_KEY: str | None = None
     KASM_WORKSPACES_API_SECRET: str | None = None
     KASM_CDP_URL: str | None = None
+    KASM_ENABLED_BROWSERS: list[str] | None = None
 
 
 @router.get('/code_execution', response_model=CodeInterpreterConfigForm)

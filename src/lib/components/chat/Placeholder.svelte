@@ -58,7 +58,9 @@
 	export let showCommands = false;
 
 	export let imageGenerationEnabled = false;
+	export let videoGenerationEnabled = false;
 	export let codeInterpreterEnabled = false;
+	export let browserEnabled = false;
 	export let webSearchEnabled = false;
 	export let toolApprovalMode = 'full';
 	export let onToolApprovalModeChange: Function = () => {};
@@ -251,7 +253,9 @@
 						bind:selectedSkillIds
 						bind:selectedFilterIds
 						bind:imageGenerationEnabled
+						bind:videoGenerationEnabled
 						bind:codeInterpreterEnabled
+						bind:browserEnabled
 						bind:webSearchEnabled
 						bind:atSelectedModel
 						bind:showCommands
