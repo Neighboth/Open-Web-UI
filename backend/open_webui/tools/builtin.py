@@ -4718,12 +4718,12 @@ async def generate_video(
     __chat_id__: str = None,
     __message_id__: str = None,
 ) -> str:
-    "\""
+    """
     Generate a video based on a text prompt.
 
     :param prompt: A detailed description of the video to generate
     :return: Confirmation that the video was generated, or an error message
-    "\""
+    """
     if __request__ is None:
         return JSONCodec.dumps({'error': 'Request context not available'})
 
@@ -4790,12 +4790,12 @@ async def request_browser_session(
     __event_emitter__: callable = None,
     __chat_id__: str = None,
 ) -> str:
-    "\""
+    """
     Request a secure browser sandbox session. This tool will start a remote browser and return the CDP (Chrome DevTools Protocol) URL for remote control, as well as open a live preview window for the user.
 
     :param action: The action to perform, e.g., 'start'
     :return: JSON containing the CDP URL to connect to the browser.
-    "\""
+    """
     if __request__ is None:
         return JSONCodec.dumps({'error': 'Request context not available'})
 
