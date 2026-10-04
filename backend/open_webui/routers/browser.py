@@ -28,6 +28,7 @@ DEFAULT_BROWSERS = [
         'id': 'chrome',
         'name': 'Google Chrome',
         'image': 'kasmweb/chrome:1.16.0',
+        'logo': '/assets/browsers/chrome.png',
         'description': 'Google Chrome with isolated profile & DevTools CDP',
         'default': True,
     },
@@ -35,6 +36,7 @@ DEFAULT_BROWSERS = [
         'id': 'chromium',
         'name': 'Chromium',
         'image': 'kasmweb/chromium:1.16.0',
+        'logo': '/assets/browsers/chromium.png',
         'description': 'Fast open-source Chromium Browser',
         'default': False,
     },
@@ -42,6 +44,7 @@ DEFAULT_BROWSERS = [
         'id': 'firefox',
         'name': 'Mozilla Firefox',
         'image': 'kasmweb/firefox:1.16.0',
+        'logo': '/assets/browsers/firefox.png',
         'description': 'Mozilla Firefox with privacy protections',
         'default': False,
     },
@@ -49,6 +52,7 @@ DEFAULT_BROWSERS = [
         'id': 'brave',
         'name': 'Brave',
         'image': 'kasmweb/brave:1.16.0',
+        'logo': '/assets/browsers/brave.png',
         'description': 'Brave Privacy Browser with ad-blocking',
         'default': False,
     },
@@ -56,6 +60,7 @@ DEFAULT_BROWSERS = [
         'id': 'tor',
         'name': 'Tor Browser',
         'image': 'kasmweb/tor-browser:1.16.0',
+        'logo': '/assets/browsers/tor.png',
         'description': 'Tor Anonymous & Onion Routing Browser',
         'default': False,
     },
@@ -63,6 +68,7 @@ DEFAULT_BROWSERS = [
         'id': 'vivaldi',
         'name': 'Vivaldi Browser',
         'image': 'kasmweb/vivaldi:1.16.0',
+        'logo': '/assets/browsers/vivaldi.png',
         'description': 'Vivaldi customizable feature-rich browser',
         'default': False,
     },
@@ -70,6 +76,7 @@ DEFAULT_BROWSERS = [
         'id': 'edge',
         'name': 'Microsoft Edge',
         'image': 'kasmweb/edge:1.16.0',
+        'logo': '/assets/browsers/edge.png',
         'description': 'Microsoft Edge Browser',
         'default': False,
     },
@@ -323,14 +330,11 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     )
 
                     base_url = kasm_url.rstrip('/')
-                    if share_id:
-                        kasm_live_url = f"{base_url}/#/cast/{share_id}"
-                    elif kasm_live_url:
+                    if kasm_live_url:
                         if not (kasm_live_url.startswith('http://') or kasm_live_url.startswith('https://')):
                             kasm_live_url = f"{base_url}{kasm_live_url if kasm_live_url.startswith('/') else '/' + kasm_live_url}"
-                        if session_token and 'token=' not in kasm_live_url:
-                            delimiter = '&' if '?' in kasm_live_url else '?'
-                            kasm_live_url = f"{kasm_live_url}{delimiter}token={quote(session_token)}"
+                    elif share_id:
+                        kasm_live_url = f"{base_url}/#/join/{share_id}"
                     elif kasm_id:
                         token_param = f"?token={quote(session_token)}" if session_token else ""
                         kasm_live_url = f"{base_url}/#/session/{kasm_id}{token_param}"

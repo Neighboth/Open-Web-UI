@@ -18,6 +18,7 @@
 			id: 'chrome',
 			name: 'Google Chrome',
 			image: 'kasmweb/chrome:1.16.0',
+			logo: '/assets/browsers/chrome.png',
 			description: 'Google Chrome with isolated profile & DevTools CDP',
 			default: true
 		},
@@ -25,6 +26,7 @@
 			id: 'chromium',
 			name: 'Chromium',
 			image: 'kasmweb/chromium:1.16.0',
+			logo: '/assets/browsers/chromium.png',
 			description: 'Fast open-source Chromium Browser',
 			default: false
 		},
@@ -32,6 +34,7 @@
 			id: 'firefox',
 			name: 'Mozilla Firefox',
 			image: 'kasmweb/firefox:1.16.0',
+			logo: '/assets/browsers/firefox.png',
 			description: 'Mozilla Firefox with privacy protections',
 			default: false
 		},
@@ -39,6 +42,7 @@
 			id: 'brave',
 			name: 'Brave',
 			image: 'kasmweb/brave:1.16.0',
+			logo: '/assets/browsers/brave.png',
 			description: 'Brave Privacy Browser with ad-blocking',
 			default: false
 		},
@@ -46,6 +50,7 @@
 			id: 'tor',
 			name: 'Tor Browser',
 			image: 'kasmweb/tor-browser:1.16.0',
+			logo: '/assets/browsers/tor.png',
 			description: 'Tor Anonymous & Onion Routing Browser',
 			default: false
 		},
@@ -53,6 +58,7 @@
 			id: 'vivaldi',
 			name: 'Vivaldi Browser',
 			image: 'kasmweb/vivaldi:1.16.0',
+			logo: '/assets/browsers/vivaldi.png',
 			description: 'Vivaldi customizable feature-rich browser',
 			default: false
 		},
@@ -60,6 +66,7 @@
 			id: 'edge',
 			name: 'Microsoft Edge',
 			image: 'kasmweb/edge:1.16.0',
+			logo: '/assets/browsers/edge.png',
 			description: 'Microsoft Edge Browser',
 			default: false
 		}
@@ -132,37 +139,20 @@
 					>
 						<div class="flex items-center gap-3 min-w-0">
 							<div
-								class="size-8 rounded-lg flex items-center justify-center shrink-0 {selectedBrowser ===
-								browser.id
-									? 'bg-blue-500 text-white'
-									: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}"
+								class="size-8 rounded-lg flex items-center justify-center shrink-0 bg-gray-100/70 dark:bg-gray-800/70 p-1"
 							>
-								{#if browser.id === 'chrome'}
-									<svg class="size-5" viewBox="0 0 24 24" fill="currentColor">
-										<path
-											d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-.55.06-1.08.17-1.6L8 14.23V16c0 1.1.9 2 2 2h4v1.93c-.63.05-1.3.07-2 .07zm6.93-5.27C18.61 13.9 17.41 13 16 13h-1v-3c0-.55-.45-1-1-1h-4V7h2c.55 0 1-.45 1-1V4.26c3.48 1.48 6 4.93 6 8.95 0 .53-.05 1.05-.07 1.52z"
-										/>
-									</svg>
-								{:else if browser.id === 'firefox'}
-									<svg class="size-5" viewBox="0 0 24 24" fill="currentColor">
-										<path
-											d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm3.7 4.9a6.8 6.8 0 0 1 1.7 4.7 6.9 6.9 0 0 1-1.6 4.6 5.2 5.2 0 0 1-4.1 1.8 5.6 5.6 0 0 1-5.3-4.1 4.8 4.8 0 0 1 .6-3.8 6.5 6.5 0 0 1 3.5-2.7c.3 1 .9 1.8 1.8 2.2a2.6 2.6 0 0 0 1.2-3.2 4.9 4.9 0 0 1 2.2.5z"
-										/>
-									</svg>
-								{:else if browser.id === 'brave'}
-									<svg class="size-5" viewBox="0 0 24 24" fill="currentColor">
-										<path
-											d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3zm0 4.18A4.82 4.82 0 0 1 16.82 11c0 3.1-2.28 5.9-4.82 6.72A7.32 7.32 0 0 1 7.18 11 4.82 4.82 0 0 1 12 6.18z"
-										/>
-									</svg>
-								{:else if browser.id === 'tor'}
-									<svg class="size-5" viewBox="0 0 24 24" fill="currentColor">
-										<path
-											d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2a8 8 0 0 1 8 8c0 3.3-2 6.1-4.9 7.3A7.95 7.95 0 0 1 12 4zm0 3a5 5 0 0 1 5 5 5 5 0 0 1-3.2 4.6A4.98 4.98 0 0 1 12 7z"
-										/>
-									</svg>
+								{#if browser.logo || ['chrome', 'chromium', 'firefox', 'brave', 'tor', 'vivaldi', 'edge'].includes(browser.id)}
+									<img
+										src={browser.logo || `/assets/browsers/${browser.id}.png`}
+										alt={browser.name}
+										class="size-6 object-contain pointer-events-none"
+										on:error={(e) => {
+											// Fallback if image fails to load
+											e.currentTarget.style.display = 'none';
+										}}
+									/>
 								{:else}
-									<GlobeAlt className="size-5" />
+									<GlobeAlt className="size-5 text-gray-500" />
 								{/if}
 							</div>
 							<div class="truncate">

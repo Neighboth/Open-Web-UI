@@ -195,10 +195,17 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
 
     url = f'{base_url}/video/generations'
 
-    model = form_data.get('model') or config.get('VIDEO_GENERATION_MODEL') or 'sora'
+    model = form_data.get('model') or config.get('VIDEO_GENERATION_MODEL') or 'kling-video'
+    raw_mode = str(form_data.get('mode') or config.get('VIDEO_GENERATION_MODE') or 'std').strip().lower()
+    if raw_mode in ['pro', 'professional', 'high']:
+        mode = 'pro'
+    else:
+        mode = 'std'
+
     payload = {
         'model': model,
         'prompt': form_data.get('prompt', ''),
+        'mode': mode,
     }
     if form_data.get('size') or config.get('VIDEO_SIZE'):
         payload['size'] = form_data.get('size') or config.get('VIDEO_SIZE')
@@ -211,7 +218,7 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     if isinstance(extra_params, dict):
         payload.update(extra_params)
     for k, v in form_data.items():
-        if k not in ['prompt', 'model']:
+        if k not in ['prompt', 'model', 'mode']:
             payload[k] = v
 
     async with aiohttp.ClientSession() as session:

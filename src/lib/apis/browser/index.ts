@@ -4,6 +4,7 @@ export interface BrowserOption {
 	id: string;
 	name: string;
 	image: string;
+	logo?: string;
 	description?: string;
 	default?: boolean;
 }

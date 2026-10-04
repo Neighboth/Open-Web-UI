@@ -4712,6 +4712,7 @@ async def delete_calendar_event(
 
 async def generate_video(
     prompt: str,
+    mode: Optional[str] = 'std',
     __request__: Request = None,
     __user__: dict = None,
     __event_emitter__: callable = None,
@@ -4722,6 +4723,7 @@ async def generate_video(
     Generate a video based on a text prompt.
 
     :param prompt: A detailed description of the video to generate
+    :param mode: Video generation mode ('std' for standard or 'pro' for professional quality), default is 'std'
     :return: Confirmation that the video was generated, or an error message
     """
     if __request__ is None:
@@ -4736,7 +4738,7 @@ async def generate_video(
 
         videos = await video_generations(
             request=__request__,
-            form_data={"prompt": prompt},
+            form_data={"prompt": prompt, "mode": mode or "std"},
             user=user,
         )
 
