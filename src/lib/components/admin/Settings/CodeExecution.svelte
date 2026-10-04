@@ -24,6 +24,18 @@
 		'w-full rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 py-1.5 text-xs text-gray-700 outline-hidden transition-colors placeholder:text-gray-300 focus:border-blue-400 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:placeholder:text-gray-700 dark:focus:border-blue-500';
 
 	const submitHandler = async () => {
+		if (config?.BROWSER_SANDBOX_ENABLE && config?.BROWSER_SANDBOX_PROVIDER === 'kasm') {
+			if (config.KASM_WORKSPACES_URL && !config.BROWSER_SANDBOX_LIVE_URL) {
+				const baseUrl = config.KASM_WORKSPACES_URL.replace(/\/+$/, '');
+				const pw = config.KASM_WORKSPACES_PASSWORD
+					? `?password=${encodeURIComponent(config.KASM_WORKSPACES_PASSWORD)}&username=${encodeURIComponent(config.KASM_WORKSPACES_USER || 'kasm_user')}`
+					: '';
+				config.BROWSER_SANDBOX_LIVE_URL = `${baseUrl}/${pw}`;
+			}
+			if (config.KASM_CDP_URL && !config.BROWSER_SANDBOX_URL) {
+				config.BROWSER_SANDBOX_URL = config.KASM_CDP_URL;
+			}
+		}
 		const res = await setCodeExecutionConfig(localStorage.token, config);
 	};
 
@@ -589,48 +601,150 @@
 				</AdminSettingRow>
 
 				{#if config.BROWSER_SANDBOX_ENABLE}
-					<AdminSettingField
-						label={$i18n.t('Browser Sandbox URL / Endpoint')}
-						description={$i18n.t(
-							'Self-hosted Browserless / Chromium / Playwright container or cloud service (e.g. http://localhost:3000 or wss://chrome.browserless.io).'
-						)}
+					<AdminSettingRow
+						label={$i18n.t('Sandbox Provider')}
+						description={$i18n.t('Select browser or virtual workspace environment')}
 					>
-						<input
-							class={inputClass}
-							type="text"
-							placeholder="http://localhost:3000"
-							bind:value={config.BROWSER_SANDBOX_URL}
-							autocomplete="off"
-						/>
-					</AdminSettingField>
+						<SettingsSelect
+							bind:value={config.BROWSER_SANDBOX_PROVIDER}
+							placeholder={$i18n.t('Select Provider')}
+						>
+							<option value="browserless">{$i18n.t('Browserless (Chromium / Playwright)')}</option>
+							<option value="kasm">{$i18n.t('Kasm Workspaces (KasmVNC / Isolated Desktop)')}</option>
+							<option value="vnc">{$i18n.t('Generic noVNC / Linux Desktop')}</option>
+						</SettingsSelect>
+					</AdminSettingRow>
 
-					<AdminSettingField
-						label={$i18n.t('Browser Sandbox Auth Token')}
-						description={$i18n.t('API token for browser service authentication (optional).')}
-					>
-						<SensitiveInput
-							variant="settings"
-							type="text"
-							placeholder={$i18n.t('Enter Auth Token')}
-							bind:value={config.BROWSER_SANDBOX_AUTH_TOKEN}
-							autocomplete="off"
-						/>
-					</AdminSettingField>
+					{#if (config.BROWSER_SANDBOX_PROVIDER ?? 'browserless') === 'kasm'}
+						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
+							<AdminSettingField
+								label={$i18n.t('Kasm Web / Stream URL')}
+								description={$i18n.t('Kasm Workspaces or KasmVNC web endpoint (e.g. https://localhost:6901)')}
+							>
+								<input
+									class={inputClass}
+									type="text"
+									placeholder="https://localhost:6901"
+									bind:value={config.KASM_WORKSPACES_URL}
+									autocomplete="off"
+								/>
+							</AdminSettingField>
 
-					<AdminSettingField
-						label={$i18n.t('Live Screen / Web VNC Stream URL')}
-						description={$i18n.t(
-							'URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).'
-						)}
-					>
-						<input
-							class={inputClass}
-							type="text"
-							placeholder="http://localhost:6080/vnc.html"
-							bind:value={config.BROWSER_SANDBOX_LIVE_URL}
-							autocomplete="off"
-						/>
-					</AdminSettingField>
+							<AdminSettingField
+								label={$i18n.t('Kasm VNC Password / Auth Token')}
+								description={$i18n.t('VNC_PW password or API token for auto-login')}
+							>
+								<SensitiveInput
+									variant="settings"
+									type="text"
+									placeholder={$i18n.t('Enter VNC Password or Token')}
+									bind:value={config.KASM_WORKSPACES_PASSWORD}
+									autocomplete="off"
+								/>
+							</AdminSettingField>
+						</div>
+
+						<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+							<AdminSettingField
+								label={$i18n.t('Kasm Username')}
+								description={$i18n.t('Default: kasm_user')}
+							>
+								<input
+									class={inputClass}
+									type="text"
+									placeholder="kasm_user"
+									bind:value={config.KASM_WORKSPACES_USER}
+									autocomplete="off"
+								/>
+							</AdminSettingField>
+
+							<AdminSettingField
+								label={$i18n.t('Remote Debugging / CDP Endpoint')}
+								description={$i18n.t('Chromium CDP port for automation (e.g. http://localhost:9222)')}
+							>
+								<input
+									class={inputClass}
+									type="text"
+									placeholder="http://localhost:9222"
+									bind:value={config.KASM_CDP_URL}
+									autocomplete="off"
+								/>
+							</AdminSettingField>
+						</div>
+
+						<AdminSettingField
+							label={$i18n.t('Live Screen / Web Preview URL')}
+							description={$i18n.t('Live streaming URL rendered in chat side-panel (auto-login supported).')}
+						>
+							<input
+								class={inputClass}
+								type="text"
+								placeholder="https://localhost:6901/?password=..."
+								bind:value={config.BROWSER_SANDBOX_LIVE_URL}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+					{:else if config.BROWSER_SANDBOX_PROVIDER === 'vnc'}
+						<AdminSettingField
+							label={$i18n.t('Live Screen / Web VNC Stream URL')}
+							description={$i18n.t(
+								'URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).'
+							)}
+						>
+							<input
+								class={inputClass}
+								type="text"
+								placeholder="http://localhost:6080/vnc.html"
+								bind:value={config.BROWSER_SANDBOX_LIVE_URL}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+					{:else}
+						<AdminSettingField
+							label={$i18n.t('Browser Sandbox URL / Endpoint')}
+							description={$i18n.t(
+								'Self-hosted Browserless / Chromium / Playwright container or cloud service (e.g. http://localhost:3000 or wss://chrome.browserless.io).'
+							)}
+						>
+							<input
+								class={inputClass}
+								type="text"
+								placeholder="http://localhost:3000"
+								bind:value={config.BROWSER_SANDBOX_URL}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('Browser Sandbox Auth Token')}
+							description={$i18n.t('API token for browser service authentication (optional).')}
+						>
+							<SensitiveInput
+								variant="settings"
+								type="text"
+								placeholder={$i18n.t('Enter Auth Token')}
+								bind:value={config.BROWSER_SANDBOX_AUTH_TOKEN}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('Live Screen / Web VNC Stream URL')}
+							description={$i18n.t(
+								'URL to render inside the live agent preview pane so users can watch and interact in real-time (e.g. http://localhost:6080/vnc.html).'
+							)}
+						>
+							<input
+								class={inputClass}
+								type="text"
+								placeholder="http://localhost:6080/vnc.html"
+								bind:value={config.BROWSER_SANDBOX_LIVE_URL}
+								autocomplete="off"
+							/>
+						</AdminSettingField>
+					{/if}
 
 					<div class="px-1 text-sm text-gray-500 my-3 space-y-2">
 						<p>
@@ -652,23 +766,29 @@
 							{$i18n.t('Self-Hosted Browser Quickstart Guide:')}
 						</p>
 						<ol
-							class="list-decimal list-inside ml-2 space-y-1.5 text-xs text-gray-600 dark:text-gray-400"
+							class="list-decimal list-inside ml-2 space-y-2 text-xs text-gray-600 dark:text-gray-400"
 						>
 							<li>
-								{$i18n.t('Run Browserless / Chrome via Docker:')}
-								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono"
+								<strong>{$i18n.t('Kasm Workspaces / KasmVNC (Isolated Chrome with CDP Automation):')}</strong>
+								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-[11px] block mt-0.5"
+									>docker run --rm -d --shm-size=512m -p 6901:6901 -p 9222:9222 -e VNC_PW=password -e APP_ARGS="--remote-debugging-port=9222 --remote-debugging-address=0.0.0.0" kasmweb/chrome:1.16.0</code
+								>
+							</li>
+							<li>
+								<strong>{$i18n.t('Run Browserless / Chrome via Docker:')}</strong>
+								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-[11px] block mt-0.5"
 									>docker run -d -p 3000:3000 -e "CONCURRENT=10" ghcr.io/browserless/chromium</code
 								>
 							</li>
 							<li>
-								{$i18n.t('For full OS & GUI with VNC preview (noVNC):')}
-								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono"
+								<strong>{$i18n.t('For full Linux OS & GUI with VNC preview (noVNC):')}</strong>
+								<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded font-mono text-[11px] block mt-0.5"
 									>docker run -d -p 6080:80 -v /dev/shm:/dev/shm dorowu/ubuntu-desktop-lxde-vnc</code
 								>
 							</li>
 							<li>
 								{$i18n.t(
-									'Enter the endpoint and live VNC URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.'
+									'Enter the endpoint and live VNC/Kasm URL above. When the model invokes the browser or OS agent, the screen will slide open on the right.'
 								)}
 							</li>
 						</ol>

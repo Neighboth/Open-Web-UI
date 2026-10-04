@@ -854,7 +854,10 @@ class SafePlaywrightURLLoader(BaseLoader, RateLimitMixin, URLProcessingMixin):
         with sync_playwright() as p:
             # Use remote browser if ws_endpoint is provided, otherwise use local browser
             if self.playwright_ws_url:
-                browser = p.chromium.connect(self.playwright_ws_url)
+                if self.playwright_ws_url.startswith('http://') or self.playwright_ws_url.startswith('https://'):
+                    browser = p.chromium.connect_over_cdp(self.playwright_ws_url)
+                else:
+                    browser = p.chromium.connect(self.playwright_ws_url)
             else:
                 browser = p.chromium.launch(headless=self.headless, proxy=self.proxy)
 
@@ -895,7 +898,10 @@ class SafePlaywrightURLLoader(BaseLoader, RateLimitMixin, URLProcessingMixin):
         async with async_playwright() as p:
             # Use remote browser if ws_endpoint is provided, otherwise use local browser
             if self.playwright_ws_url:
-                browser = await p.chromium.connect(self.playwright_ws_url)
+                if self.playwright_ws_url.startswith('http://') or self.playwright_ws_url.startswith('https://'):
+                    browser = await p.chromium.connect_over_cdp(self.playwright_ws_url)
+                else:
+                    browser = await p.chromium.connect(self.playwright_ws_url)
             else:
                 browser = await p.chromium.launch(headless=self.headless, proxy=self.proxy)
 

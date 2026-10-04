@@ -69,9 +69,16 @@ CODE_EXECUTION_CONFIG_KEYS = {
     'CODE_INTERPRETER_SANDBOX_AUTH_TOKEN': 'code_interpreter.sandbox.auth_token',
     'CODE_INTERPRETER_SANDBOX_TIMEOUT': 'code_interpreter.sandbox.timeout',
     'BROWSER_SANDBOX_ENABLE': 'browser_sandbox.enable',
+    'BROWSER_SANDBOX_PROVIDER': 'browser_sandbox.provider',
     'BROWSER_SANDBOX_URL': 'browser_sandbox.url',
     'BROWSER_SANDBOX_AUTH_TOKEN': 'browser_sandbox.auth_token',
     'BROWSER_SANDBOX_LIVE_URL': 'browser_sandbox.live_url',
+    'KASM_WORKSPACES_URL': 'browser_sandbox.kasm.url',
+    'KASM_WORKSPACES_USER': 'browser_sandbox.kasm.user',
+    'KASM_WORKSPACES_PASSWORD': 'browser_sandbox.kasm.password',
+    'KASM_WORKSPACES_API_KEY': 'browser_sandbox.kasm.api_key',
+    'KASM_WORKSPACES_API_SECRET': 'browser_sandbox.kasm.api_secret',
+    'KASM_CDP_URL': 'browser_sandbox.kasm.cdp_url',
 }
 MODELS_CONFIG_KEYS = {
     'DEFAULT_MODELS': 'ui.default_models',
@@ -736,9 +743,16 @@ class CodeInterpreterConfigForm(BaseModel):
     CODE_INTERPRETER_SANDBOX_AUTH_TOKEN: str | None = None
     CODE_INTERPRETER_SANDBOX_TIMEOUT: int | None = None
     BROWSER_SANDBOX_ENABLE: bool | None = False
+    BROWSER_SANDBOX_PROVIDER: str | None = 'browserless'
     BROWSER_SANDBOX_URL: str | None = None
     BROWSER_SANDBOX_AUTH_TOKEN: str | None = None
     BROWSER_SANDBOX_LIVE_URL: str | None = None
+    KASM_WORKSPACES_URL: str | None = None
+    KASM_WORKSPACES_USER: str | None = 'kasm_user'
+    KASM_WORKSPACES_PASSWORD: str | None = None
+    KASM_WORKSPACES_API_KEY: str | None = None
+    KASM_WORKSPACES_API_SECRET: str | None = None
+    KASM_CDP_URL: str | None = None
 
 
 @router.get('/code_execution', response_model=CodeInterpreterConfigForm)
