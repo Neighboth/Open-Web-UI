@@ -4813,6 +4813,7 @@ async def request_browser_session(
         user = UserModel(**__user__) if __user__ else None
 
         chosen_browser = browser_id or (__features__ or {}).get('browser_id') or 'chrome'
+        log.info(f"request_browser_session: browser_id={browser_id}, features.browser_id={(__features__ or {}).get('browser_id')} -> chosen={chosen_browser}")
 
         res = await start_browser_session(
             request=__request__,

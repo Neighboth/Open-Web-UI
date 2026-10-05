@@ -201,16 +201,25 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
         'prompt': form_data.get('prompt', ''),
     }
 
-    # Only include mode if explicitly requested and model is not Agnes (Agnes API rejects 'mode' param)
-    raw_mode = form_data.get('mode')
-    if raw_mode and 'agnes' not in str(model).lower():
-        raw_mode_str = str(raw_mode).strip().lower()
+    model_lower = str(model).lower()
+    is_agnes_model = 'agnes' in model_lower
+
+    raw_mode = form_data.get('mode') or config.get('VIDEO_GENERATION_MODE')
+
+    if is_agnes_model:
+        # Agnes AI requires mode to be 'text' (text2video) or 'image' (image2video)
+        if raw_mode and str(raw_mode).lower() in ['text', 'image', 'keyframe']:
+            payload['mode'] = str(raw_mode).lower()
+        else:
+            has_image = bool(form_data.get('image') or form_data.get('image_url') or form_data.get('input_image'))
+            payload['mode'] = 'image' if has_image else 'text'
+    else:
+        # Standard models (Kling, Sora, etc.) require 'std' or 'pro'
+        raw_mode_str = str(raw_mode or 'std').strip().lower()
         if raw_mode_str in ['pro', 'professional', 'high']:
             payload['mode'] = 'pro'
-        elif raw_mode_str in ['std', 'standard']:
-            payload['mode'] = 'std'
         else:
-            payload['mode'] = raw_mode
+            payload['mode'] = 'std'
 
     if form_data.get('size') or config.get('VIDEO_SIZE'):
         payload['size'] = form_data.get('size') or config.get('VIDEO_SIZE')

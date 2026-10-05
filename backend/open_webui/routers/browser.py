@@ -371,20 +371,45 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     )
 
                     base_url = kasm_url.rstrip('/')
+
                     if kasm_live_url:
                         if not (kasm_live_url.startswith('http://') or kasm_live_url.startswith('https://')):
                             kasm_live_url = f"{base_url}{kasm_live_url if kasm_live_url.startswith('/') else '/' + kasm_live_url}"
                     elif share_id:
                         kasm_live_url = f"{base_url}/#/join/{share_id}"
+                    elif kasm_id and session_token:
+                        kasm_live_url = f"{base_url}/#/connect/kasm/{kasm_id}/{quote(session_token)}"
                     elif kasm_id:
-                        token_param = f"?token={quote(session_token)}" if session_token else ""
-                        kasm_live_url = f"{base_url}/#/session/{kasm_id}{token_param}"
+                        kasm_live_url = f"{base_url}/#/session/{kasm_id}"
                     else:
                         kasm_live_url = base_url
+
+                    # Ensure container has reached 'running' state before returning live_url
+                    # (Prevents Kasm 'Connection Failed' due to premature WebRTC negotiation)
+                    if kasm_id:
+                        try:
+                            status_url = f"{base_url}/api/public/get_kasm_status"
+                            for _ in range(5):
+                                await asyncio.sleep(1)
+                                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as st_session:
+                                    async with st_session.post(
+                                        status_url,
+                                        json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret, 'kasm_id': kasm_id},
+                                        timeout=aiohttp.ClientTimeout(total=3),
+                                    ) as st_resp:
+                                        if st_resp.status == 200:
+                                            st_data = await st_resp.json()
+                                            k_st = st_data.get('kasm', {})
+                                            if k_st.get('operational_status') == 'running' or k_st.get('status') == 'running':
+                                                log.info(f"Kasm container {kasm_id} is running and ready for connection.")
+                                                break
+                        except Exception as e:
+                            log.debug(f"Kasm readiness poll notice: {e}")
 
                     ACTIVE_KASM_SESSIONS[session_key] = {
                         'kasm_id': kasm_id,
                         'live_url': kasm_live_url,
+                        'share_id': share_id,
                         'user_id': user.id,
                         'kasm_user_id': kasm_user_id,
                         'chat_id': chat_id,

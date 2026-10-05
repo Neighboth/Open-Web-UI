@@ -816,6 +816,7 @@ async def get_builtin_tools(
                 '__chat_id__': extra_params.get('__chat_id__'),
                 '__message_id__': extra_params.get('__message_id__'),
                 '__model_knowledge__': model_knowledge,
+                '__features__': features if features else extra_params.get('__features__', {}),
             },
             get_builtin_function_introspection(func),
         )
