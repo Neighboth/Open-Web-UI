@@ -394,13 +394,138 @@
 								</AdminSettingField>
 							</div>
 
-							<AdminSettingField label={$i18n.t('Videos OpenAI API Version')}>
-								<input
-									class={inputClass}
-									placeholder={$i18n.t('API Version (optional)')}
-									bind:value={config.VIDEOS_OPENAI_API_VERSION}
-								/>
-							</AdminSettingField>
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
+								<AdminSettingField
+									label={$i18n.t('Video Endpoint Path')}
+									description={$i18n.t('Default: /video/generations')}
+								>
+									<input
+										class={inputClass}
+										placeholder="/video/generations"
+										bind:value={config.VIDEOS_OPENAI_API_ENDPOINT}
+									/>
+								</AdminSettingField>
+
+								<AdminSettingField label={$i18n.t('Videos OpenAI API Version')}>
+									<input
+										class={inputClass}
+										placeholder={$i18n.t('API Version (optional)')}
+										bind:value={config.VIDEOS_OPENAI_API_VERSION}
+									/>
+								</AdminSettingField>
+							</div>
+
+							<!-- Duration configuration -->
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
+								<AdminSettingField
+									label={$i18n.t('Supported Durations (Seconds)')}
+									description={$i18n.t('e.g. "4", "4 - 12", "5, 10"')}
+								>
+									<input
+										class={inputClass}
+										placeholder="4 - 12"
+										bind:value={config.VIDEO_DURATIONS}
+									/>
+								</AdminSettingField>
+
+								<AdminSettingField
+									label={$i18n.t('Default Duration (Seconds)')}
+									description={$i18n.t('Used when user does not specify a duration')}
+								>
+									<input
+										class={inputClass}
+										placeholder="12"
+										bind:value={config.VIDEO_DURATION_DEFAULT}
+									/>
+								</AdminSettingField>
+							</div>
+
+							<!-- Aspect Ratio configuration -->
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
+								<AdminSettingField
+									label={$i18n.t('Supported Aspect Ratios')}
+									description={$i18n.t('e.g. 21:9, 16:9, 4:3, 1:1, 3:4, 9:16')}
+								>
+									<input
+										class={inputClass}
+										placeholder="21:9, 16:9, 4:3, 1:1, 3:4, 9:16"
+										bind:value={config.VIDEO_ASPECT_RATIOS}
+									/>
+								</AdminSettingField>
+
+								<AdminSettingField
+									label={$i18n.t('Default Aspect Ratio')}
+									description={$i18n.t('Used when user does not specify aspect ratio')}
+								>
+									<input
+										class={inputClass}
+										placeholder="16:9"
+										bind:value={config.VIDEO_ASPECT_RATIO_DEFAULT}
+									/>
+								</AdminSettingField>
+							</div>
+
+							<!-- Resolutions / Sizes configuration -->
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
+								<AdminSettingField
+									label={$i18n.t('Supported Sizes / Resolutions')}
+									description={$i18n.t('e.g. 720P, 1080P or 720x720, 1440x1440')}
+								>
+									<input
+										class={inputClass}
+										placeholder="720P, 1080P"
+										bind:value={config.VIDEO_SIZES}
+									/>
+								</AdminSettingField>
+
+								<AdminSettingField
+									label={$i18n.t('Default Size / Resolution')}
+									description={$i18n.t('Used when user does not specify a size')}
+								>
+									<input
+										class={inputClass}
+										placeholder="720P"
+										bind:value={config.VIDEO_SIZE_DEFAULT}
+									/>
+								</AdminSettingField>
+							</div>
+
+							<!-- Image-to-Video References configuration -->
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 mt-2">
+								<AdminSettingField
+									label={$i18n.t('Enable Image-to-Video References')}
+									description={$i18n.t('Allow sending reference images')}
+								>
+									<div class="pt-2">
+										<Switch bind:state={config.VIDEO_IMAGE_INPUT_ENABLED} />
+									</div>
+								</AdminSettingField>
+
+								<AdminSettingField
+									label={$i18n.t('Max Images')}
+									description={$i18n.t('Max images to send (e.g. 5)')}
+								>
+									<input
+										class={inputClass}
+										type="number"
+										min="1"
+										max="10"
+										placeholder="5"
+										bind:value={config.VIDEO_IMAGE_INPUT_MAX}
+									/>
+								</AdminSettingField>
+
+								<AdminSettingField
+									label={$i18n.t('Image Mode Key')}
+									description={$i18n.t('Mode value when image is present (e.g. image)')}
+								>
+									<input
+										class={inputClass}
+										placeholder="image"
+										bind:value={config.VIDEO_IMAGE_INPUT_MODE}
+									/>
+								</AdminSettingField>
+							</div>
 
 							<AdminSettingField
 								label={$i18n.t('Videos OpenAI API Params')}

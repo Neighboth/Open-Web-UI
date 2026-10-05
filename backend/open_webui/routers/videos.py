@@ -24,7 +24,16 @@ VIDEO_CONFIG_KEYS = {
     'VIDEOS_OPENAI_API_BASE_URL': 'video_generation.openai.api_base_url',
     'VIDEOS_OPENAI_API_KEY': 'video_generation.openai.api_key',
     'VIDEOS_OPENAI_API_VERSION': 'video_generation.openai.api_version',
-    'VIDEOS_OPENAI_API_PARAMS': 'video_generation.openai.params',
+    'VIDEOS_OPENAI_API_ENDPOINT': 'video_generation.openai.endpoint',
+    'VIDEO_DURATIONS': 'video_generation.durations',
+    'VIDEO_DURATION_DEFAULT': 'video_generation.duration_default',
+    'VIDEO_ASPECT_RATIOS': 'video_generation.aspect_ratios',
+    'VIDEO_ASPECT_RATIO_DEFAULT': 'video_generation.aspect_ratio_default',
+    'VIDEO_SIZES': 'video_generation.sizes',
+    'VIDEO_SIZE_DEFAULT': 'video_generation.size_default',
+    'VIDEO_IMAGE_INPUT_ENABLED': 'video_generation.image_input.enable',
+    'VIDEO_IMAGE_INPUT_MAX': 'video_generation.image_input.max',
+    'VIDEO_IMAGE_INPUT_MODE': 'video_generation.image_input.mode',
     'AUTOMATIC1111_BASE_URL': 'video_generation.automatic1111.base_url',
     'AUTOMATIC1111_API_AUTH': 'video_generation.automatic1111.api_auth',
     'AUTOMATIC1111_PARAMS': 'video_generation.automatic1111.params',
@@ -61,6 +70,16 @@ DEFAULT_CONFIG = {
     'VIDEOS_OPENAI_API_KEY': '',
     'VIDEOS_OPENAI_API_VERSION': '',
     'VIDEOS_OPENAI_API_PARAMS': {},
+    'VIDEOS_OPENAI_API_ENDPOINT': '/video/generations',
+    'VIDEO_DURATIONS': '4 - 12',
+    'VIDEO_DURATION_DEFAULT': '12',
+    'VIDEO_ASPECT_RATIOS': '21:9, 16:9, 4:3, 1:1, 3:4, 9:16',
+    'VIDEO_ASPECT_RATIO_DEFAULT': '16:9',
+    'VIDEO_SIZES': '720P, 1080P, 1024x1024',
+    'VIDEO_SIZE_DEFAULT': '720P',
+    'VIDEO_IMAGE_INPUT_ENABLED': True,
+    'VIDEO_IMAGE_INPUT_MAX': 5,
+    'VIDEO_IMAGE_INPUT_MODE': 'image',
     'AUTOMATIC1111_BASE_URL': '',
     'AUTOMATIC1111_API_AUTH': '',
     'AUTOMATIC1111_PARAMS': {},
@@ -204,20 +223,45 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
         'prompt': form_data.get('prompt', ''),
     }
 
+    # Mode
     if form_data.get('mode'):
         payload['mode'] = form_data.get('mode')
     elif config.get('VIDEO_GENERATION_MODE'):
         payload['mode'] = config.get('VIDEO_GENERATION_MODE')
 
-    if form_data.get('size'):
-        payload['size'] = form_data.get('size')
-    elif config.get('VIDEO_SIZE'):
-        payload['size'] = config.get('VIDEO_SIZE')
+    # Size / Resolution
+    size_val = form_data.get('size') or config.get('VIDEO_SIZE_DEFAULT') or config.get('VIDEO_SIZE')
+    if size_val:
+        payload['size'] = size_val
 
-    if form_data.get('duration'):
-        payload['duration'] = form_data.get('duration')
-    if form_data.get('aspect_ratio'):
-        payload['aspect_ratio'] = form_data.get('aspect_ratio')
+    # Duration
+    duration_val = form_data.get('duration') or config.get('VIDEO_DURATION_DEFAULT')
+    if duration_val:
+        try:
+            payload['duration'] = int(duration_val)
+        except Exception:
+            payload['duration'] = duration_val
+
+    # Aspect Ratio
+    aspect_ratio_val = form_data.get('aspect_ratio') or config.get('VIDEO_ASPECT_RATIO_DEFAULT')
+    if aspect_ratio_val:
+        payload['aspect_ratio'] = aspect_ratio_val
+
+    # Images / Image references
+    images = form_data.get('images')
+    if images and isinstance(images, list) and len(images) > 0:
+        max_imgs = int(config.get('VIDEO_IMAGE_INPUT_MAX') or 5)
+        allowed_images = images[:max_imgs]
+        payload['images'] = allowed_images
+        payload['image'] = allowed_images[0]
+        img_mode = config.get('VIDEO_IMAGE_INPUT_MODE') or 'image'
+        if not form_data.get('mode'):
+            payload['mode'] = img_mode
+    elif form_data.get('image'):
+        payload['image'] = form_data.get('image')
+        img_mode = config.get('VIDEO_IMAGE_INPUT_MODE') or 'image'
+        if not form_data.get('mode'):
+            payload['mode'] = img_mode
 
     extra_params = config.get('VIDEOS_OPENAI_API_PARAMS') or {}
     if isinstance(extra_params, dict):
