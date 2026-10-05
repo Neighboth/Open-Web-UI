@@ -4727,10 +4727,10 @@ async def generate_video(
     Generate a video based on a text prompt and optional parameters.
 
     :param prompt: A detailed description of the video to generate.
-    :param duration: Video duration in seconds (e.g. 4 to 12 seconds; defaults to 12 or model default if not specified by user).
+    :param duration: Video duration in seconds. DO NOT provide this unless explicitly requested by the user.
     :param aspect_ratio: Video aspect ratio ('21:9', '16:9', '4:3', '1:1', '3:4', '9:16').
-    :param size: Resolution or size (e.g. '720P', '1080P').
-    :param mode: Generation mode ('text' for text-to-video, 'image' for image-to-video).
+    :param size: Resolution or size (e.g. '720P', '1080P'). DO NOT provide this unless explicitly requested by the user.
+    :param mode: Generation mode ('text' for text-to-video, 'image' for image-to-video). DO NOT provide this unless explicitly requested by the user.
     :param images: Up to 5 image URLs or IDs to use as references or starting frames.
     :return: Confirmation that the video was generated, or an error message.
     """
@@ -4842,7 +4842,7 @@ async def request_browser_session(
         from open_webui.routers.browser import start_browser_session, StartSessionForm
         user = UserModel(**__user__) if __user__ else None
 
-        chosen_browser = browser_id or (__features__ or {}).get('browser_id') or 'chrome'
+        chosen_browser = (__features__ or {}).get('browser_id') or browser_id or 'chrome'
         log.info(f"request_browser_session: browser_id={browser_id}, features.browser_id={(__features__ or {}).get('browser_id')} -> chosen={chosen_browser}")
 
         res = await start_browser_session(

@@ -272,22 +272,37 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
 
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.post(url, headers=headers, json=payload) as response:
-                if response.status >= 400:
-                    err_text = await response.text()
-                    log.error(f"Video generation upstream error ({response.status}): {err_text}")
-                    try:
-                        err_json = json.loads(err_text)
-                        err_msg = (
-                            err_json.get('error', {}).get('message')
-                            if isinstance(err_json.get('error'), dict)
-                            else err_json.get('error') or err_json.get('detail') or err_text
-                        )
-                    except Exception:
-                        err_msg = err_text
-                    raise HTTPException(status_code=response.status, detail=f"API Error ({response.status}): {err_msg}")
+            for attempt in range(4):
+                modified_payload = False
+                async with session.post(url, headers=headers, json=payload) as response:
+                    if response.status >= 400:
+                        err_text = await response.text()
+                        log.error(f"Video generation upstream error ({response.status}): {err_text}")
+                        try:
+                            err_json = json.loads(err_text)
+                            err_msg = (
+                                err_json.get('error', {}).get('message')
+                                if isinstance(err_json.get('error'), dict)
+                                else err_json.get('error') or err_json.get('detail') or err_json.get('message') or err_text
+                            )
+                            # Handle stringified JSON in message (like Pixrouter's invalid_request)
+                            if isinstance(err_msg, str) and err_msg.startswith('{') and 'invalid_request' in err_msg:
+                                inner_err = json.loads(err_msg)
+                                param_name = inner_err.get('data', {}).get('param')
+                                if param_name and param_name in payload and attempt < 3:
+                                    log.info(f"Removing unsupported param '{param_name}' and retrying ({attempt+1}/3)...")
+                                    del payload[param_name]
+                                    modified_payload = True
+                        except Exception:
+                            err_msg = err_text
 
-                res_data = await response.json()
+                        if attempt == 3 or not modified_payload or response.status not in [400]:
+                            raise HTTPException(status_code=response.status, detail=f"API Error ({response.status}): {err_msg}")
+                        else:
+                            continue
+
+                    res_data = await response.json()
+                    break
                 
                 # Extract task or video items
                 items = []

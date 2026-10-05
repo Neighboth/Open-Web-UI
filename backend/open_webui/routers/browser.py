@@ -299,10 +299,6 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                                     ),
                                     None,
                                 )
-                            # 4. Fallback to first user in list
-                            if not matched_user and users_list:
-                                matched_user = users_list[0]
-
                             if matched_user and matched_user.get('user_id'):
                                 kasm_user_id = matched_user['user_id']
                                 log.info(f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}' ({matched_user.get('username')})")
@@ -389,8 +385,8 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     if kasm_id:
                         try:
                             status_url = f"{base_url}/api/public/get_kasm_status"
-                            for _ in range(5):
-                                await asyncio.sleep(1)
+                            for _ in range(15):
+                                await asyncio.sleep(2)
                                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as st_session:
                                     async with st_session.post(
                                         status_url,
