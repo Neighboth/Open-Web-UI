@@ -221,8 +221,16 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
         else:
             payload['mode'] = 'std'
 
-    if form_data.get('size') or config.get('VIDEO_SIZE'):
-        payload['size'] = form_data.get('size') or config.get('VIDEO_SIZE')
+    raw_size = form_data.get('size') or config.get('VIDEO_SIZE')
+    if is_agnes_model:
+        # Agnes requires size to be '720P'
+        if raw_size and str(raw_size).strip().upper() == '720P':
+            payload['size'] = '720P'
+        else:
+            payload['size'] = '720P'
+    elif raw_size:
+        payload['size'] = raw_size
+
     if form_data.get('duration'):
         payload['duration'] = form_data.get('duration')
     if form_data.get('aspect_ratio'):

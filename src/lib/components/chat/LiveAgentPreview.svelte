@@ -73,6 +73,17 @@
 				</button>
 			</div>
 		</div>
+		<div class="px-3 py-1.5 bg-blue-50/80 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/50 flex items-center justify-between text-xs text-blue-700 dark:text-blue-300">
+			<span class="truncate">Masaüstü açılmazsa veya SSL uyarısı çıkarsa:</span>
+			<a
+				href={$agentLiveUrl}
+				target="_blank"
+				rel="noreferrer"
+				class="underline font-semibold shrink-0 ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+			>
+				Yeni Sekmede Bağlan &rarr;
+			</a>
+		</div>
 		<iframe
 			src={$agentLiveUrl}
 			class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"

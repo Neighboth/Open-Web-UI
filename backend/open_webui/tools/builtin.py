@@ -4712,6 +4712,7 @@ async def delete_calendar_event(
 
 async def generate_video(
     prompt: str,
+    size: Optional[str] = None,
     mode: Optional[str] = None,
     __request__: Request = None,
     __user__: dict = None,
@@ -4723,7 +4724,8 @@ async def generate_video(
     Generate a video based on a text prompt.
 
     :param prompt: A detailed description of the video to generate
-    :param mode: Optional video quality mode ('std' or 'pro') if supported by the model. Do not provide if unsure or if the model does not require it.
+    :param size: The video resolution/size (e.g. '720P', '1024x1024')
+    :param mode: Optional video quality mode ('std', 'pro', or 'text')
     :return: Confirmation that the video was generated, or an error message
     """
     if __request__ is None:
@@ -4737,6 +4739,8 @@ async def generate_video(
         user = UserModel(**__user__) if __user__ else None
 
         v_form = {"prompt": prompt}
+        if size:
+            v_form["size"] = size
         if mode:
             v_form["mode"] = mode
 
