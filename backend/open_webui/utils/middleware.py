@@ -2867,8 +2867,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
             if b_id and b_name:
                 view_skill_ids.append(b_id)
                 skill_manifest += (
-                    f'<skill>\n<id>{b_id}</id>\n<name>{b_name}</name>\n'
-                    f'<description>{b_desc}</description>\n</skill>\n'
+                    f'<skill>\n<id>{b_id}</id>\n<name>{b_name}</name>\n<description>{b_desc}</description>\n</skill>\n'
                 )
                 if b_content:
                     form_data['messages'] = add_or_update_system_message(
@@ -3227,14 +3226,14 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                 if server_title and server_title.lower() != name.lower():
                     ident_parts.append(f'Server: "{server_title}"')
 
-                ident_str = f" ({', '.join(ident_parts)})" if ident_parts else ""
-                tool_descriptions.append(f"- `{name}`{ident_str}: {desc}")
+                ident_str = f' ({", ".join(ident_parts)})' if ident_parts else ''
+                tool_descriptions.append(f'- `{name}`{ident_str}: {desc}')
 
             if tool_descriptions:
                 tools_prompt = (
-                    "You have access to the following tools and capabilities which you can invoke:\n"
-                    + "\n".join(tool_descriptions)
-                    + "\nWhen asked about your tools, capabilities, or whether you have a specific tool, acknowledge that you have these tools available and can use them when requested."
+                    'You have access to the following tools and capabilities which you can invoke:\n'
+                    + '\n'.join(tool_descriptions)
+                    + '\nWhen asked about your tools, capabilities, or whether you have a specific tool, acknowledge that you have these tools available and can use them when requested.'
                 )
                 form_data['messages'] = add_or_update_system_message(
                     tools_prompt,
@@ -6482,6 +6481,7 @@ async def streaming_chat_response_handler(response, ctx):
                                     )
                                 elif ci_engine == 'e2b':
                                     from open_webui.utils.code_interpreter import execute_code_e2b
+
                                     ci_output = await execute_code_e2b(
                                         api_key=await Config.get('code_interpreter.e2b.api_key'),
                                         code=code,
@@ -6489,6 +6489,7 @@ async def streaming_chat_response_handler(response, ctx):
                                     )
                                 elif ci_engine == 'self_hosted':
                                     from open_webui.utils.code_interpreter import execute_code_sandbox
+
                                     ci_output = await execute_code_sandbox(
                                         url=await Config.get('code_interpreter.sandbox.url'),
                                         code=code,

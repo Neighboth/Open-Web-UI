@@ -162,6 +162,7 @@ async def generate_title(request: Request, form_data: dict, user=Depends(get_ver
         )
     if model_id not in models:
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, _, _ = get_user_direct_connection(user)
         if u_key:
             models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
@@ -236,6 +237,7 @@ async def generate_follow_ups(request: Request, form_data: dict, user=Depends(ge
     model_id = form_data['model']
     if model_id not in models:
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, _, _ = get_user_direct_connection(user)
         if u_key:
             models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}
@@ -307,6 +309,7 @@ async def generate_chat_tags(request: Request, form_data: dict, user=Depends(get
     model_id = form_data['model']
     if model_id not in models:
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, _, _ = get_user_direct_connection(user)
         if u_key:
             models = {**models, model_id: {'id': model_id, 'name': model_id, 'direct': True}}

@@ -95,7 +95,7 @@ class StopSessionForm(BaseModel):
 def get_session_dir(user_id: str, chat_id: str) -> Path:
     safe_user = ''.join(c for c in user_id if c.isalnum() or c in '-_') or 'user'
     safe_chat = ''.join(c for c in chat_id if c.isalnum() or c in '-_') or 'session'
-    base = Path(DATA_DIR) / 'browser_sessions' / f"{safe_user}_{safe_chat}"
+    base = Path(DATA_DIR) / 'browser_sessions' / f'{safe_user}_{safe_chat}'
     base.mkdir(parents=True, exist_ok=True)
     return base
 
@@ -108,9 +108,9 @@ def save_profile_archive(session_dir: Path):
         try:
             with tarfile.open(archive_path, 'w:gz') as tar:
                 tar.add(profile_dir, arcname='.')
-            log.info(f"Saved compressed profile archive to {archive_path}")
+            log.info(f'Saved compressed profile archive to {archive_path}')
         except Exception as e:
-            log.warning(f"Failed to compress profile directory: {e}")
+            log.warning(f'Failed to compress profile directory: {e}')
 
 
 def restore_profile_archive(session_dir: Path):
@@ -125,9 +125,9 @@ def restore_profile_archive(session_dir: Path):
                     tar.extractall(path=profile_dir, filter='data')
                 else:
                     tar.extractall(path=profile_dir)
-            log.info(f"Restored profile archive from {archive_path}")
+            log.info(f'Restored profile archive from {archive_path}')
         except Exception as e:
-            log.warning(f"Failed to unpack profile archive: {e}")
+            log.warning(f'Failed to unpack profile archive: {e}')
 
 
 async def destroy_kasm_container(kasm_id: str, user_id: str, kasm_url: str, api_key: str, api_secret: str) -> bool:
@@ -135,7 +135,7 @@ async def destroy_kasm_container(kasm_id: str, user_id: str, kasm_url: str, api_
     if not (kasm_url and api_key and api_secret and kasm_id):
         return False
 
-    url = f"{kasm_url.rstrip('/')}/api/public/destroy_kasm"
+    url = f'{kasm_url.rstrip("/")}/api/public/destroy_kasm'
     payload = {
         'api_key': api_key,
         'api_key_secret': api_secret,
@@ -147,32 +147,34 @@ async def destroy_kasm_container(kasm_id: str, user_id: str, kasm_url: str, api_
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                 data = await resp.json()
-                log.info(f"Kasm container {kasm_id} destroyed successfully: {data}")
+                log.info(f'Kasm container {kasm_id} destroyed successfully: {data}')
                 return True
     except Exception as e:
-        log.warning(f"Error destroying Kasm container {kasm_id}: {e}")
+        log.warning(f'Error destroying Kasm container {kasm_id}: {e}')
         return False
 
 
 async def cleanup_chat_browser_session(user_id: str, chat_id: str):
     """Called on chat deletion: destroys any active Kasm container and wipes disk profile data."""
-    session_key = f"{user_id}_{chat_id}"
+    session_key = f'{user_id}_{chat_id}'
     active = ACTIVE_KASM_SESSIONS.pop(session_key, None)
 
     if active and active.get('kasm_id'):
         kasm_url = await Config.get('browser_sandbox.kasm.url', '')
         api_key = await Config.get('browser_sandbox.kasm.api_key', '')
         api_secret = await Config.get('browser_sandbox.kasm.api_secret', '')
-        await destroy_kasm_container(active['kasm_id'], active.get('kasm_user_id', user_id), kasm_url, api_key, api_secret)
+        await destroy_kasm_container(
+            active['kasm_id'], active.get('kasm_user_id', user_id), kasm_url, api_key, api_secret
+        )
 
     # Wipe session files on disk
     try:
         session_dir = get_session_dir(user_id, chat_id)
         if session_dir.exists() and session_dir.is_dir():
             shutil.rmtree(session_dir, ignore_errors=True)
-            log.info(f"Wiped browser session directory on chat deletion: {session_dir}")
+            log.info(f'Wiped browser session directory on chat deletion: {session_dir}')
     except Exception as e:
-        log.warning(f"Error removing browser session directory: {e}")
+        log.warning(f'Error removing browser session directory: {e}')
 
 
 @router.get('/browsers')
@@ -204,7 +206,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     """Starts a live browser session with zero-waste Kasm container lifecycle and profile persistence."""
     chat_id = form_data.chat_id
     browser_id = form_data.browser_id or 'chrome'
-    session_key = f"{user.id}_{chat_id}"
+    session_key = f'{user.id}_{chat_id}'
 
     provider = await Config.get('browser_sandbox.provider', 'browserless')
     kasm_url = await Config.get('browser_sandbox.kasm.url', '')
@@ -233,9 +235,9 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             if old_kasm_id and kasm_url and kasm_api_key and kasm_api_secret:
                 try:
                     await destroy_kasm_container(old_kasm_id, old_kasm_user, kasm_url, kasm_api_key, kasm_api_secret)
-                    log.info(f"Destroyed previous Kasm container {old_kasm_id} when switching browser to {browser_id}")
+                    log.info(f'Destroyed previous Kasm container {old_kasm_id} when switching browser to {browser_id}')
                 except Exception as e:
-                    log.warning(f"Failed to destroy old container on browser switch: {e}")
+                    log.warning(f'Failed to destroy old container on browser switch: {e}')
 
     session_dir = get_session_dir(user.id, chat_id)
     # Restore any existing profile archive (cookies, sessions, login state)
@@ -248,15 +250,15 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
 
     # Case 1: Kasm Workspaces API Mode (On-demand container creation)
     if provider == 'kasm' and kasm_url and kasm_api_key and kasm_api_secret:
-        api_endpoint = f"{kasm_url.rstrip('/')}/api/public/request_kasm"
+        api_endpoint = f'{kasm_url.rstrip("/")}/api/public/request_kasm'
 
         # Auto-resolve Kasm user_id: if username or email provided, lookup real Kasm UUID
         kasm_user_id = (kasm_user or '').strip()
         clean_uid = kasm_user_id.replace('-', '')
-        is_already_uuid = (len(clean_uid) == 32 and all(c in '0123456789abcdefABCDEF' for c in clean_uid))
+        is_already_uuid = len(clean_uid) == 32 and all(c in '0123456789abcdefABCDEF' for c in clean_uid)
         if not is_already_uuid:
             try:
-                users_url = f"{kasm_url.rstrip('/')}/api/public/get_users"
+                users_url = f'{kasm_url.rstrip("/")}/api/public/get_users'
                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
                     async with session.post(
                         users_url,
@@ -270,8 +272,10 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                             # 1. Match configured username / email
                             matched_user = next(
                                 (
-                                    u for u in users_list
-                                    if target_uname and (
+                                    u
+                                    for u in users_list
+                                    if target_uname
+                                    and (
                                         (u.get('username') or '').lower() == target_uname
                                         or target_uname in (u.get('username') or '').lower()
                                     )
@@ -282,7 +286,8 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                             if not matched_user:
                                 matched_user = next(
                                     (
-                                        u for u in users_list
+                                        u
+                                        for u in users_list
                                         if any(
                                             isinstance(g, dict) and g.get('name') == 'Administrators'
                                             for g in u.get('groups', [])
@@ -293,22 +298,21 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                             # 3. Match any active non-anonymous user
                             if not matched_user:
                                 matched_user = next(
-                                    (
-                                        u for u in users_list
-                                        if not u.get('anonymous') and not u.get('disabled')
-                                    ),
+                                    (u for u in users_list if not u.get('anonymous') and not u.get('disabled')),
                                     None,
                                 )
                             if matched_user and matched_user.get('user_id'):
                                 kasm_user_id = matched_user['user_id']
-                                log.info(f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}' ({matched_user.get('username')})")
+                                log.info(
+                                    f"Resolved Kasm username '{kasm_user}' to user_id '{kasm_user_id}' ({matched_user.get('username')})"
+                                )
             except Exception as e:
-                log.warning(f"Failed to auto-resolve Kasm user: {e}")
+                log.warning(f'Failed to auto-resolve Kasm user: {e}')
 
         # Auto-resolve Kasm workspace image_id via get_images
         actual_image_id = image_identifier
         try:
-            images_url = f"{kasm_url.rstrip('/')}/api/public/get_images"
+            images_url = f'{kasm_url.rstrip("/")}/api/public/get_images'
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
                 async with session.post(
                     images_url,
@@ -321,7 +325,8 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         target_name = browser_id.lower()
                         matched_img = next(
                             (
-                                img for img in img_list
+                                img
+                                for img in img_list
                                 if target_name in (img.get('friendly_name') or '').lower()
                                 or target_name in (img.get('docker_image') or '').lower()
                             ),
@@ -329,9 +334,11 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         )
                         if matched_img and matched_img.get('image_id'):
                             actual_image_id = matched_img['image_id']
-                            log.info(f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}' ({matched_img.get('friendly_name')})")
+                            log.info(
+                                f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}' ({matched_img.get('friendly_name')})"
+                            )
         except Exception as e:
-            log.warning(f"Failed to auto-resolve Kasm image: {e}")
+            log.warning(f'Failed to auto-resolve Kasm image: {e}')
 
         payload = {
             'api_key': kasm_api_key,
@@ -348,13 +355,9 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     data = await resp.json()
 
                     if resp.status != 200 or data.get('error_message'):
-                        err = data.get('error_message') or f"Kasm API error (HTTP {resp.status})"
-                        log.error(f"Failed to start Kasm container: {err}")
-                        return {
-                            'status': False,
-                            'error': err,
-                            'provider': 'kasm'
-                        }
+                        err = data.get('error_message') or f'Kasm API error (HTTP {resp.status})'
+                        log.error(f'Failed to start Kasm container: {err}')
+                        return {'status': False, 'error': err, 'provider': 'kasm'}
 
                     kasm_id = data.get('kasm_id') or (data.get('kasm') or {}).get('kasm_id')
                     share_id = data.get('share_id') or (data.get('kasm') or {}).get('share_id')
@@ -370,13 +373,15 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
 
                     if kasm_live_url:
                         if not (kasm_live_url.startswith('http://') or kasm_live_url.startswith('https://')):
-                            kasm_live_url = f"{base_url}{kasm_live_url if kasm_live_url.startswith('/') else '/' + kasm_live_url}"
+                            kasm_live_url = (
+                                f'{base_url}{kasm_live_url if kasm_live_url.startswith("/") else "/" + kasm_live_url}'
+                            )
                     elif share_id:
-                        kasm_live_url = f"{base_url}/#/join/{share_id}"
+                        kasm_live_url = f'{base_url}/#/join/{share_id}'
                     elif kasm_id and session_token:
-                        kasm_live_url = f"{base_url}/#/connect/kasm/{kasm_id}/{quote(session_token)}"
+                        kasm_live_url = f'{base_url}/#/connect/kasm/{kasm_id}/{quote(session_token)}'
                     elif kasm_id:
-                        kasm_live_url = f"{base_url}/#/session/{kasm_id}"
+                        kasm_live_url = f'{base_url}/#/session/{kasm_id}'
                     else:
                         kasm_live_url = base_url
 
@@ -384,23 +389,34 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     # (Prevents Kasm 'Connection Failed' due to premature WebRTC negotiation)
                     if kasm_id:
                         try:
-                            status_url = f"{base_url}/api/public/get_kasm_status"
+                            status_url = f'{base_url}/api/public/get_kasm_status'
                             for _ in range(15):
                                 await asyncio.sleep(2)
-                                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as st_session:
+                                async with aiohttp.ClientSession(
+                                    connector=aiohttp.TCPConnector(ssl=False)
+                                ) as st_session:
                                     async with st_session.post(
                                         status_url,
-                                        json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret, 'kasm_id': kasm_id},
+                                        json={
+                                            'api_key': kasm_api_key,
+                                            'api_key_secret': kasm_api_secret,
+                                            'kasm_id': kasm_id,
+                                        },
                                         timeout=aiohttp.ClientTimeout(total=3),
                                     ) as st_resp:
                                         if st_resp.status == 200:
                                             st_data = await st_resp.json()
                                             k_st = st_data.get('kasm', {})
-                                            if k_st.get('operational_status') == 'running' or k_st.get('status') == 'running':
-                                                log.info(f"Kasm container {kasm_id} is running and ready for connection.")
+                                            if (
+                                                k_st.get('operational_status') == 'running'
+                                                or k_st.get('status') == 'running'
+                                            ):
+                                                log.info(
+                                                    f'Kasm container {kasm_id} is running and ready for connection.'
+                                                )
                                                 break
                         except Exception as e:
-                            log.debug(f"Kasm readiness poll notice: {e}")
+                            log.debug(f'Kasm readiness poll notice: {e}')
 
                     ACTIVE_KASM_SESSIONS[session_key] = {
                         'kasm_id': kasm_id,
@@ -414,7 +430,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         'started_at': time.time(),
                     }
 
-                    log.info(f"Started Kasm Workspaces API container {kasm_id} for user {user.id} chat {chat_id}")
+                    log.info(f'Started Kasm Workspaces API container {kasm_id} for user {user.id} chat {chat_id}')
                     return {
                         'status': True,
                         'live_url': kasm_live_url,
@@ -423,7 +439,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         'browser_id': browser_id,
                     }
         except Exception as e:
-            log.exception(f"Failed to request Kasm Workspaces container: {e}")
+            log.exception(f'Failed to request Kasm Workspaces container: {e}')
             # Fallback to standalone Kasm URL if API fails
 
     # Case 2: Standalone Kasm Container Mode
@@ -431,8 +447,8 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
         clean_url = kasm_url.rstrip('/')
         auth_query = ''
         if kasm_password:
-            auth_query = f"?password={quote(kasm_password)}&username={quote(kasm_user)}"
-        live_url = f"{clean_url}/{auth_query}"
+            auth_query = f'?password={quote(kasm_password)}&username={quote(kasm_user)}'
+        live_url = f'{clean_url}/{auth_query}'
 
         ACTIVE_KASM_SESSIONS[session_key] = {
             'live_url': live_url,
@@ -477,7 +493,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
 async def stop_browser_session(request: Request, form_data: StopSessionForm, user=Depends(get_verified_user)):
     """Stops the browser session: compresses profile and destroys Kasm container to free 100% memory."""
     chat_id = form_data.chat_id
-    session_key = f"{user.id}_{chat_id}"
+    session_key = f'{user.id}_{chat_id}'
 
     # Compress and persist browser cookies & sessions
     session_dir = get_session_dir(user.id, chat_id)
@@ -488,6 +504,8 @@ async def stop_browser_session(request: Request, form_data: StopSessionForm, use
         kasm_url = await Config.get('browser_sandbox.kasm.url', '')
         api_key = await Config.get('browser_sandbox.kasm.api_key', '')
         api_secret = await Config.get('browser_sandbox.kasm.api_secret', '')
-        await destroy_kasm_container(active['kasm_id'], active.get('kasm_user_id', user.id), kasm_url, api_key, api_secret)
+        await destroy_kasm_container(
+            active['kasm_id'], active.get('kasm_user_id', user.id), kasm_url, api_key, api_secret
+        )
 
     return {'status': True, 'message': 'Browser session stopped and resources freed.'}

@@ -1679,7 +1679,10 @@ async def generate_chat_completion(
         # If 400 error due to unsupported reasoning_effort or thinking, retry without it
         if r.status == 400 and ('reasoning_effort' in payload_dict or 'thinking' in payload_dict):
             peek_err = await r.text()
-            if any(term in peek_err.lower() for term in ['reasoning_effort', 'reasoning', 'thinking', 'unrecognized request argument']):
+            if any(
+                term in peek_err.lower()
+                for term in ['reasoning_effort', 'reasoning', 'thinking', 'unrecognized request argument']
+            ):
                 log.info('Upstream does not support reasoning_effort/thinking, retrying without it')
                 payload_dict.pop('reasoning_effort', None)
                 payload_dict.pop('thinking', None)

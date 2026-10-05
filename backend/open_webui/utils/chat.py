@@ -63,9 +63,11 @@ async def generate_direct_chat_completion(
     event_caller = await get_event_call(metadata)
     if event_caller is None:
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, u_url, _ = get_user_direct_connection(user)
         if u_key:
             import aiohttp
+
             target_url = u_url or 'https://api.openai.com/v1'
             headers = {'Authorization': f'Bearer {u_key}', 'Content-Type': 'application/json'}
             model_name = form_data.get('model', '')
@@ -204,6 +206,7 @@ async def generate_chat_completion(
     # Single lookup — membership check plus getitem would be two Redis
     # round trips on a Redis-backed model pool.
     from open_webui.utils.direct_connections import get_user_direct_connection
+
     u_key, u_url, _ = get_user_direct_connection(user)
 
     model = models.get(model_id)

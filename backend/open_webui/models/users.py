@@ -172,7 +172,6 @@ class UserSettings(BaseModel):
         return d.values()
 
 
-
 class User(Base):  # identity & profile
     """One row per registered account — profile, role, and settings."""
 
@@ -861,7 +860,9 @@ class UsersTable:
             user = await session.get(User, id)
             if not user:
                 return None
-            user_settings = user.settings.model_dump() if hasattr(user.settings, 'model_dump') else dict(user.settings or {})
+            user_settings = (
+                user.settings.model_dump() if hasattr(user.settings, 'model_dump') else dict(user.settings or {})
+            )
             updated = dict(updated)
             ui_settings = updated.pop('ui', None)
             user_settings.update(updated)

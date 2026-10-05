@@ -362,6 +362,7 @@ async def verify_connection(form_data: ConnectionVerificationForm, user=Depends(
 @router.get('/models')
 async def get_models(request: Request, user=Depends(get_verified_user)):
     from open_webui.utils.direct_connections import get_user_direct_connection
+
     u_key, _, _ = get_user_direct_connection(user)
     image_config = await get_image_config()
     try:
@@ -564,6 +565,7 @@ async def upload_image(request, image_data, content_type, metadata, user, db=Non
 @router.post('/generations')
 async def generate_images(request: Request, form_data: CreateImageForm, user=Depends(get_verified_user)):
     from open_webui.utils.direct_connections import get_user_direct_connection
+
     u_key, u_url, _ = get_user_direct_connection(user)
     has_direct = bool(u_key)
 
@@ -574,8 +576,10 @@ async def generate_images(request: Request, form_data: CreateImageForm, user=Dep
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    if not has_direct and user.role != 'admin' and not await has_permission(
-        user.id, 'features.image_generation', image_config.USER_PERMISSIONS
+    if (
+        not has_direct
+        and user.role != 'admin'
+        and not await has_permission(user.id, 'features.image_generation', image_config.USER_PERMISSIONS)
     ):
         raise HTTPException(
             status_code=403,
@@ -606,6 +610,7 @@ async def image_generations(
     user=None,
 ):
     from open_webui.utils.direct_connections import get_user_direct_connection
+
     u_key, u_url, _ = get_user_direct_connection(user)
 
     image_config = await get_image_config()
@@ -880,6 +885,7 @@ class EditImageForm(BaseModel):
 @router.post('/edit')
 async def edit_images(request: Request, form_data: EditImageForm, user=Depends(get_verified_user)):
     from open_webui.utils.direct_connections import get_user_direct_connection
+
     u_key, u_url, _ = get_user_direct_connection(user)
     has_direct = bool(u_key)
 
@@ -890,8 +896,10 @@ async def edit_images(request: Request, form_data: EditImageForm, user=Depends(g
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
         )
 
-    if not has_direct and user.role != 'admin' and not await has_permission(
-        user.id, 'features.image_generation', image_config.USER_PERMISSIONS
+    if (
+        not has_direct
+        and user.role != 'admin'
+        and not await has_permission(user.id, 'features.image_generation', image_config.USER_PERMISSIONS)
     ):
         raise HTTPException(
             status_code=403,
@@ -998,6 +1006,7 @@ async def image_edits(
 
     try:
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, u_url, _ = get_user_direct_connection(user)
 
         engine = image_config.IMAGE_EDIT_ENGINE

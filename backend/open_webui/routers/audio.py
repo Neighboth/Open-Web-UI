@@ -405,6 +405,7 @@ async def _tts_openai(request, payload, file_path, file_body_path, user):
 
     if not api_key or api_key == 'test':
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, u_url, _ = get_user_direct_connection(user)
         if u_key:
             api_key = u_key
@@ -720,6 +721,7 @@ async def _transcribe_openai(request, file_path, filename, languages, file_dir, 
 
         if user:
             from open_webui.utils.direct_connections import get_user_direct_connection
+
             u_key, u_url, _ = get_user_direct_connection(user)
             if u_key and (not api_key or api_key == 'test'):
                 api_key = u_key

@@ -754,7 +754,7 @@ async def execute_code(
         elif engine == 'self_hosted':
             from open_webui.utils.code_interpreter import execute_code_sandbox
 
-            session_id = f"{(__user__ or {}).get('id', '')}_{__chat_id__ or ''}"
+            session_id = f'{(__user__ or {}).get("id", "")}_{__chat_id__ or ""}'
             output = await execute_code_sandbox(
                 url=await Config.get('code_interpreter.sandbox.url'),
                 code=code,
@@ -839,7 +839,7 @@ async def execute_command(
     from open_webui.utils.code_interpreter import execute_command_sandbox
 
     try:
-        session_id = f"{(__user__ or {}).get('id', '')}_{(__metadata__ or {}).get('chat_id', '')}"
+        session_id = f'{(__user__ or {}).get("id", "")}_{(__metadata__ or {}).get("chat_id", "")}'
         res = await execute_command_sandbox(command, timeout=timeout, session_id=session_id)
         return JSONCodec.dumps(res, ensure_ascii=False)
     except Exception as e:
@@ -874,7 +874,7 @@ async def read_file(
             res = await execute_command_sandbox(f'cat "{path}"')
             if res.get('exit_code') == 0:
                 return res.get('stdout', '')
-            return f"Error: File not found or unreadable: {res.get('stderr', '')}"
+            return f'Error: File not found or unreadable: {res.get("stderr", "")}'
     except Exception as e:
         return f'Error reading file: {e}'
 
@@ -907,7 +907,7 @@ async def write_file(
 
         escaped = JSONCodec.dumps(content)
         res = await execute_command_sandbox(
-            f'python3 -c "import sys, json; open(\'{path}\', \'w\').write(json.loads({escaped}))"'
+            f"python3 -c \"import sys, json; open('{path}', 'w').write(json.loads({escaped}))\""
         )
         if res.get('exit_code') == 0:
             return f"File '{path}' successfully written."
@@ -3662,7 +3662,11 @@ async def view_skill(
                 return JSONCodec.dumps({'error': f"Skill '{id}' not found"})
         builtin_system_skills = await Config.get('system.builtin_skills', []) or []
         for b_skill in builtin_system_skills:
-            if b_skill.get('id') == id or str(b_skill.get('id', '')).lower() == str(id).lower() or str(b_skill.get('name', '')).lower() == str(id).lower():
+            if (
+                b_skill.get('id') == id
+                or str(b_skill.get('id', '')).lower() == str(id).lower()
+                or str(b_skill.get('name', '')).lower() == str(id).lower()
+            ):
                 return JSONCodec.dumps(
                     {
                         'name': b_skill.get('name'),
@@ -4706,9 +4710,11 @@ async def delete_calendar_event(
         log.exception(f'delete_calendar_event error: {e}')
         return JSONCodec.dumps({'error': str(e)})
 
+
 # =============================================================================
 # VIDEO GENERATION TOOLS
 # =============================================================================
+
 
 async def generate_video(
     prompt: str,
@@ -4741,7 +4747,7 @@ async def generate_video(
         from open_webui.models.users import UserModel
         from open_webui.routers.videos import video_generations
         from open_webui.models.chats import Chats
-        
+
         user = UserModel(**__user__) if __user__ else None
 
         if __event_emitter__:
@@ -4755,20 +4761,20 @@ async def generate_video(
                 }
             )
 
-        v_form = {"prompt": prompt}
+        v_form = {'prompt': prompt}
         if duration is not None:
-            v_form["duration"] = duration
+            v_form['duration'] = duration
         if aspect_ratio:
-            v_form["aspect_ratio"] = aspect_ratio
+            v_form['aspect_ratio'] = aspect_ratio
         if size:
-            v_form["size"] = size
+            v_form['size'] = size
         if mode:
-            v_form["mode"] = mode
+            v_form['mode'] = mode
         elif images and len(images) > 0:
-            v_form["mode"] = "image"
+            v_form['mode'] = 'image'
         if images and len(images) > 0:
-            v_form["images"] = images[:5]
-            v_form["image"] = images[0]
+            v_form['images'] = images[:5]
+            v_form['image'] = images[0]
 
         videos = await video_generations(
             request=__request__,
@@ -4818,6 +4824,7 @@ async def generate_video(
 # BROWSER SANDBOX TOOLS
 # =============================================================================
 
+
 async def request_browser_session(
     action: str = 'start',
     browser_id: Optional[str] = None,
@@ -4840,15 +4847,18 @@ async def request_browser_session(
     try:
         from open_webui.models.users import UserModel
         from open_webui.routers.browser import start_browser_session, StartSessionForm
+
         user = UserModel(**__user__) if __user__ else None
 
         chosen_browser = (__features__ or {}).get('browser_id') or browser_id or 'chrome'
-        log.info(f"request_browser_session: browser_id={browser_id}, features.browser_id={(__features__ or {}).get('browser_id')} -> chosen={chosen_browser}")
+        log.info(
+            f'request_browser_session: browser_id={browser_id}, features.browser_id={(__features__ or {}).get("browser_id")} -> chosen={chosen_browser}'
+        )
 
         res = await start_browser_session(
             request=__request__,
             form_data=StartSessionForm(chat_id=__chat_id__ or 'tool_session', browser_id=chosen_browser),
-            user=user
+            user=user,
         )
 
         if not res.get('status'):
@@ -4858,7 +4868,7 @@ async def request_browser_session(
                     {
                         'type': 'status',
                         'data': {
-                            'description': f"Browser Session Error: {err}",
+                            'description': f'Browser Session Error: {err}',
                             'done': True,
                         },
                     }
@@ -4867,7 +4877,7 @@ async def request_browser_session(
 
         live_url = res.get('live_url')
         cdp_url = res.get('cdp_url')
-        
+
         if __event_emitter__ and live_url:
             await __event_emitter__(
                 {
@@ -4890,4 +4900,3 @@ async def request_browser_session(
     except Exception as e:
         log.exception(f'request_browser_session error: {e}')
         return JSONCodec.dumps({'error': str(e)})
-
