@@ -4724,8 +4724,8 @@ async def generate_video(
     Generate a video based on a text prompt.
 
     :param prompt: A detailed description of the video to generate
-    :param size: The video resolution/size (e.g. '720P', '1024x1024')
-    :param mode: Optional video quality mode ('std', 'pro', or 'text')
+    :param size: Optional video size or resolution if required by model
+    :param mode: Optional mode parameter if required by model
     :return: Confirmation that the video was generated, or an error message
     """
     if __request__ is None:
@@ -4737,6 +4737,17 @@ async def generate_video(
         from open_webui.models.chats import Chats
         
         user = UserModel(**__user__) if __user__ else None
+
+        if __event_emitter__:
+            await __event_emitter__(
+                {
+                    'type': 'status',
+                    'data': {
+                        'description': 'Video oluşturuluyor, lütfen bekleyin...',
+                        'done': False,
+                    },
+                }
+            )
 
         v_form = {"prompt": prompt}
         if size:

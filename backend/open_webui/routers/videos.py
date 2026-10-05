@@ -201,35 +201,15 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
         'prompt': form_data.get('prompt', ''),
     }
 
-    model_lower = str(model).lower()
-    is_agnes_model = 'agnes' in model_lower
+    if form_data.get('mode'):
+        payload['mode'] = form_data.get('mode')
+    elif config.get('VIDEO_GENERATION_MODE'):
+        payload['mode'] = config.get('VIDEO_GENERATION_MODE')
 
-    raw_mode = form_data.get('mode') or config.get('VIDEO_GENERATION_MODE')
-
-    if is_agnes_model:
-        # Agnes AI requires mode to be 'text' (text2video) or 'image' (image2video)
-        if raw_mode and str(raw_mode).lower() in ['text', 'image', 'keyframe']:
-            payload['mode'] = str(raw_mode).lower()
-        else:
-            has_image = bool(form_data.get('image') or form_data.get('image_url') or form_data.get('input_image'))
-            payload['mode'] = 'image' if has_image else 'text'
-    else:
-        # Standard models (Kling, Sora, etc.) require 'std' or 'pro'
-        raw_mode_str = str(raw_mode or 'std').strip().lower()
-        if raw_mode_str in ['pro', 'professional', 'high']:
-            payload['mode'] = 'pro'
-        else:
-            payload['mode'] = 'std'
-
-    raw_size = form_data.get('size') or config.get('VIDEO_SIZE')
-    if is_agnes_model:
-        # Agnes requires size to be '720P'
-        if raw_size and str(raw_size).strip().upper() == '720P':
-            payload['size'] = '720P'
-        else:
-            payload['size'] = '720P'
-    elif raw_size:
-        payload['size'] = raw_size
+    if form_data.get('size'):
+        payload['size'] = form_data.get('size')
+    elif config.get('VIDEO_SIZE'):
+        payload['size'] = config.get('VIDEO_SIZE')
 
     if form_data.get('duration'):
         payload['duration'] = form_data.get('duration')
@@ -240,7 +220,7 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     if isinstance(extra_params, dict):
         payload.update(extra_params)
     for k, v in form_data.items():
-        if k not in ['prompt', 'model', 'mode']:
+        if k not in ['prompt', 'model']:
             payload[k] = v
 
     async with aiohttp.ClientSession() as session:
@@ -261,16 +241,59 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
                     raise HTTPException(status_code=response.status, detail=f"API Error ({response.status}): {err_msg}")
 
                 res_data = await response.json()
+                
+                # Extract task or video items
+                items = []
                 if isinstance(res_data, list):
-                    return res_data
-                if isinstance(res_data, dict):
+                    items = res_data
+                elif isinstance(res_data, dict):
                     if 'data' in res_data and isinstance(res_data['data'], list):
-                        return res_data['data']
-                    if 'url' in res_data:
-                        return [res_data]
-                    if 'video' in res_data:
-                        return [{'url': res_data['video']}]
-                return [res_data]
+                        items = res_data['data']
+                    elif 'videos' in res_data and isinstance(res_data['videos'], list):
+                        items = res_data['videos']
+                    else:
+                        items = [res_data]
+
+                # If the item is an asynchronous task (queued/processing), poll until it succeeds
+                final_results = []
+                for item in items:
+                    task_id = item.get('task_id') or item.get('id')
+                    status = str(item.get('status', '')).lower()
+                    url_val = item.get('url') or (item.get('metadata') or {}).get('url') or item.get('result_url')
+
+                    if not url_val and task_id and status in ['queued', 'processing', 'submitted', 'pending', 'running']:
+                        poll_url = f"{base_url}/video/generations/{task_id}"
+                        # Poll every 4 seconds for up to 180 seconds
+                        for _ in range(45):
+                            await asyncio.sleep(4)
+                            try:
+                                async with session.get(poll_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as poll_resp:
+                                    if poll_resp.status == 200:
+                                        p_data = await poll_resp.json()
+                                        d = p_data.get('data') or p_data
+                                        p_status = str(d.get('status', '')).upper()
+                                        found_url = (
+                                            d.get('result_url')
+                                            or (d.get('data') or {}).get('metadata', {}).get('url')
+                                            or (d.get('metadata') or {}).get('url')
+                                            or d.get('url')
+                                        )
+                                        if found_url and (p_status in ['SUCCESS', 'SUCCEEDED', 'COMPLETED'] or 'http' in str(found_url)):
+                                            item['url'] = found_url
+                                            break
+                                        if p_status in ['FAIL', 'FAILED', 'ERROR']:
+                                            break
+                            except Exception as pe:
+                                log.debug(f"Video task poll exception: {pe}")
+
+                    if item.get('url'):
+                        final_results.append(item)
+                    elif item.get('result_url'):
+                        final_results.append({'url': item.get('result_url'), 'id': task_id})
+                    else:
+                        final_results.append(item)
+
+                return final_results
         except HTTPException:
             raise
         except Exception as e:
