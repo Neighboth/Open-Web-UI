@@ -193,7 +193,10 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
         'Content-Type': 'application/json'
     }
 
-    url = f'{base_url}/video/generations'
+    endpoint = config.get('VIDEOS_OPENAI_API_ENDPOINT') or '/video/generations'
+    if not endpoint.startswith('/'):
+        endpoint = '/' + endpoint
+    url = f'{base_url}{endpoint}'
 
     model = form_data.get('model') or config.get('VIDEO_GENERATION_MODEL') or 'kling-video'
     payload = {

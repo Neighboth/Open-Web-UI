@@ -4712,8 +4712,11 @@ async def delete_calendar_event(
 
 async def generate_video(
     prompt: str,
+    duration: Optional[int] = None,
+    aspect_ratio: Optional[str] = None,
     size: Optional[str] = None,
     mode: Optional[str] = None,
+    images: Optional[list[str]] = None,
     __request__: Request = None,
     __user__: dict = None,
     __event_emitter__: callable = None,
@@ -4721,12 +4724,15 @@ async def generate_video(
     __message_id__: str = None,
 ) -> str:
     """
-    Generate a video based on a text prompt.
+    Generate a video based on a text prompt and optional parameters.
 
-    :param prompt: A detailed description of the video to generate
-    :param size: Optional video size or resolution if required by model
-    :param mode: Optional mode parameter if required by model
-    :return: Confirmation that the video was generated, or an error message
+    :param prompt: A detailed description of the video to generate.
+    :param duration: Video duration in seconds (e.g. 4 to 12 seconds; defaults to 12 or model default if not specified by user).
+    :param aspect_ratio: Video aspect ratio ('21:9', '16:9', '4:3', '1:1', '3:4', '9:16').
+    :param size: Resolution or size (e.g. '720P', '1080P').
+    :param mode: Generation mode ('text' for text-to-video, 'image' for image-to-video).
+    :param images: Up to 5 image URLs or IDs to use as references or starting frames.
+    :return: Confirmation that the video was generated, or an error message.
     """
     if __request__ is None:
         return JSONCodec.dumps({'error': 'Request context not available'})
@@ -4750,10 +4756,19 @@ async def generate_video(
             )
 
         v_form = {"prompt": prompt}
+        if duration is not None:
+            v_form["duration"] = duration
+        if aspect_ratio:
+            v_form["aspect_ratio"] = aspect_ratio
         if size:
             v_form["size"] = size
         if mode:
             v_form["mode"] = mode
+        elif images and len(images) > 0:
+            v_form["mode"] = "image"
+        if images and len(images) > 0:
+            v_form["images"] = images[:5]
+            v_form["image"] = images[0]
 
         videos = await video_generations(
             request=__request__,
