@@ -12,6 +12,8 @@ import aiohttp
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+import json
+
 from open_webui.env import DATA_DIR
 from open_webui.models.config import Config
 from open_webui.utils.auth import get_admin_user, get_verified_user
