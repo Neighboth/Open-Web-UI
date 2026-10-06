@@ -207,6 +207,7 @@ async def execute_code_e2b(api_key: str, code: str, timeout: int = 60, template:
     try:
         try:
             from e2b_code_interpreter import Sandbox
+
             with Sandbox(api_key=api_key) as sandbox:
                 execution = sandbox.run_code(code)
                 stdout = '\n'.join([log.line for log in execution.logs.stdout])
@@ -270,7 +271,7 @@ async def execute_code_sandbox(url: str, code: str, token: str = '', timeout: in
             if session_id:
                 payload['session_id'] = session_id
             async with session.post(
-                f"{url.rstrip('/')}/execute",
+                f'{url.rstrip("/")}/execute',
                 headers=headers,
                 json=payload,
             ) as resp:
@@ -289,6 +290,7 @@ async def execute_code_sandbox(url: str, code: str, token: str = '', timeout: in
 async def execute_command_sandbox(command: str, timeout: int = 60, session_id: str = '') -> dict:
     """Executes shell command in configured sandbox or environment."""
     from open_webui.models.config import Config
+
     engine = await Config.get('code_interpreter.engine', 'pyodide')
 
     if engine == 'e2b':
@@ -338,7 +340,7 @@ async def execute_command_sandbox(command: str, timeout: int = 60, session_id: s
             if session_id:
                 payload['session_id'] = session_id
             async with session.post(
-                f"{url.rstrip('/')}/command",
+                f'{url.rstrip("/")}/command',
                 headers=headers,
                 json=payload,
             ) as resp:
@@ -360,4 +362,3 @@ async def execute_command_sandbox(command: str, timeout: int = 60, session_id: s
         except asyncio.TimeoutError:
             proc.kill()
             return {'stdout': '', 'stderr': 'Command timed out', 'exit_code': 124}
-

@@ -1608,6 +1608,7 @@ async def delete_chat_by_id(
     # Clean up browser/sandbox session directories and active Kasm containers to prevent lingering storage
     try:
         from open_webui.routers.browser import cleanup_chat_browser_session
+
         owner_id = chat.user_id if chat else user.id
         await cleanup_chat_browser_session(owner_id, id)
     except Exception as kasm_err:
@@ -1617,16 +1618,17 @@ async def delete_chat_by_id(
         import shutil
         from pathlib import Path
         from open_webui.env import DATA_DIR
+
         session_dir_names = [
-            f"{chat.user_id}_{id}",
-            f"{user.id}_{id}",
-            f"session_{chat.user_id}_{id}",
-            f"session_{user.id}_{id}"
+            f'{chat.user_id}_{id}',
+            f'{user.id}_{id}',
+            f'session_{chat.user_id}_{id}',
+            f'session_{user.id}_{id}',
         ]
         base_session_dirs = [
             Path('/data/browser_sessions'),
             Path(DATA_DIR) / 'browser_sessions',
-            Path(DATA_DIR) / 'sandbox_sessions'
+            Path(DATA_DIR) / 'sandbox_sessions',
         ]
         for base_dir in base_session_dirs:
             if base_dir.exists():

@@ -153,7 +153,11 @@ async def build_tool_server_headers(
     headers = {}
     cookies = getattr(request, 'cookies', {}) if connection.get('forward_cookies', False) else {}
 
-    user_tools = getattr(user, 'settings', {}).get('tools', {}) if user and isinstance(getattr(user, 'settings', {}), dict) else {}
+    user_tools = (
+        getattr(user, 'settings', {}).get('tools', {})
+        if user and isinstance(getattr(user, 'settings', {}), dict)
+        else {}
+    )
     user_provided = connection.get('user_provided') or (connection.get('info') or {}).get('user_provided')
     user_key = (
         user_tools.get(server_id)
@@ -426,7 +430,9 @@ async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extr
                     tool_server_connection = connections[tool_server_idx]
 
                     # Check access control for tool server
-                    if user.role != 'admin' and not await has_connection_access(user, tool_server_connection, user_group_ids):
+                    if user.role != 'admin' and not await has_connection_access(
+                        user, tool_server_connection, user_group_ids
+                    ):
                         log.warning(f'Access denied to tool server {server_id} for user {user.id}')
                         continue
 
@@ -478,7 +484,9 @@ async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extr
 
                         tool_dict = {
                             'tool_id': tool_id,
-                            'tool_name': (tool_server_data.get('info') or {}).get('title') or (tool_server_connection.get('info') or {}).get('name') or 'Tool Server',
+                            'tool_name': (tool_server_data.get('info') or {}).get('title')
+                            or (tool_server_connection.get('info') or {}).get('name')
+                            or 'Tool Server',
                             'callable': callable,
                             'spec': clean_openai_tool_schema(spec),
                             # Misc info
@@ -725,17 +733,11 @@ async def get_builtin_tools(
         and await has_user_permission('image_generation')
     ):
         builtin_functions.append(edit_image)
-        
-    if (
-        config.get('video_generation.enable', True)
-        and features.get('video_generation')
-    ):
+
+    if config.get('video_generation.enable', True) and features.get('video_generation'):
         builtin_functions.append(generate_video)
 
-    if (
-        config.get('browser_sandbox.enable', True)
-        and features.get('browser')
-    ):
+    if config.get('browser_sandbox.enable', True) and features.get('browser'):
         builtin_functions.append(request_browser_session)
 
     # Add code interpreter tool if builtin category enabled,

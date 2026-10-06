@@ -105,11 +105,12 @@ DEFAULT_CONFIG = {
     'VIDEOS_EDIT_COMFYUI_WORKFLOW_NODES': [],
 }
 
+
 async def get_config_values() -> dict:
     try:
         values = await Config.get_many(*VIDEO_CONFIG_KEYS.values())
     except Exception as e:
-        log.warning(f"Failed to fetch video config values: {e}")
+        log.warning(f'Failed to fetch video config values: {e}')
         values = {}
 
     result = {}
@@ -120,9 +121,11 @@ async def get_config_values() -> dict:
             result[field] = DEFAULT_CONFIG.get(field)
     return result
 
+
 @router.get('/config')
 async def get_config(request: Request, user=Depends(get_admin_user)):
     return await get_config_values()
+
 
 @router.post('/config')
 @router.post('/config/update')
@@ -135,6 +138,7 @@ async def update_config(request: Request, form_data: dict, user=Depends(get_admi
         await Config.upsert(updates)
     return await get_config_values()
 
+
 @router.get('/models')
 async def get_models(request: Request, user=Depends(get_verified_user)):
     config = await get_config_values()
@@ -145,6 +149,7 @@ async def get_models(request: Request, user=Depends(get_verified_user)):
     if not api_key:
         try:
             from open_webui.utils.direct_connections import get_user_direct_connection
+
             u_key, u_url, _ = get_user_direct_connection(user)
             if u_key:
                 api_key = u_key
@@ -166,25 +171,27 @@ async def get_models(request: Request, user=Depends(get_verified_user)):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"{base_url}/models",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    timeout=aiohttp.ClientTimeout(total=5)
+                    f'{base_url}/models',
+                    headers={'Authorization': f'Bearer {api_key}'},
+                    timeout=aiohttp.ClientTimeout(total=5),
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         if 'data' in data and isinstance(data['data'], list):
                             return [{'id': m['id'], 'name': m.get('id', '')} for m in data['data']]
         except Exception as e:
-            log.debug(f"Failed to fetch models from OpenAI endpoint: {e}")
+            log.debug(f'Failed to fetch models from OpenAI endpoint: {e}')
 
     return default_models
+
 
 @router.post('/verify')
 async def verify_connection(request: Request, form_data: dict, user=Depends(get_admin_user)):
     url = (form_data.get('url') or '').rstrip('/')
     if not url:
-        raise HTTPException(status_code=400, detail="URL is required")
-    return {"status": True}
+        raise HTTPException(status_code=400, detail='URL is required')
+    return {'status': True}
+
 
 @router.post('/generations')
 async def video_generations(request: Request, form_data: dict, user=Depends(get_verified_user)):
@@ -198,6 +205,7 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     if not api_key:
         try:
             from open_webui.utils.direct_connections import get_user_direct_connection
+
             u_key, u_url, _ = get_user_direct_connection(user)
             if u_key:
                 api_key = u_key
@@ -207,10 +215,7 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
             pass
 
     base_url = (base_url or 'https://api.openai.com/v1').rstrip('/')
-    headers = {
-        'Authorization': f'Bearer {api_key}',
-        'Content-Type': 'application/json'
-    }
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
 
     endpoint = config.get('VIDEOS_OPENAI_API_ENDPOINT') or '/video/generations'
     if not endpoint.startswith('/'):
@@ -272,23 +277,45 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
 
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.post(url, headers=headers, json=payload) as response:
-                if response.status >= 400:
-                    err_text = await response.text()
-                    log.error(f"Video generation upstream error ({response.status}): {err_text}")
-                    try:
-                        err_json = json.loads(err_text)
-                        err_msg = (
-                            err_json.get('error', {}).get('message')
-                            if isinstance(err_json.get('error'), dict)
-                            else err_json.get('error') or err_json.get('detail') or err_text
-                        )
-                    except Exception:
-                        err_msg = err_text
-                    raise HTTPException(status_code=response.status, detail=f"API Error ({response.status}): {err_msg}")
+            for attempt in range(4):
+                modified_payload = False
+                async with session.post(url, headers=headers, json=payload) as response:
+                    if response.status >= 400:
+                        err_text = await response.text()
+                        log.error(f'Video generation upstream error ({response.status}): {err_text}')
+                        try:
+                            err_json = json.loads(err_text)
+                            err_msg = (
+                                err_json.get('error', {}).get('message')
+                                if isinstance(err_json.get('error'), dict)
+                                else err_json.get('error')
+                                or err_json.get('detail')
+                                or err_json.get('message')
+                                or err_text
+                            )
+                            # Handle stringified JSON in message (like Pixrouter's invalid_request)
+                            if isinstance(err_msg, str) and err_msg.startswith('{') and 'invalid_request' in err_msg:
+                                inner_err = json.loads(err_msg)
+                                param_name = inner_err.get('data', {}).get('param')
+                                if param_name and param_name in payload and attempt < 3:
+                                    log.info(
+                                        f"Removing unsupported param '{param_name}' and retrying ({attempt + 1}/3)..."
+                                    )
+                                    del payload[param_name]
+                                    modified_payload = True
+                        except Exception:
+                            err_msg = err_text
 
-                res_data = await response.json()
-                
+                        if attempt == 3 or not modified_payload or response.status not in [400]:
+                            raise HTTPException(
+                                status_code=response.status, detail=f'API Error ({response.status}): {err_msg}'
+                            )
+                        else:
+                            continue
+
+                    res_data = await response.json()
+                    break
+
                 # Extract task or video items
                 items = []
                 if isinstance(res_data, list):
@@ -308,13 +335,19 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
                     status = str(item.get('status', '')).lower()
                     url_val = item.get('url') or (item.get('metadata') or {}).get('url') or item.get('result_url')
 
-                    if not url_val and task_id and status in ['queued', 'processing', 'submitted', 'pending', 'running']:
-                        poll_url = f"{base_url}/video/generations/{task_id}"
+                    if (
+                        not url_val
+                        and task_id
+                        and status in ['queued', 'processing', 'submitted', 'pending', 'running']
+                    ):
+                        poll_url = f'{base_url}/video/generations/{task_id}'
                         # Poll every 4 seconds for up to 180 seconds
                         for _ in range(45):
                             await asyncio.sleep(4)
                             try:
-                                async with session.get(poll_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as poll_resp:
+                                async with session.get(
+                                    poll_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                                ) as poll_resp:
                                     if poll_resp.status == 200:
                                         p_data = await poll_resp.json()
                                         d = p_data.get('data') or p_data
@@ -325,13 +358,16 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
                                             or (d.get('metadata') or {}).get('url')
                                             or d.get('url')
                                         )
-                                        if found_url and (p_status in ['SUCCESS', 'SUCCEEDED', 'COMPLETED'] or 'http' in str(found_url)):
+                                        if found_url and (
+                                            p_status in ['SUCCESS', 'SUCCEEDED', 'COMPLETED']
+                                            or 'http' in str(found_url)
+                                        ):
                                             item['url'] = found_url
                                             break
                                         if p_status in ['FAIL', 'FAILED', 'ERROR']:
                                             break
                             except Exception as pe:
-                                log.debug(f"Video task poll exception: {pe}")
+                                log.debug(f'Video task poll exception: {pe}')
 
                     if item.get('url'):
                         final_results.append(item)

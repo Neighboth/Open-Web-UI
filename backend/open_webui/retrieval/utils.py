@@ -932,9 +932,11 @@ async def agenerate_openai_batch_embeddings(
     url: str = 'https://api.openai.com/v1',
     key: str = '',
     prefix: str = None,
+    user: Optional[dict] = None,
 ) -> list[list[float]]:
     if user:
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, u_url, _ = get_user_direct_connection(user)
         if u_key and (not key or url == 'https://api.openai.com/v1'):
             key = u_key
@@ -1226,6 +1228,7 @@ async def generate_embeddings(
 
     if user and (not key or engine == ''):
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, u_url, _ = get_user_direct_connection(user)
         if u_key:
             engine = 'openai'

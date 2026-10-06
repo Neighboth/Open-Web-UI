@@ -3,6 +3,7 @@ from typing import Optional, Tuple, Dict, Any
 
 log = logging.getLogger(__name__)
 
+
 def get_user_direct_connection(user: Any) -> Tuple[Optional[str], Optional[str], Dict[str, Any]]:
     """
     Extracts the user's personal direct connection (BYOK) API key, base URL, and config.
@@ -49,12 +50,9 @@ def get_user_direct_connection(user: Any) -> Tuple[Optional[str], Optional[str],
     for idx, key in enumerate(keys):
         if key and str(key).strip():
             raw_url = (
-                urls[idx]
-                if idx < len(urls) and urls[idx] and str(urls[idx]).strip()
-                else 'https://api.openai.com/v1'
+                urls[idx] if idx < len(urls) and urls[idx] and str(urls[idx]).strip() else 'https://api.openai.com/v1'
             )
             cfg = configs.get(str(idx)) or configs.get(idx) or {}
             return str(key).strip(), str(raw_url).strip().rstrip('/'), cfg
 
     return None, None, {}
-

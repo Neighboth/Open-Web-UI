@@ -1138,9 +1138,9 @@ async def update_models_access_batch(
 
             await AccessGrants.set_access_grants('model', model_id, new_grants)
         except Exception as e:
-            log.exception(f"Failed to update access for model {model_id}: {e}")
+            log.exception(f'Failed to update access for model {model_id}: {e}')
 
-    return {"status": True}
+    return {'status': True}
 
 
 ############################
