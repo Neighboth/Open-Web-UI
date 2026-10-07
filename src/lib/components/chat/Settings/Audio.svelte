@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
 	import { createEventDispatcher, onMount, getContext } from 'svelte';
+	import type { Writable } from 'svelte/store';
+	import type { i18n as i18nType } from 'i18next';
 
 	import { user, settings, config } from '$lib/stores';
-	import { getVoices as _getVoices } from '$lib/apis/audio';
+	import { getVoices as _getVoices, synthesizeOpenAISpeech } from '$lib/apis/audio';
 
 	import Switch from '$lib/components/common/Switch.svelte';
 	import Spinner from '$lib/components/common/Spinner.svelte';
@@ -14,7 +16,7 @@
 	import UserSettingSection from './UserSettingSection.svelte';
 	const dispatch = createEventDispatcher();
 
-	const i18n = getContext('i18n');
+	const i18n = getContext<Writable<i18nType>>('i18n');
 
 	export let saveSettings: Function;
 
@@ -36,6 +38,7 @@
 
 	let voices = [];
 	let voice = '';
+	let previewingVoice = false;
 
 	// Audio speed control
 	let playbackRate = 1;
@@ -86,6 +89,26 @@
 	const setSpeechAutoSend = async (enabled: boolean) => {
 		speechAutoSend = enabled;
 		saveSettings({ speechAutoSend: speechAutoSend });
+	};
+
+	const previewVoice = async () => {
+		if (!voice || previewingVoice) return;
+		previewingVoice = true;
+		try {
+			const response = await synthesizeOpenAISpeech(
+				localStorage.token,
+				voice,
+				$i18n.t('This is a voice preview.')
+			);
+			if (!response) return;
+			const audio = new Audio(URL.createObjectURL(await response.blob()));
+			audio.onended = () => URL.revokeObjectURL(audio.src);
+			await audio.play();
+		} catch (error) {
+			toast.error(`${error}`);
+		} finally {
+			previewingVoice = false;
+		}
 	};
 
 	onMount(async () => {
@@ -380,13 +403,23 @@
 					label={$i18n.t('settings.personal.audio.serviceVoice.label')}
 					description={$i18n.t('settings.personal.audio.serviceVoice.description')}
 				>
-					<input
-						list="voice-list"
-						class={inputClass}
-						bind:value={voice}
-						aria-label={$i18n.t('settings.personal.audio.sections.voice.title')}
-						placeholder={$i18n.t('Select a voice')}
-					/>
+					<div class="flex items-center gap-2">
+						<input
+							list="voice-list"
+							class={inputClass}
+							bind:value={voice}
+							aria-label={$i18n.t('settings.personal.audio.sections.voice.title')}
+							placeholder={$i18n.t('Select a voice')}
+						/>
+						<button
+							type="button"
+							class="shrink-0 rounded-lg border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10"
+							disabled={!voice || previewingVoice}
+							on:click={previewVoice}
+						>
+							{previewingVoice ? $i18n.t('Loading') : $i18n.t('Preview')}
+						</button>
+					</div>
 
 					<datalist id="voice-list">
 						{#each voices as voice}

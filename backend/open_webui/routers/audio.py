@@ -602,6 +602,35 @@ async def _tts_mistral(request, payload, file_path, file_body_path, user):
         await _raise_tts_error(exc, r)
 
 
+async def _tts_edge(request, payload, file_path, file_body_path, user):
+    """Generate speech with Microsoft's Edge TTS service via ``edge-tts``.
+
+    Edge TTS is a network service, but it does not require an API key.  Keep
+    the synthesis in a worker thread: edge-tts' ``save`` method performs
+    websocket I/O and can otherwise block the event loop on slow connections.
+    """
+    try:
+        import edge_tts
+
+        voice = (payload.get('voice') or await Config.get('audio.tts.voice') or 'en-US-AriaNeural').strip()
+        text = str(payload.get('input') or '').strip()
+        if not text:
+            raise HTTPException(status_code=400, detail='Text input is required for Edge TTS')
+
+        async def _save() -> None:
+            await edge_tts.Communicate(text=text, voice=voice).save(str(file_path))
+
+        await _save()
+        async with aiofiles.open(file_body_path, 'w') as f:
+            await f.write(JSONCodec.dumps({**payload, 'voice': voice, 'engine': 'edge-tts'}))
+        return FileResponse(file_path, media_type='audio/mpeg')
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.exception('Edge TTS synthesis failed: %s', exc)
+        await _raise_tts_error(exc)
+
+
 # Dispatcher map: engine name -> handler
 _TTS_ENGINES = {
     'openai': _tts_openai,
@@ -609,6 +638,7 @@ _TTS_ENGINES = {
     'azure': _tts_azure,
     'transformers': _tts_transformers,
     'mistral': _tts_mistral,
+    'edge-tts': _tts_edge,
 }
 
 
@@ -1422,6 +1452,9 @@ async def get_available_models(request: Request) -> list[dict]:
     elif engine == 'mistral':
         available_models = [{'id': 'voxtral-mini-tts-2603'}]
 
+    elif engine == 'edge-tts':
+        available_models = [{'id': 'edge-tts'}]
+
     return available_models
 
 
@@ -1438,6 +1471,17 @@ _OPENAI_DEFAULT_VOICES = {
     'nova': 'nova',
     'shimmer': 'shimmer',
 }
+
+# Used when the Edge TTS endpoint is temporarily unavailable. The full list
+# is fetched lazily and cached only after a successful response so a transient
+# outage does not pin this short fallback list until the next restart.
+_EDGE_TTS_DEFAULT_VOICES = {
+    'en-US-AriaNeural': 'Aria (en-US)',
+    'en-US-GuyNeural': 'Guy (en-US)',
+    'tr-TR-EmelNeural': 'Emel (tr-TR)',
+    'tr-TR-AhmetNeural': 'Ahmet (tr-TR)',
+}
+_EDGE_TTS_VOICES: dict[str, str] | None = None
 
 
 async def get_available_voices(request) -> dict:
@@ -1526,6 +1570,25 @@ async def get_available_voices(request) -> dict:
                     return result
             except Exception as e:
                 log.error(f'Error fetching Mistral voices: {e}')
+
+    if engine == 'edge-tts':
+        global _EDGE_TTS_VOICES
+        if _EDGE_TTS_VOICES is not None:
+            return dict(_EDGE_TTS_VOICES)
+        try:
+            import edge_tts
+
+            voices = await edge_tts.list_voices()
+            _EDGE_TTS_VOICES = {
+                voice['ShortName']: f"{voice.get('FriendlyName') or voice.get('Name', voice['ShortName'])} ({voice.get('Locale', '')})".strip()
+                for voice in voices
+                if voice.get('ShortName')
+            }
+            if _EDGE_TTS_VOICES:
+                return dict(_EDGE_TTS_VOICES)
+        except Exception as e:
+            log.warning('Error fetching Edge TTS voices; using built-in defaults: %s', e)
+        return dict(_EDGE_TTS_DEFAULT_VOICES)
 
     return {}
 

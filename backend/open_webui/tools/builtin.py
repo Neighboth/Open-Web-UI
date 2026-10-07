@@ -69,6 +69,7 @@ from open_webui.utils.chat_id import is_saved_chat_id
 from open_webui.utils.json_codec import JSONCodec
 from open_webui.utils.notifications import notify_target
 from open_webui.utils.sanitize import sanitize_code
+from open_webui.utils.video_defaults import filter_unrequested_video_options
 
 log = logging.getLogger(__name__)
 
@@ -4728,14 +4729,15 @@ async def generate_video(
     __event_emitter__: callable = None,
     __chat_id__: str = None,
     __message_id__: str = None,
+    __messages__: list = None,
 ) -> str:
     """
     Generate a video based on a text prompt and optional parameters.
 
     :param prompt: A detailed description of the video to generate.
-    :param duration: Video duration in seconds. DO NOT provide this unless explicitly requested by the user.
+    :param duration: Video duration in seconds. Only provide this when the user explicitly requests a duration (for example, "8 seconds").
     :param aspect_ratio: Video aspect ratio ('21:9', '16:9', '4:3', '1:1', '3:4', '9:16').
-    :param size: Resolution or size (e.g. '720P', '1080P'). DO NOT provide this unless explicitly requested by the user.
+    :param size: Resolution or size (e.g. '720P', '1080P'). Only provide this when the user explicitly requests a resolution.
     :param mode: Generation mode ('text' for text-to-video, 'image' for image-to-video). DO NOT provide this unless explicitly requested by the user.
     :param images: Up to 5 image URLs or IDs to use as references or starting frames.
     :return: Confirmation that the video was generated, or an error message.
@@ -4761,13 +4763,19 @@ async def generate_video(
                 }
             )
 
-        v_form = {'prompt': prompt}
-        if duration is not None:
-            v_form['duration'] = duration
+        # Models sometimes populate optional function arguments from their
+        # own preferences.  Keep the Admin configured defaults authoritative
+        # unless the latest user message explicitly mentions that value.
+        v_form = filter_unrequested_video_options(
+            {
+                'prompt': prompt,
+                **({'duration': duration} if duration is not None else {}),
+                **({'size': size} if size else {}),
+            },
+            __messages__,
+        )
         if aspect_ratio:
             v_form['aspect_ratio'] = aspect_ratio
-        if size:
-            v_form['size'] = size
         if mode:
             v_form['mode'] = mode
         elif images and len(images) > 0:

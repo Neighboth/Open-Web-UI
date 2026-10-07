@@ -62,6 +62,7 @@
 	export let codeInterpreterEnabled = false;
 	export let browserEnabled = false;
 	export let webSearchEnabled = false;
+	export let deepResearchEnabled = false;
 	export let toolApprovalMode = 'full';
 	export let onToolApprovalModeChange: Function = () => {};
 	export let oauthRedirectHandler: Function = () => {};
@@ -257,6 +258,7 @@
 						bind:codeInterpreterEnabled
 						bind:browserEnabled
 						bind:webSearchEnabled
+						bind:deepResearchEnabled
 						bind:atSelectedModel
 						bind:showCommands
 						bind:dragged

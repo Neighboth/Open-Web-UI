@@ -495,6 +495,9 @@
 						} else if (value === 'mistral') {
 							TTS_VOICE = '';
 							TTS_MODEL = 'voxtral-mini-tts-2603';
+						} else if (value === 'edge-tts') {
+							TTS_VOICE = 'en-US-AriaNeural';
+							TTS_MODEL = 'edge-tts';
 						} else {
 							TTS_VOICE = '';
 							TTS_MODEL = '';
@@ -513,6 +516,7 @@
 					<option value="elevenlabs">{$i18n.t('ElevenLabs')}</option>
 					<option value="azure">{$i18n.t('Azure AI Speech')}</option>
 					<option value="mistral">{$i18n.t('MistralAI')}</option>
+					<option value="edge-tts">{$i18n.t('Edge TTS')} ({$i18n.t('Free')})</option>
 				</SettingsSelect>
 			</AdminSettingRow>
 
@@ -583,6 +587,10 @@
 						/>
 					</AdminSettingField>
 				</div>
+			{:else if TTS_ENGINE === 'edge-tts'}
+				<p class="text-xs text-gray-500 dark:text-gray-400">
+					{$i18n.t('Edge TTS uses the Microsoft Edge online speech service and does not require an API key.')}
+				</p>
 			{/if}
 
 			{#if TTS_ENGINE === ''}
@@ -655,7 +663,7 @@
 						placeholder={$i18n.t('Enter additional parameters in JSON format')}
 					/>
 				</AdminSettingField>
-			{:else if TTS_ENGINE === 'elevenlabs' || TTS_ENGINE === 'mistral'}
+			{:else if TTS_ENGINE === 'elevenlabs' || TTS_ENGINE === 'mistral' || TTS_ENGINE === 'edge-tts'}
 				<div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
 					<AdminSettingField label={$i18n.t('settings.admin.audio.ttsVoice.label')}>
 						<TTSVoiceInput

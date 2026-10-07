@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from open_webui.models.config import Config
 from open_webui.utils.auth import get_admin_user, get_verified_user
+from open_webui.utils.video_defaults import resolve_duration, resolve_size
 
 log = logging.getLogger(__name__)
 
@@ -234,18 +235,21 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     elif config.get('VIDEO_GENERATION_MODE'):
         payload['mode'] = config.get('VIDEO_GENERATION_MODE')
 
-    # Size / Resolution
-    size_val = form_data.get('size') or config.get('VIDEO_SIZE_DEFAULT') or config.get('VIDEO_SIZE')
+    # Size / Resolution.  Resolve this once and only merge non-empty request
+    # values below, so an omitted/blank tool argument cannot replace the Admin
+    # default with an accidental null value.
+    size_val = resolve_size(
+        form_data.get('size'),
+        config.get('VIDEO_SIZE_DEFAULT'),
+        config.get('VIDEO_SIZE'),
+    )
     if size_val:
         payload['size'] = size_val
 
     # Duration
-    duration_val = form_data.get('duration') or config.get('VIDEO_DURATION_DEFAULT')
+    duration_val = resolve_duration(form_data.get('duration'), config.get('VIDEO_DURATION_DEFAULT'))
     if duration_val:
-        try:
-            payload['duration'] = int(duration_val)
-        except Exception:
-            payload['duration'] = duration_val
+        payload['duration'] = duration_val
 
     # Aspect Ratio
     aspect_ratio_val = form_data.get('aspect_ratio') or config.get('VIDEO_ASPECT_RATIO_DEFAULT')
@@ -272,7 +276,7 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     if isinstance(extra_params, dict):
         payload.update(extra_params)
     for k, v in form_data.items():
-        if k not in ['prompt', 'model']:
+        if k not in ['prompt', 'model', 'size', 'duration'] and v is not None:
             payload[k] = v
 
     async with aiohttp.ClientSession() as session:

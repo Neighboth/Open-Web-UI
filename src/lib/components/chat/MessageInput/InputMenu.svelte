@@ -45,6 +45,7 @@
 	export let onUpload: Function;
 	export let onClose: Function;
 	export let toolApprovalMode = 'full';
+	export let deepResearchEnabled = false;
 	export let onToolApprovalModeChange: Function = () => {};
 
 	let show = false;
@@ -68,6 +69,11 @@
 	$: fileUploadEnabled =
 		fileUploadCapableModels.length === selectedModels.length &&
 		($user?.role === 'admin' || $user?.permissions?.chat?.file_upload);
+
+	let deepResearchAvailable = false;
+	$: deepResearchAvailable =
+		Boolean($config?.features?.enable_web_search) &&
+		($user?.role === 'admin' || Boolean($user?.permissions?.features?.web_search));
 
 	let webUploadEnabled = true;
 	$: webUploadEnabled = $user?.role === 'admin' || ($user?.permissions?.chat?.web_upload ?? true);
@@ -143,6 +149,26 @@
 					class="max-h-72 overflow-y-auto overflow-x-hidden scrollbar-thin"
 					in:fly={{ x: -20, duration: 150 }}
 				>
+					{#if deepResearchAvailable}
+						<button
+							class="flex w-full gap-2 items-center justify-between h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer hover:bg-gray-50/40 dark:hover:bg-gray-800/40 rounded-xl"
+							type="button"
+							aria-pressed={deepResearchEnabled}
+							on:click={() => (deepResearchEnabled = !deepResearchEnabled)}
+						>
+							<div class="flex items-center gap-2 min-w-0">
+								<span class="text-sm" aria-hidden="true">✦</span>
+								<span class="line-clamp-1">{$i18n.t('Deep Research')}</span>
+							</div>
+							<div class="flex items-center gap-1.5 text-xs text-gray-500">
+								<span class="hidden sm:inline">{$i18n.t('Search and reason in depth')}</span>
+								<span aria-hidden="true">{deepResearchEnabled ? '✓' : ''}</span>
+							</div>
+						</button>
+
+						<div class="h-px mx-1 my-1 bg-gray-100 dark:bg-gray-800"></div>
+					{/if}
+
 					{#if toolPermissionsEnabled}
 						<button
 							class="flex gap-2 w-full items-center h-[1.6875rem] px-2 text-[0.8125rem] font-normal cursor-pointer hover:bg-gray-50/40 dark:hover:bg-gray-800/40 rounded-xl"

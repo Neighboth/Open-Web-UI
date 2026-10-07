@@ -814,6 +814,10 @@ async def get_builtin_tools(
                 '__event_emitter__': extra_params.get('__event_emitter__'),
                 '__event_call__': extra_params.get('__event_call__'),
                 '__metadata__': extra_params.get('__metadata__'),
+                # Keep the current conversation available to built-in tools
+                # that need to distinguish explicit user options from model
+                # generated defaults (for example video resolution/duration).
+                '__messages__': extra_params.get('__messages__'),
                 '__files__': chat_files,
                 '__chat_id__': extra_params.get('__chat_id__'),
                 '__message_id__': extra_params.get('__message_id__'),

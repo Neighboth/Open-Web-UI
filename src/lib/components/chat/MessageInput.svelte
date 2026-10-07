@@ -200,6 +200,7 @@
 	export let imageGenerationEnabled = false;
 	export let videoGenerationEnabled = false;
 	export let webSearchEnabled = false;
+	export let deepResearchEnabled = false;
 	export let codeInterpreterEnabled = false;
 	export let browserEnabled: boolean;
 	export let toolApprovalMode = 'full';
@@ -258,6 +259,7 @@
 		imageGenerationEnabled,
 		videoGenerationEnabled,
 		webSearchEnabled,
+		deepResearchEnabled,
 		codeInterpreterEnabled,
 		browserEnabled,
 		toolApprovalMode
@@ -2260,6 +2262,7 @@
 											? selectedModelIds
 											: fileUploadCapableModels}
 										{toolApprovalMode}
+										bind:deepResearchEnabled
 										{onToolApprovalModeChange}
 										{screenCaptureHandler}
 										{inputFilesHandler}

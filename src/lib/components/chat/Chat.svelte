@@ -373,6 +373,13 @@
 			? localStorage.getItem('videoGenerationEnabled') === 'true'
 			: Boolean(initialIntegrations?.videoGenerationEnabled);
 	let webSearchEnabled = Boolean(initialIntegrations?.webSearchEnabled);
+	// Deep Research is intentionally ephemeral: it resets on reload and when switching chats.
+	let deepResearchEnabled = false;
+	let deepResearchChatId = '';
+	$: if (deepResearchChatId !== ($chatId || '')) {
+		deepResearchChatId = $chatId || '';
+		deepResearchEnabled = false;
+	}
 	let codeInterpreterEnabled = Boolean(initialIntegrations?.codeInterpreterEnabled);
 	let browserEnabled =
 		typeof localStorage !== 'undefined' && localStorage.getItem('browserEnabled') !== null
@@ -3274,7 +3281,7 @@
 
 		if (
 			$config?.features?.enable_web_search_confirmation &&
-			webSearchActive &&
+			(webSearchActive || deepResearchEnabled) &&
 			!webSearchConfirmed
 		) {
 			pendingWebSearchPrompt = userPrompt ?? '';
@@ -3521,7 +3528,8 @@
 					($user?.role === 'admin' || $user?.permissions?.features?.code_interpreter)
 						? codeInterpreterEnabled
 						: false,
-				web_search: webSearchActive,
+				web_search: webSearchActive || deepResearchEnabled,
+				deep_research: deepResearchEnabled,
 				browser: browserEnabled,
 				browser_id:
 					(typeof localStorage !== 'undefined' ? localStorage.getItem('selected_browser') : null) ||
@@ -4581,6 +4589,7 @@
 										{pendingOAuthTools}
 										{oauthRedirectHandler}
 										bind:webSearchEnabled
+										bind:deepResearchEnabled
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4675,6 +4684,7 @@
 										{pendingOAuthTools}
 										{oauthRedirectHandler}
 										bind:webSearchEnabled
+										bind:deepResearchEnabled
 										bind:atSelectedModel
 										bind:showCommands
 										bind:dragged
@@ -4736,6 +4746,7 @@
 									bind:codeInterpreterEnabled
 									bind:browserEnabled
 									bind:webSearchEnabled
+									bind:deepResearchEnabled
 									bind:atSelectedModel
 									bind:showCommands
 									bind:dragged
