@@ -90,12 +90,13 @@
 	};
 
 	const setModels = async () => {
-		models.set(
-			await getModels(
-				localStorage.token,
-				$config?.features?.enable_direct_connections ? ($settings?.directConnections ?? null) : null
-			)
-		);
+		const directConnections =
+			$settings?.directConnections?.OPENAI_API_BASE_URLS?.length > 0
+				? $settings.directConnections
+				: $config?.features?.enable_direct_connections
+					? ($settings?.directConnections ?? null)
+					: null;
+		models.set(await getModels(localStorage.token, directConnections));
 	};
 
 	const setToolServers = async () => {

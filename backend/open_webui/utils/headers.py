@@ -178,6 +178,10 @@ async def get_headers_and_cookies(
     cookies = getattr(request, 'cookies', {}) if config.get('forward_cookies', False) else {}
     headers = {
         'Content-Type': 'application/json',
+        'User-Agent': (
+            (request.headers.get('user-agent', '') if request else '')
+            or 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ),
         **(
             {
                 # LICENSE covers this Open WebUI upstream metadata identifier.

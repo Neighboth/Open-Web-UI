@@ -460,10 +460,13 @@
 	};
 
 	const getModels = async () => {
-		return await _getModels(
-			localStorage.token,
-			$config?.features?.enable_direct_connections ? ($settings?.directConnections ?? null) : null
-		);
+		const directConnections =
+			$settings?.directConnections?.OPENAI_API_BASE_URLS?.length > 0
+				? $settings.directConnections
+				: $config?.features?.enable_direct_connections
+					? ($settings?.directConnections ?? null)
+					: null;
+		return await _getModels(localStorage.token, directConnections);
 	};
 
 	const adminConfigSaveHandler = async () => {

@@ -91,7 +91,7 @@ export const getOpenAIModelsDirect = async (url: string, key: string) => {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), 15000);
 
-	const res = await fetch(`${url}/models`, {
+	let res = await fetch(`${url}/models`, {
 		method: 'GET',
 		headers: {
 			Accept: 'application/json',
@@ -107,16 +107,32 @@ export const getOpenAIModelsDirect = async (url: string, key: string) => {
 		})
 		.catch((err) => {
 			clearTimeout(timer);
-			console.warn(`getOpenAIModelsDirect failed for ${url}:`, err);
+			console.warn(`getOpenAIModelsDirect browser fetch failed for ${url}:`, err);
 			error = `OpenAI: ${err?.error?.message ?? err?.message ?? 'Network Problem'}`;
-			return { object: 'list', data: [] };
+			return null;
 		});
+
+	// If direct fetch from browser failed (e.g., CORS, Cloudflare 403, or Network Error),
+	// fallback to backend proxy verification using localStorage.token
+	if (!res || (Array.isArray(res) && res.length === 0) || (res.data && res.data.length === 0)) {
+		try {
+			const token = typeof localStorage !== 'undefined' ? localStorage.token : '';
+			if (token) {
+				const proxyRes = await verifyOpenAIConnection(token, { url, key }, false);
+				if (proxyRes && (Array.isArray(proxyRes) || proxyRes?.data)) {
+					return proxyRes;
+				}
+			}
+		} catch (proxyErr) {
+			console.warn(`getOpenAIModelsDirect proxy fallback failed for ${url}:`, proxyErr);
+		}
+	}
 
 	if (error && (!res || (Array.isArray(res) && res.length === 0) || (res.data && res.data.length === 0))) {
 		throw error;
 	}
 
-	return res;
+	return res || { object: 'list', data: [] };
 };
 
 export const getOpenAIModels = async (token: string, urlIdx?: number) => {

@@ -96,7 +96,14 @@ async def send_get_request(
             if request and config:
                 headers, cookies = await get_headers_and_cookies(request, url, key, config, user=user)
             else:
+                user_agent = ''
+                if request:
+                    try:
+                        user_agent = request.headers.get('user-agent', '')
+                    except Exception:
+                        pass
                 headers = {
+                    'User-Agent': user_agent or 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     **({'Authorization': f'Bearer {key}'} if key else {}),
                 }
                 cookies = None
@@ -986,7 +993,7 @@ class ConnectionVerificationForm(BaseModel):
 async def verify_connection(
     request: Request,
     form_data: ConnectionVerificationForm,
-    user=Depends(get_admin_user),
+    user=Depends(get_verified_user),
 ):
     url = form_data.url
     key = form_data.key
