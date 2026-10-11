@@ -10,6 +10,7 @@
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
 	import DropdownMenu from '$lib/components/common/DropdownMenu.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import Switch from '$lib/components/common/Switch.svelte';
 	import DocumentArrowUp from '$lib/components/icons/DocumentArrowUp.svelte';
 	import Camera from '$lib/components/icons/Camera.svelte';
 	import Note from '$lib/components/icons/Note.svelte';
@@ -160,9 +161,8 @@
 								<span class="text-sm" aria-hidden="true">✦</span>
 								<span class="line-clamp-1">{$i18n.t('Deep Research')}</span>
 							</div>
-							<div class="flex items-center gap-1.5 text-xs text-gray-500">
-								<span class="hidden sm:inline">{$i18n.t('Search and reason in depth')}</span>
-								<span aria-hidden="true">{deepResearchEnabled ? '✓' : ''}</span>
+							<div class="shrink-0" inert>
+								<Switch state={deepResearchEnabled} />
 							</div>
 						</button>
 

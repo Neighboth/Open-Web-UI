@@ -39,8 +39,21 @@ export const resolveDefaultModelIds = (
 	...preferences: (string[] | null | undefined)[]
 ): string[] => {
 	const available = models.filter((model) => !model.info?.meta?.hidden).map((model) => model.id);
+	const findAvailableMatch = (id: string) => {
+		if (!id) return null;
+		if (available.includes(id)) return id;
+		const stripped = id.startsWith('~') ? id.slice(1) : id;
+		const prefixed = `~${id}`;
+		return (
+			available.find(
+				(m) => m === stripped || m === prefixed || (m.startsWith('~') && m.slice(1) === stripped)
+			) || null
+		);
+	};
 	for (const preference of preferences) {
-		const selected = [...new Set(preference ?? [])].filter((id) => available.includes(id));
+		const selected = [...new Set(preference ?? [])]
+			.map((id) => findAvailableMatch(id))
+			.filter(Boolean) as string[];
 		if (selected.length) return selected;
 	}
 	return available.length ? [available[0]] : [];

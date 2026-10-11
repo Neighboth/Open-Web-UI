@@ -167,10 +167,10 @@
 		'admin:documents': $i18n.t('Tools'),
 		'admin:audio': $i18n.t('Tools'),
 		'admin:images': $i18n.t('Tools'),
+		'admin:video': $i18n.t('Tools'),
 		'admin:web': $i18n.t('Tools'),
 		'admin:code-execution': $i18n.t('Tools'),
 		'admin:pipelines': $i18n.t('Tools'),
-		'admin:video': $i18n.t('Experience'),
 		'admin:evaluations': $i18n.t('Quality'),
 		'admin:analytics': $i18n.t('Quality'),
 		'admin:db': $i18n.t('Data')
@@ -323,16 +323,16 @@
 			searchPrefixes: ['settings.admin.audio.']
 		},
 		{
-			id: 'admin:video',
-			titleKey: 'settings.admin.video.title',
-			title: $i18n.t('Video'),
-			searchPrefixes: ['settings.admin.video.']
-		},
-		{
 			id: 'admin:images',
 			titleKey: 'settings.admin.images.title',
 			title: $i18n.t('settings.admin.images.title'),
 			searchPrefixes: ['settings.admin.images.']
+		},
+		{
+			id: 'admin:video',
+			titleKey: 'settings.admin.video.title',
+			title: $i18n.t('Video'),
+			searchPrefixes: ['settings.admin.video.']
 		},
 		{
 			id: 'admin:web',
