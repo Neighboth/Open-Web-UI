@@ -18,6 +18,22 @@
 		}
 	};
 
+	const openInWindow = () => {
+		if (!$agentLiveUrl) return;
+		const w = Math.min(1440, Math.floor(window.screen.availWidth * 0.9));
+		const h = Math.min(900, Math.floor(window.screen.availHeight * 0.9));
+		const left = Math.floor((window.screen.availWidth - w) / 2);
+		const top = Math.floor((window.screen.availHeight - h) / 2);
+		const win = window.open(
+			$agentLiveUrl,
+			'kasm_agent_preview',
+			`popup=yes,width=${w},height=${h},top=${top},left=${left},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes`
+		);
+		if (win) {
+			win.focus();
+		}
+	};
+
 	onDestroy(() => {
 		if ($agentLiveUrl && $chatId) {
 			try {
@@ -41,6 +57,28 @@
 				<span class="truncate">{$i18n.t('Live Agent Preview')}</span>
 			</div>
 			<div class="flex gap-1.5 items-center shrink-0">
+				<button
+					type="button"
+					on:click={openInWindow}
+					class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:text-emerald-300 text-xs font-medium flex items-center gap-1.5 transition border border-emerald-200/50 dark:border-emerald-800/50 cursor-pointer"
+					title="Düz Tarayıcıda Aç (Pop-out Pencere)"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke-width="2"
+						stroke="currentColor"
+						class="size-3.5"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0H3"
+						/>
+					</svg>
+					<span>{$i18n.t('Düz Tarayıcıda Aç')}</span>
+				</button>
 				<a
 					href={$agentLiveUrl}
 					target="_blank"
@@ -66,7 +104,7 @@
 				</a>
 				<button
 					on:click={handleClose}
-					class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition"
+					class="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500 transition cursor-pointer"
 					title="Kapat"
 				>
 					<XMark className="size-4" />
@@ -74,22 +112,22 @@
 			</div>
 		</div>
 		<div class="px-3 py-1.5 bg-blue-50/80 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/50 flex items-center justify-between text-xs text-blue-700 dark:text-blue-300">
-			<span class="truncate">Masaüstü açılmazsa veya SSL uyarısı çıkarsa:</span>
-			<a
-				href={$agentLiveUrl}
-				target="_blank"
-				rel="noreferrer"
-				class="underline font-semibold shrink-0 ml-2 hover:text-blue-900 dark:hover:text-blue-100"
+			<span class="truncate">Masaüstü açılmazsa veya iframe/SSL engeli olursa:</span>
+			<button
+				type="button"
+				on:click={openInWindow}
+				class="underline font-semibold shrink-0 ml-2 hover:text-blue-900 dark:hover:text-blue-100 cursor-pointer flex items-center gap-1"
 			>
-				Yeni Sekmede Bağlan &rarr;
-			</a>
+				Düz Tarayıcıda Aç &rarr;
+			</button>
 		</div>
 		<iframe
 			src={$agentLiveUrl}
 			class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"
 			title="Agent Preview"
-			allow="autoplay; microphone; camera; clipboard-read; clipboard-write; window-management; fullscreen; display-capture"
+			allow="autoplay; microphone; camera; clipboard-read; clipboard-write; window-management; fullscreen; display-capture; web-share"
 			referrerpolicy="no-referrer"
+			loading="eager"
 		></iframe>
 	</div>
 {/if}

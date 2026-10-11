@@ -143,6 +143,7 @@
 	export let contextUsage = null;
 	export let contextCompactionEnabled = false;
 	export let embedded = false;
+	export let params: any = undefined;
 
 	export let autoScroll = false;
 	export let generating = false;
@@ -2377,7 +2378,7 @@
 											</IntegrationsMenu>
 										{/if}
 
-										<ReasoningMenu />
+										<ReasoningMenu bind:params />
 
 										{#if selectedModelIds.length === 1 && $models.find((m) => m.id === selectedModelIds[0])?.has_user_valves}
 											<div class="ml-1 flex gap-1.5 shrink-0">

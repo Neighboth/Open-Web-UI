@@ -4573,6 +4573,7 @@
 								>
 									<MessageInput
 										bind:this={messageInput}
+										bind:params
 										{history}
 										{taskIds}
 										bind:selectedModels
@@ -4668,6 +4669,7 @@
 								<div id={embedded ? messageInputDropzoneId : undefined} class="pb-2 z-10">
 									<MessageInput
 										bind:this={messageInput}
+										bind:params
 										{history}
 										{taskIds}
 										bind:selectedModels

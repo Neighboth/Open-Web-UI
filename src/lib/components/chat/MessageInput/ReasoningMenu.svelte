@@ -10,6 +10,7 @@
 	const i18n = getContext('i18n') as any;
 
 	export let closeOnOutsideClick = true;
+	export let params: any = undefined;
 	let show = false;
 
 	const options = [
@@ -19,14 +20,27 @@
 		{ value: 'high', label: 'High' }
 	];
 
-	$: currentReasoning = $settings?.params?.reasoning_effort ?? null;
+	const normalize = (val: any) => {
+		if (val === 'none' || val === '' || val === undefined || val === 'null') return null;
+		return val;
+	};
+
+	$: currentReasoning = normalize(
+		params?.reasoning_effort !== undefined
+			? params.reasoning_effort
+			: $settings?.params?.reasoning_effort
+	);
 
 	const setReasoning = (val: string | null) => {
+		const normVal = normalize(val);
+		if (params) {
+			params.reasoning_effort = normVal;
+		}
 		settings.set({
 			...($settings ?? {}),
 			params: {
 				...($settings?.params ?? {}),
-				reasoning_effort: val
+				reasoning_effort: normVal
 			}
 		});
 		show = false;

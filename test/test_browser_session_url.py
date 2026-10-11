@@ -71,3 +71,16 @@ def test_kasm_user_resolver_rejects_partial_missing_and_ambiguous_matches():
             assert False, f'Expected {configured!r} to be rejected'
         except ValueError:
             pass
+
+
+def test_kasm_user_resolver_fallback_when_users_none():
+    assert resolve_kasm_user_id('user@kasm.local', None) == 'user@kasm.local'
+    configured_id = '8efbc18c-5fd9-47ad-ae69-a39a54aafc5d'
+    assert resolve_kasm_user_id(configured_id, None) == configured_id
+
+
+def test_authenticated_query_url_is_allowed():
+    origin = 'https://38.210.77.108:8443'
+    assert is_safe_kasm_connection_url(f'{origin}/?password=secretToken', origin)
+    assert is_safe_kasm_connection_url(f'{origin}/?token=secretToken', origin)
+

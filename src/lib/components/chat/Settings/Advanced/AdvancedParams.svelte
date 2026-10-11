@@ -494,7 +494,7 @@
 						aria-label={$i18n.t('settings.personal.general.parameters.reasoningEffort.label')}
 						bind:value={params.reasoning_effort}
 					>
-						<option value="none">{$i18n.t('Off')}</option>
+						<option value={null}>{$i18n.t('Off')}</option>
 						<option value="low">{$i18n.t('Low')}</option>
 						<option value="medium">{$i18n.t('Medium')}</option>
 						<option value="high">{$i18n.t('High')}</option>

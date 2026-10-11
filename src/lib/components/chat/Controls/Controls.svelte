@@ -36,6 +36,28 @@
 		'w-full resize-vertical rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 py-1.5 text-xs text-gray-700 outline-hidden transition-colors placeholder:text-gray-300 focus:border-blue-400 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:placeholder:text-gray-700 dark:focus:border-blue-500';
 	const compactSystemPromptTextareaClass =
 		'w-full resize-vertical appearance-none bg-transparent py-1 text-xs outline-hidden focus:bg-transparent disabled:bg-transparent';
+
+	const normalizeReasoning = (val: any) => {
+		if (val === 'none' || val === '' || val === undefined || val === 'null') return null;
+		return val;
+	};
+
+	$: if (params) {
+		if (params.reasoning_effort === 'none' || params.reasoning_effort === '') {
+			params.reasoning_effort = null;
+		}
+		if (params.reasoning_effort === undefined && $settings?.params?.reasoning_effort !== undefined) {
+			params.reasoning_effort = normalizeReasoning($settings.params.reasoning_effort);
+		}
+	}
+
+	$: if ($settings?.params?.reasoning_effort !== undefined && params) {
+		const normSettings = normalizeReasoning($settings.params.reasoning_effort);
+		const normParams = normalizeReasoning(params.reasoning_effort);
+		if (normSettings !== normParams) {
+			params.reasoning_effort = normSettings;
+		}
+	}
 </script>
 
 <div class=" dark:text-white">
@@ -141,6 +163,17 @@
 					<div class="pt-1 pb-1 text-xs" slot="content">
 						<select
 							bind:value={params.reasoning_effort}
+							on:change={(e) => {
+								const val = normalizeReasoning(e.currentTarget.value);
+								params.reasoning_effort = val;
+								settings.set({
+									...($settings ?? {}),
+									params: {
+										...($settings?.params ?? {}),
+										reasoning_effort: val
+									}
+								});
+							}}
 							class="w-full rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 py-1.5 text-xs text-gray-700 outline-hidden transition-colors dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 dark:focus:border-blue-500"
 						>
 							<option value={null}>{$i18n.t('Kapalı')}</option>
