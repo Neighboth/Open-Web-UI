@@ -40,6 +40,7 @@
 	export let stopResponse: Function;
 
 	export let autoScroll = false;
+	export let callActive = false;
 
 	export let atSelectedModel: Model | undefined;
 	export let selectedModels: [''];
@@ -244,6 +245,7 @@
 			<div class="text-base font-normal @md:max-w-3xl w-full py-3 {atSelectedModel ? 'mt-2' : ''}">
 				{#if !($selectedFolder && folderReadOnly)}
 					<MessageInput
+						{callActive}
 						bind:this={messageInput}
 						{history}
 						bind:selectedModels
