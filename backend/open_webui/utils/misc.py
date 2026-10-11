@@ -231,15 +231,42 @@ def get_last_user_message_item(messages: list[dict]) -> dict | None:
 
 def get_content_from_message(message: dict) -> str | None:
     content = message.get('content')
+    text_content = None
     if isinstance(content, list):
         for item in content:
-            if isinstance(item, dict) and item.get('type') == 'text':
-                return item.get('text')
-    elif content:
-        return content
+            if isinstance(item, dict) and item.get('type') == 'text' and item.get('text'):
+                text_content = item.get('text')
+                break
+    elif content and isinstance(content, str) and content.strip():
+        text_content = content
 
     output_text = get_output_text(message.get('output'))
-    return output_text or (content if isinstance(content, str) else None)
+    if output_text and output_text.strip():
+        return output_text
+    if text_content and text_content.strip():
+        return text_content
+
+    # If text is empty, check for images or files in content or message['files']
+    image_names = []
+    if isinstance(content, list):
+        for item in content:
+            if isinstance(item, dict) and item.get('type') == 'image_url':
+                img_url = item.get('image_url', {}).get('url', '')
+                if img_url:
+                    image_names.append('Image')
+
+    for file in message.get('files', []):
+        if isinstance(file, dict):
+            file_name = file.get('name') or file.get('filename') or file.get('title')
+            if file_name:
+                image_names.append(file_name)
+            elif file.get('type') == 'image':
+                image_names.append('Image')
+
+    if image_names:
+        return f"[Image: {image_names[0]}]"
+
+    return text_content or (content if isinstance(content, str) else None)
 
 
 def get_output_text(output: list | None) -> str:

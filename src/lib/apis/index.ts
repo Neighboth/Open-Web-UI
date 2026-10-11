@@ -120,7 +120,13 @@ export const getModels = async (
 				const response = responses[idx];
 				const apiConfig = OPENAI_API_CONFIGS?.[idx.toString()] ?? {};
 
-				let fetchedModels = Array.isArray(response) ? response : (response?.data ?? []);
+				let fetchedModels = Array.isArray(response)
+					? response
+					: Array.isArray(response?.data)
+						? response.data
+						: Array.isArray(response?.models)
+							? response.models
+							: [];
 				fetchedModels = fetchedModels.map((model) => ({
 					...model,
 					openai: { id: model?.id },

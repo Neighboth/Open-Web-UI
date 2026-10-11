@@ -89,7 +89,7 @@ export const getOpenAIModelsDirect = async (url: string, key: string) => {
 	let error = null;
 
 	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), 6000);
+	const timer = setTimeout(() => controller.abort(), 15000);
 
 	const res = await fetch(`${url}/models`, {
 		method: 'GET',
@@ -107,11 +107,12 @@ export const getOpenAIModelsDirect = async (url: string, key: string) => {
 		})
 		.catch((err) => {
 			clearTimeout(timer);
+			console.warn(`getOpenAIModelsDirect failed for ${url}:`, err);
 			error = `OpenAI: ${err?.error?.message ?? err?.message ?? 'Network Problem'}`;
-			return [];
+			return { object: 'list', data: [] };
 		});
 
-	if (error) {
+	if (error && (!res || (Array.isArray(res) && res.length === 0) || (res.data && res.data.length === 0))) {
 		throw error;
 	}
 

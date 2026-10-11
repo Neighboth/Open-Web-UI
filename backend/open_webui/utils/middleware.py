@@ -4225,8 +4225,27 @@ async def background_tasks_handler(ctx):
                             except Exception as e:
                                 title = ''
 
-                            if not title:
-                                title = replace_skill_mentions_with_labels(messages[0].get('content', user_message))
+                            placeholder_titles = {'', 'Empty Conversation', 'Chat Summary', 'New Chat'}
+                            if not title or title.strip() in placeholder_titles:
+                                fallback_val = user_message or (messages[0].get('content') if messages else '')
+                                if isinstance(fallback_val, str) and fallback_val.strip() and fallback_val.strip() not in placeholder_titles:
+                                    title = replace_skill_mentions_with_labels(fallback_val)
+                                else:
+                                    # Check for image/file fallback
+                                    img_fallback = None
+                                    for m in messages:
+                                        for f in m.get('files', []):
+                                            if isinstance(f, dict):
+                                                img_name = f.get('name') or f.get('filename') or f.get('title')
+                                                if img_name:
+                                                    img_fallback = f"Image: {img_name}"
+                                                    break
+                                                elif f.get('type') == 'image':
+                                                    img_fallback = "Image"
+                                                    break
+                                        if img_fallback:
+                                            break
+                                    title = img_fallback or 'Image'
 
                             await Chats.update_chat_title_by_id(metadata['chat_id'], title)
 
@@ -4238,7 +4257,26 @@ async def background_tasks_handler(ctx):
                             )
 
                     if title == None and len(messages) == 2 and (not messages_map or len(messages_map) <= 2):
-                        title = replace_skill_mentions_with_labels(messages[0].get('content', user_message))
+                        fallback_val = user_message or messages[0].get('content') or ''
+                        placeholder_titles = {'', 'Empty Conversation', 'Chat Summary', 'New Chat'}
+                        if isinstance(fallback_val, str) and fallback_val.strip() and fallback_val.strip() not in placeholder_titles:
+                            title = replace_skill_mentions_with_labels(fallback_val)
+                        else:
+                            # Check for image/file fallback
+                            img_fallback = None
+                            for m in messages:
+                                for f in m.get('files', []):
+                                    if isinstance(f, dict):
+                                        img_name = f.get('name') or f.get('filename') or f.get('title')
+                                        if img_name:
+                                            img_fallback = f"Image: {img_name}"
+                                            break
+                                        elif f.get('type') == 'image':
+                                            img_fallback = "Image"
+                                            break
+                                if img_fallback:
+                                    break
+                            title = img_fallback or 'Image'
 
                         await Chats.update_chat_title_by_id(metadata['chat_id'], title)
 

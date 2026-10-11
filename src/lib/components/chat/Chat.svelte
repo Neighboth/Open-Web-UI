@@ -3454,6 +3454,31 @@
 			const visibleContent =
 				getOutputText(message?.output) || removeAllDetails(message?.content ?? '');
 
+			// If response is completely empty and no error occurred, silently retry up to 3 times
+			if (
+				!message.bridgeCancelled &&
+				!message.bridgeStopping &&
+				!visibleContent.trim() &&
+				(!message.output || message.output.length === 0)
+			) {
+				const currentRetries = (message.silentRetryCount ?? 0) + 1;
+				if (currentRetries <= 3) {
+					console.warn(
+						`[Silent Retry] Model response was empty. Retrying attempt ${currentRetries}/3...`
+					);
+					message.silentRetryCount = currentRetries;
+					message.done = false;
+					message.content = '';
+					message.output = undefined;
+					history.messages[message.id] = message;
+					history = history;
+
+					// Retry generating response silently
+					await regenerateResponse(message);
+					return;
+				}
+			}
+
 			if ($settings.responseAutoCopy) {
 				copyToClipboard(visibleContent);
 			}
