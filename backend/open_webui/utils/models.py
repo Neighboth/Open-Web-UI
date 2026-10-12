@@ -250,9 +250,9 @@ async def get_all_models(request, refresh: bool = False, user: UserModel = None)
                 filter_ids = []
                 if custom_model.meta:
                     meta = custom_model.meta.model_dump()
-                    if ENABLE_PLUGINS and 'actionIds' in meta:
+                    if ENABLE_FUNCTIONS and 'actionIds' in meta:
                         action_ids.extend(meta['actionIds'])
-                    if ENABLE_PLUGINS and 'filterIds' in meta:
+                    if ENABLE_FUNCTIONS and 'filterIds' in meta:
                         filter_ids.extend(meta['filterIds'])
 
                 model = {

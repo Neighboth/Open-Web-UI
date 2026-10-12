@@ -929,50 +929,57 @@ if ENABLE_SCIM:
 @app.get('/api/models')
 @app.get('/api/v1/models')  # Experimental: Compatibility with OpenAI API
 async def get_models(request: Request, refresh: bool = False, user=Depends(get_verified_user)):
-    all_models = await get_all_models(request, refresh=refresh, user=user)
+    try:
+        all_models = await get_all_models(request, refresh=refresh, user=user)
 
-    # Filter out filter pipelines
-    models = [
-        model for model in all_models if not ('pipeline' in model and model['pipeline'].get('type', None) == 'filter')
-    ]
+        # Filter out filter pipelines
+        models = [
+            model for model in all_models if not ('pipeline' in model and model['pipeline'].get('type', None) == 'filter')
+        ]
 
-    # Chat requests resolve models by ID from request.app.state.MODELS, where
-    # duplicate IDs collapse to the last model. Return the same effective list.
-    models = list({model['id']: model for model in models}.values())
+        # Chat requests resolve models by ID from request.app.state.MODELS, where
+        # duplicate IDs collapse to the last model. Return the same effective list.
+        models = list({model['id']: model for model in models}.values())
 
-    # Access-filter first so the per-model payload work below only runs for
-    # models the caller can actually see.
-    models = await get_filtered_models(models, user)
+        # Access-filter first so the per-model payload work below only runs for
+        # models the caller can actually see.
+        models = await get_filtered_models(models, user)
 
-    for model in models:
-        info = model.get('info') if isinstance(model.get('info'), dict) else {}
-        meta = info.get('meta') if isinstance(info.get('meta'), dict) else {}
+        for model in models:
+            info = model.get('info') if isinstance(model.get('info'), dict) else {}
+            meta = info.get('meta') if isinstance(info.get('meta'), dict) else {}
 
-        # Remove profile image URL to reduce payload size
-        meta.pop('profile_image_url', None)
+            # Remove profile image URL to reduce payload size
+            meta.pop('profile_image_url', None)
 
-        if 'tags' in meta:
-            meta['tags'] = normalize_model_tags(meta['tags'])
+            if 'tags' in meta:
+                meta['tags'] = normalize_model_tags(meta['tags'])
 
-        tags = normalize_model_tags(meta.get('tags')) + normalize_model_tags(model.get('tags'))
-        model['tags'] = list({tag['name']: tag for tag in tags}.values())
+            tags = normalize_model_tags(meta.get('tags')) + normalize_model_tags(model.get('tags'))
+            model['tags'] = list({tag['name']: tag for tag in tags}.values())
 
-    model_order_list = await Config.get('ui.model_order_list')
-    if model_order_list:
-        model_order_dict = {model_id: i for i, model_id in enumerate(model_order_list)}
-        # Sort models by order list priority, with fallback for those not in the list
-        models.sort(
-            key=lambda model: (
-                model_order_dict.get(model.get('id', ''), float('inf')),
-                (model.get('name', '') or ''),
+        model_order_list = await Config.get('ui.model_order_list')
+        if model_order_list:
+            model_order_dict = {model_id: i for i, model_id in enumerate(model_order_list)}
+            # Sort models by order list priority, with fallback for those not in the list
+            models.sort(
+                key=lambda model: (
+                    model_order_dict.get(model.get('id', ''), float('inf')),
+                    (model.get('name', '') or ''),
+                )
             )
-        )
 
-    if log.isEnabledFor(logging.DEBUG):
-        log.debug(
-            f'/api/models returned filtered models accessible to the user: {JSONCodec.dumps([model.get("id") for model in models])}'
+        if log.isEnabledFor(logging.DEBUG):
+            log.debug(
+                f'/api/models returned filtered models accessible to the user: {JSONCodec.dumps([model.get("id") for model in models])}'
+            )
+        return {'data': models}
+    except Exception as e:
+        log.exception(f'Error in get_models: {e}')
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f'Failed to get models: {str(e)}',
         )
-    return {'data': models}
 
 
 @app.get('/api/models/base')

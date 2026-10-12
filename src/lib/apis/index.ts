@@ -55,10 +55,6 @@ export const getModels = async (
 			return null;
 		});
 
-	if (error) {
-		throw error;
-	}
-
 	let models = res?.data ?? [];
 
 	if (connections && !base) {
