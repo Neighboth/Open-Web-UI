@@ -111,7 +111,9 @@ def option_was_requested(messages: Iterable[Mapping[str, Any]] | None, option: s
     return False
 
 
-def filter_unrequested_video_options(form_data: Mapping[str, Any], messages: Iterable[Mapping[str, Any]] | None) -> dict:
+def filter_unrequested_video_options(
+    form_data: Mapping[str, Any], messages: Iterable[Mapping[str, Any]] | None
+) -> dict:
     """Remove model-inferred size/duration values from a tool invocation.
 
     ``None`` for ``messages`` means the request came from an API caller with
@@ -125,7 +127,11 @@ def filter_unrequested_video_options(form_data: Mapping[str, Any], messages: Ite
         return result
 
     for option in ('size', 'duration'):
-        if option in result and result[option] is not None and not option_was_requested(messages, option, result[option]):
+        if (
+            option in result
+            and result[option] is not None
+            and not option_was_requested(messages, option, result[option])
+        ):
             result.pop(option)
     return result
 

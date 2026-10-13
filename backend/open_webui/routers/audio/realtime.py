@@ -368,6 +368,7 @@ async def realtime_call(ws: WebSocket):
         if not ws.app.state.MODELS:
             await get_all_models(ws, user=user)
         from open_webui.utils.direct_connections import get_user_direct_connection
+
         u_key, u_url, _ = get_user_direct_connection(user)
 
         model = ws.app.state.MODELS.get(model_id)

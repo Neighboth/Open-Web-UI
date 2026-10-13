@@ -934,7 +934,9 @@ async def get_models(request: Request, refresh: bool = False, user=Depends(get_v
 
         # Filter out filter pipelines
         models = [
-            model for model in all_models if not ('pipeline' in model and model['pipeline'].get('type', None) == 'filter')
+            model
+            for model in all_models
+            if not ('pipeline' in model and model['pipeline'].get('type', None) == 'filter')
         ]
 
         # Chat requests resolve models by ID from request.app.state.MODELS, where

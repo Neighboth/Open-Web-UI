@@ -456,7 +456,9 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                             status_url = f'{base_url}/api/public/get_kasm_status'
                             for _ in range(15):
                                 await asyncio.sleep(2)
-                                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as st_session:
+                                async with aiohttp.ClientSession(
+                                    connector=aiohttp.TCPConnector(ssl=False)
+                                ) as st_session:
                                     async with st_session.post(
                                         status_url,
                                         json={
@@ -545,9 +547,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             }
         return {
             'status': False,
-            'error': (
-                'Configure the Kasm Workspaces URL or Live Screen / Web Preview URL to start a browser session.'
-            ),
+            'error': ('Configure the Kasm Workspaces URL or Live Screen / Web Preview URL to start a browser session.'),
             'provider': 'kasm',
             'browser_id': browser_id,
         }

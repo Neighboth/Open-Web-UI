@@ -83,4 +83,3 @@ def test_authenticated_query_url_is_allowed():
     origin = 'https://38.210.77.108:8443'
     assert is_safe_kasm_connection_url(f'{origin}/?password=secretToken', origin)
     assert is_safe_kasm_connection_url(f'{origin}/?token=secretToken', origin)
-
