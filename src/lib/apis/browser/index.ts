@@ -90,6 +90,32 @@ export const startBrowserSession = async (
 	return res;
 };
 
+export const getActiveBrowserSession = async (
+	token: string = '',
+	chatId: string
+): Promise<BrowserSessionResponse> => {
+	let error = null;
+
+	const res = await fetch(`${BROWSER_API_BASE_URL}/session/active?chat_id=${encodeURIComponent(chatId)}`, {
+		method: 'GET',
+		headers: {
+			Accept: 'application/json',
+			'Content-Type': 'application/json',
+			...(token && { authorization: `Bearer ${token}` })
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error('Error fetching active browser session:', err);
+			return { status: false };
+		});
+
+	return res;
+};
+
 export const stopBrowserSession = async (token: string = '', chatId: string): Promise<any> => {
 	let error = null;
 

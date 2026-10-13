@@ -103,7 +103,8 @@ async def send_get_request(
                     except Exception:
                         pass
                 headers = {
-                    'User-Agent': user_agent or 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'User-Agent': user_agent
+                    or 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     **({'Authorization': f'Bearer {key}'} if key else {}),
                 }
                 cookies = None

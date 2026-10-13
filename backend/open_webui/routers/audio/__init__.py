@@ -1788,7 +1788,9 @@ async def get_available_voices(request) -> dict:
 
             voices = await edge_tts.list_voices()
             _EDGE_TTS_VOICES = {
-                voice['ShortName']: f"{voice.get('FriendlyName') or voice.get('Name', voice['ShortName'])} ({voice.get('Locale', '')})".strip()
+                voice[
+                    'ShortName'
+                ]: f'{voice.get("FriendlyName") or voice.get("Name", voice["ShortName"])} ({voice.get("Locale", "")})'.strip()
                 for voice in voices
                 if voice.get('ShortName')
             }

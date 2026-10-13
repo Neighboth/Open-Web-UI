@@ -264,7 +264,7 @@ def get_content_from_message(message: dict) -> str | None:
                 image_names.append('Image')
 
     if image_names:
-        return f"[Image: {image_names[0]}]"
+        return f'[Image: {image_names[0]}]'
 
     return text_content or (content if isinstance(content, str) else None)
 

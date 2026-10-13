@@ -367,11 +367,13 @@ async def realtime_call(ws: WebSocket):
             raise ValueError('Select a chat model')
         if not ws.app.state.MODELS:
             await get_all_models(ws, user=user)
+        from open_webui.utils.direct_connections import get_user_direct_connection
+
+        u_key, u_url, _ = get_user_direct_connection(user)
+
         model = ws.app.state.MODELS.get(model_id)
-        if not model or model.get('direct'):
-            raise ValueError('Bridge requires a server-configured chat model')
         model_info = await Models.get_model_by_id(model_id)
-        if not BYPASS_MODEL_ACCESS_CONTROL and (user.role != 'admin' or not BYPASS_ADMIN_ACCESS_CONTROL):
+        if model and not BYPASS_MODEL_ACCESS_CONTROL and (user.role != 'admin' or not BYPASS_ADMIN_ACCESS_CONTROL):
             try:
                 await check_model_access(user, model, model_info=model_info)
             except Exception:
@@ -380,10 +382,16 @@ async def realtime_call(ws: WebSocket):
             model_info.meta.voice_avatar.gestures if model_info and model_info.meta.voice_avatar else ()
         )
         override = ModelVoice.model_validate((model_info.meta.model_dump().get('voice') if model_info else None) or {})
-        voice_model = config.get('audio.realtime.model')
-        voice = override.voice or config.get('audio.realtime.voice')
+        voice_model = config.get('audio.realtime.model') or model_id or 'gpt-realtime-2.1-mini'
+        voice = override.voice or config.get('audio.realtime.voice') or 'Marathon'
         key = config.get('audio.realtime.openai.api_key')
-        url = urlsplit(config.get('audio.realtime.openai.api_base_url') or '')
+        base_url_str = config.get('audio.realtime.openai.api_base_url') or ''
+
+        if u_key and (not key or key == 'test' or not base_url_str):
+            key = u_key
+            base_url_str = u_url or 'https://api.openai.com/v1'
+
+        url = urlsplit(base_url_str)
         if (
             url.scheme not in {'http', 'https'}
             or not url.netloc
