@@ -364,8 +364,32 @@
 							<AdminSettingField label={$i18n.t('settings.admin.images.imageSize.label')}>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('Enter Image Size (e.g. 512x512)')}
+									placeholder={$i18n.t('Default Size (e.g. 1024x1024 or 4096x4096)')}
 									bind:value={config.IMAGE_SIZE}
+								/>
+							</AdminSettingField>
+
+							<AdminSettingField label={$i18n.t('Default Ratio')}>
+								<input
+									class={inputClass}
+									placeholder={$i18n.t('Default Aspect Ratio (e.g. 1:1, 16:9, 9:16)')}
+									bind:value={config.IMAGE_DEFAULT_RATIO}
+								/>
+							</AdminSettingField>
+
+							<AdminSettingField label={$i18n.t('Allowed Sizes')}>
+								<input
+									class={inputClass}
+									placeholder={$i18n.t('Comma separated sizes (e.g. 512x512, 1024x1024, 4096x4096)')}
+									bind:value={config.IMAGE_ALLOWED_SIZES}
+								/>
+							</AdminSettingField>
+
+							<AdminSettingField label={$i18n.t('Allowed Ratios')}>
+								<input
+									class={inputClass}
+									placeholder={$i18n.t('Comma separated ratios (e.g. 1:1, 16:9, 9:16, 4:3, 3:4)')}
+									bind:value={config.IMAGE_ALLOWED_RATIOS}
 								/>
 							</AdminSettingField>
 
@@ -379,6 +403,17 @@
 								</AdminSettingField>
 							{/if}
 						</div>
+
+						<AdminSettingRow
+							label={$i18n.t('Enable Reference Images')}
+							description={$i18n.t('Allow passing reference image URLs/uploads to supported image generation models')}
+							let:labelId
+						>
+							<Switch
+								bind:state={config.ENABLE_REFERENCE_IMAGES}
+								ariaLabelledbyId={labelId}
+							/>
+						</AdminSettingRow>
 
 						<AdminSettingRow
 							label={$i18n.t('settings.admin.images.imagePromptGeneration.label')}

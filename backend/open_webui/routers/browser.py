@@ -420,8 +420,8 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
 
                     base_url = kasm_url.rstrip('/')
 
-                    if share_id:
-                        kasm_live_url = f'{base_url}/#/join/{quote(str(share_id), safe="")}'
+                    if kasm_id and session_token and kasm_user_id:
+                        kasm_live_url = f'{base_url}/#/connect/kasm/{quote(str(kasm_id), safe="")}/{quote(str(kasm_user_id), safe="")}/{quote(str(session_token), safe="")}'
                     elif kasm_id and session_token:
                         kasm_live_url = f'{base_url}/#/connect/kasm/{quote(str(kasm_id), safe="")}/{quote(str(session_token), safe="")}'
                     elif kasm_live_url:
@@ -573,6 +573,23 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
         'provider': provider,
         'browser_id': browser_id,
     }
+
+
+@router.get('/session/active')
+async def get_active_browser_session(chat_id: str, user=Depends(get_verified_user)):
+    """Returns the current active browser session for a specific chat if it exists."""
+    session_key = f'{user.id}_{chat_id}'
+    if session_key in ACTIVE_KASM_SESSIONS:
+        active = ACTIVE_KASM_SESSIONS[session_key]
+        return {
+            'status': True,
+            'live_url': active.get('live_url'),
+            'cdp_url': active.get('cdp_url'),
+            'kasm_id': active.get('kasm_id'),
+            'provider': active.get('provider', 'kasm'),
+            'browser_id': active.get('browser_id', 'chrome'),
+        }
+    return {'status': False, 'live_url': None}
 
 
 @router.post('/session/stop')

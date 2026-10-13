@@ -12,7 +12,7 @@
 	import { get, type Unsubscriber, type Writable } from 'svelte/store';
 	import type { i18n as i18nType } from 'i18next';
 	import { WEBUI_BASE_URL } from '$lib/constants';
-	import { startBrowserSession } from '$lib/apis/browser';
+	import { startBrowserSession, getActiveBrowserSession } from '$lib/apis/browser';
 	import equal from 'fast-deep-equal';
 
 	import {
@@ -347,6 +347,8 @@
 	$: embeddedHeaderTitle = embeddedTitle || $chatTitle || $i18n.t('Chat');
 
 	const getSavedActiveIntegrations = () => {
+		const serverAi = $settings?.activeIntegrations ?? $settings?.ui?.activeIntegrations;
+		if (serverAi) return serverAi;
 		try {
 			if (typeof localStorage !== 'undefined') {
 				const saved = localStorage.getItem('activeIntegrations');
@@ -433,9 +435,9 @@
 
 	const restoreActiveIntegrations = () => {
 		isRestoringIntegrations = true;
-		const localAi = getSavedActiveIntegrations();
 		const serverAi = $settings?.activeIntegrations ?? $settings?.ui?.activeIntegrations;
-		const ai = localAi ?? serverAi;
+		const localAi = getSavedActiveIntegrations();
+		const ai = serverAi ?? localAi;
 		if (ai) {
 			selectedToolIds = Array.isArray(ai.selectedToolIds) ? [...ai.selectedToolIds] : [];
 			selectedSkillIds = Array.isArray(ai.selectedSkillIds) ? [...ai.selectedSkillIds] : [];
@@ -1018,6 +1020,17 @@
 		if (loaded) {
 			await tick();
 			loading = false;
+
+			if ($chatId) {
+				try {
+					const activeSession = await getActiveBrowserSession(localStorage.token, $chatId);
+					if (activeSession?.status && activeSession?.live_url) {
+						agentLiveUrl.set(activeSession.live_url);
+					}
+				} catch (err) {
+					console.debug('Failed to restore active browser session:', err);
+				}
+			}
 			noteChatDebug('embedded chat loading false');
 			window.setTimeout(() => scrollToBottom(), 0);
 
