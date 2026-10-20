@@ -73,7 +73,15 @@ def is_safe_kasm_connection_url(url: str, configured_url: str) -> bool:
 
     parts = parsed.fragment.strip('/').split('/')
     is_share_url = len(parts) == 2 and parts[0] == 'join' and bool(parts[1])
-    is_token_url = len(parts) == 4 and parts[:2] == ['connect', 'kasm'] and bool(parts[2]) and bool(parts[3])
+    # Kasm Workspaces returns the connect URL as
+    #   #/connect/kasm/<kasm_id>/<user_id>/<operational_token>
+    # and older builds omit the user segment:
+    #   #/connect/kasm/<kasm_id>/<operational_token>
+    # Both forms authenticate the session, so both are safe.  Only the path
+    # shape is checked here; the token itself is opaque and unverified.
+    is_token_url = (
+        len(parts) in {4, 5} and parts[0] == 'connect' and parts[1] == 'kasm' and all(part for part in parts[2:])
+    )
     is_cast_url = len(parts) == 2 and parts[0] == 'cast' and bool(parts[1])
     is_query_auth = bool(parsed.query and ('password=' in parsed.query or 'token=' in parsed.query))
     return is_share_url or is_token_url or is_cast_url or is_query_auth

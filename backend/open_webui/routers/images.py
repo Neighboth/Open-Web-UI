@@ -458,6 +458,54 @@ class CreateImageForm(BaseModel):
 GenerateImageForm = CreateImageForm  # Alias for backward compatibility
 
 
+def _provider_error_message(response: aiohttp.ClientResponse, body: str) -> str:
+    """Extract the provider's own error text from a failed response.
+
+    Gateways such as PixRouter answer with a JSON body that names the exact
+    model or parameter that is wrong.  Keeping that text is the difference
+    between an actionable message and an opaque 500.
+    """
+    message = body
+    try:
+        parsed = JSONCodec.loads(body)
+    except Exception:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        error = parsed.get('error')
+        if isinstance(error, dict):
+            message = error.get('message') or str(error)
+        elif isinstance(error, str):
+            message = error
+        else:
+            message = parsed.get('message') or parsed.get('detail') or body
+    return str(message)
+
+
+def _provider_error_hint(message: str) -> str:
+    """Add the setting that has to change for the most common provider errors."""
+    lowered = message.lower()
+    if 'image model' in lowered and 'images/generations' in lowered:
+        return (
+            ' - the provider does not serve this model on its image generation endpoint. '
+            'Choose a model that supports image generation (for example openai/gpt-image-1).'
+        )
+    if 'size' in lowered and any(marker in lowered for marker in ('not supported', 'invalid', 'unsupported')):
+        return ' - the configured image size is not supported by the provider.'
+    if 'mode is required' in lowered:
+        return ' - add the missing "mode" parameter in Admin Panel > Settings > Images > OpenAI API Params.'
+    return ''
+
+
+async def _raise_provider_error(response: aiohttp.ClientResponse, body: str) -> None:
+    """Convert a provider error response into an actionable HTTPException."""
+    message = _provider_error_message(response, body)
+    raise HTTPException(
+        status_code=response.status,
+        detail=f'API Error ({response.status}): {message}{_provider_error_hint(message)}',
+    )
+
+
 def _is_same_origin(url: str, base_url: str) -> bool:
     """Compare scheme + hostname + port of two URLs.
 
@@ -685,14 +733,38 @@ async def image_generations(
             }
 
             session = await get_session()
+            effective_data = data
             async with session.post(
                 url=url,
                 json=data,
                 headers=headers,
                 ssl=AIOHTTP_CLIENT_SESSION_SSL,
             ) as r:
-                r.raise_for_status()
-                res = await r.json(content_type=None)
+                if r.status >= 400:
+                    body = await r.text()
+                    message = _provider_error_message(r, body)
+                    # A provider that rejects the requested resolution only needs a
+                    # smaller one.  Retry once with the standard size before giving up.
+                    if r.status in {400, 502} and data.get('size') and 'size' in message.lower():
+                        log.warning(
+                            'Image provider rejected size %s, retrying with 1024x1024: %s',
+                            data.get('size'),
+                            message,
+                        )
+                        effective_data = {**data, 'size': '1024x1024'}
+                        async with session.post(
+                            url=url,
+                            json=effective_data,
+                            headers=headers,
+                            ssl=AIOHTTP_CLIENT_SESSION_SSL,
+                        ) as retry:
+                            if retry.status >= 400:
+                                await _raise_provider_error(retry, await retry.text())
+                            res = await retry.json(content_type=None)
+                    else:
+                        await _raise_provider_error(r, body)
+                else:
+                    res = await r.json(content_type=None)
 
             images = []
 
@@ -707,7 +779,9 @@ async def image_generations(
                 else:
                     image_data, content_type = await get_image_data(image['b64_json'])
 
-                _, image_file = await upload_image(request, image_data, content_type, {**data, **metadata}, user)
+                _, image_file = await upload_image(
+                    request, image_data, content_type, {**effective_data, **metadata}, user
+                )
                 images.append(image_file)
             return images
 
@@ -871,6 +945,10 @@ async def image_generations(
                 )
                 images.append(image_file)
             return images
+    except HTTPException:
+        # Provider errors already carry an actionable message; do not bury it
+        # behind the generic "Something went wrong" wrapper.
+        raise
     except Exception as e:
         error = e
         if isinstance(e, aiohttp.ClientResponseError):

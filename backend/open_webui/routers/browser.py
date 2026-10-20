@@ -26,6 +26,31 @@ router = APIRouter()
 # Active Kasm sessions cache: key = f"{user_id}_{chat_id}"
 ACTIVE_KASM_SESSIONS: dict[str, dict] = {}
 
+
+def _is_kasm_dashboard_url(url: str, kasm_url: str) -> bool:
+    """Return True when the URL points at the Kasm dashboard instead of a session.
+
+    The Kasm root page (optionally with a ``?password=`` login parameter) is an
+    administration view, not a live browser stream.  Embedding it in the preview
+    pane shows the dashboard plus a login toast, so it must never be used as a
+    silent fallback for a failed container start.
+    """
+    if not url:
+        return True
+    try:
+        parsed = urlsplit(url)
+        base = urlsplit(kasm_url or '')
+    except (TypeError, ValueError):
+        return True
+    if not base.netloc:
+        return False
+    return (
+        parsed.scheme == base.scheme
+        and parsed.netloc.lower() == base.netloc.lower()
+        and parsed.path.rstrip('/') in {'', '/'}
+    )
+
+
 DEFAULT_BROWSERS = [
     {
         'id': 'chrome',
@@ -335,24 +360,32 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                 kasm_user_id = configured_kasm_user
 
         # Auto-resolve Kasm workspace image_id via get_images
-        actual_image_id = image_identifier
+        actual_image_id = None
+        image_lookup_error = None
         try:
             images_url = f'{kasm_url.rstrip("/")}/api/public/get_images'
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
                 async with session.post(
                     images_url,
                     json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
-                    timeout=aiohttp.ClientTimeout(total=8),
+                    timeout=aiohttp.ClientTimeout(total=15),
                 ) as iresp:
                     if iresp.status == 200:
                         idata = await iresp.json()
                         img_list = idata.get('images', [])
                         target_name = browser_id.lower()
+                        # Prefer an exact friendly-name match, then fall back to a
+                        # substring match on the friendly name or the docker image
+                        # name ("kasmweb/chrome:1.19.0-rolling-weekly").
                         matched_img = next(
+                            (img for img in img_list if (img.get('friendly_name') or '').lower() == target_name),
+                            None,
+                        ) or next(
                             (
                                 img
                                 for img in img_list
                                 if target_name in (img.get('friendly_name') or '').lower()
+                                or target_name in (img.get('name') or '').lower()
                                 or target_name in (img.get('docker_image') or '').lower()
                             ),
                             None,
@@ -362,8 +395,27 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                             log.info(
                                 f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}' ({matched_img.get('friendly_name')})"
                             )
+                        else:
+                            image_lookup_error = (
+                                f'No Kasm workspace image matches the browser "{browser_id}". '
+                                f'Install the workspace or pick another browser.'
+                            )
+                    else:
+                        image_lookup_error = f'Kasm image lookup returned HTTP {iresp.status}.'
         except Exception as e:
-            log.warning(f'Failed to auto-resolve Kasm image: {e}')
+            image_lookup_error = f'Kasm image lookup failed: {e}'
+            log.warning('Failed to auto-resolve Kasm image: %s', e)
+
+        if not actual_image_id:
+            # request_kasm only accepts a real Kasm image_id.  A docker image name
+            # is rejected by Kasm ("No Default Image Found" / HTTP 500), so fail
+            # with the real reason instead of silently falling back to a page that
+            # only shows the Kasm dashboard.
+            return {
+                'status': False,
+                'error': image_lookup_error or 'Could not resolve the Kasm workspace image for this browser.',
+                'provider': provider,
+            }
 
         payload = {
             'api_key': kasm_api_key,
@@ -388,7 +440,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                         log.warning(f'Failed to start Kasm container via API: {err}')
                         # Fall back to configured live preview URL or direct Kasm endpoint
                         fallback_live_url = configured_live_url or kasm_url
-                        if fallback_live_url:
+                        if fallback_live_url and not _is_kasm_dashboard_url(fallback_live_url, kasm_url):
                             ACTIVE_KASM_SESSIONS[session_key] = {
                                 'live_url': fallback_live_url,
                                 'cdp_url': kasm_cdp_url or None,
@@ -406,7 +458,14 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                                 'provider': 'kasm',
                                 'browser_id': browser_id,
                             }
-                        return {'status': False, 'error': err, 'provider': 'kasm'}
+                        # The Kasm dashboard is not a browser session view.  Returning it
+                        # silently produces an embedded page that shows the dashboard and
+                        # a login toast, so report the real failure instead.
+                        return {
+                            'status': False,
+                            'error': f'{err}. The Kasm container could not be started.',
+                            'provider': provider,
+                        }
 
                     kasm_id = data.get('kasm_id') or (data.get('kasm') or {}).get('kasm_id')
                     share_id = data.get('share_id') or (data.get('kasm') or {}).get('share_id')

@@ -9,6 +9,7 @@
 		updateAudioConfig,
 		getModels as _getModels,
 		getVoices as _getVoices,
+		verifyRealtimeConnection,
 		type RealtimeConfig
 	} from '$lib/apis/audio';
 	import { config } from '$lib/stores';
@@ -50,6 +51,7 @@
 		REALTIME_CALL_PROMPT_TEMPLATE: ''
 	};
 	let REALTIME_INPUT_PARAMS = '';
+	let verifyingRealtime = false;
 
 	// Audio
 	let TTS_OPENAI_API_BASE_URL = '';
@@ -370,12 +372,52 @@
 							: ''}
 						forId="realtime-model"
 					>
-						<input
-							id="realtime-model"
-							class={inputClass}
-							bind:value={realtime.MODEL}
-							placeholder="gpt-realtime-2.1-mini"
-						/>
+						<div class="flex w-full gap-2">
+							<input
+								id="realtime-model"
+								class={inputClass}
+								bind:value={realtime.MODEL}
+								placeholder="gpt-realtime-2.1-mini"
+							/>
+							<button
+								class="shrink-0 text-gray-400 transition-colors hover:text-gray-900 dark:text-gray-600 dark:hover:text-white"
+								type="button"
+								aria-label={$i18n.t('Verify Connection')}
+								title={$i18n.t('Verify Connection')}
+								on:click={async () => {
+									verifyingRealtime = true;
+									const res = await verifyRealtimeConnection(localStorage.token).catch((error) => {
+										toast.error(`${error}`);
+										return null;
+									});
+									verifyingRealtime = false;
+									if (res?.status) {
+										toast.success(
+											res.message ?? $i18n.t('Server Connection Verified')
+										);
+									} else if (res?.error) {
+										toast.error(res.error);
+									}
+								}}
+							>
+								{#if verifyingRealtime}
+									<Spinner size="sm" />
+								{:else}
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										viewBox="0 0 20 20"
+										fill="currentColor"
+										class="w-4 h-4"
+									>
+										<path
+											fill-rule="evenodd"
+											d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
+											clip-rule="evenodd"
+										/>
+									</svg>
+								{/if}
+							</button>
+						</div>
 					</AdminSettingField>
 					<AdminSettingField label={$i18n.t('Voice')}>
 						<input class={inputClass} bind:value={realtime.VOICE} placeholder="marin" />

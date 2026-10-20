@@ -7,14 +7,14 @@ import logging
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import aiohttp
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from open_webui.config import BYPASS_ADMIN_ACCESS_CONTROL, DEFAULT_REALTIME_CALL_PROMPT_TEMPLATE
 from open_webui.env import AIOHTTP_CLIENT_SESSION_SSL, BYPASS_MODEL_ACCESS_CONTROL
 from open_webui.models.chats import Chats
 from open_webui.models.config import Config
 from open_webui.models.models import Models, ModelVoice
 from open_webui.utils.access_control import has_permission
-from open_webui.utils.auth import get_verified_user_by_token
+from open_webui.utils.auth import get_admin_user, get_verified_user_by_token
 from open_webui.utils.headers import get_microsoft_entra_id_access_token
 from open_webui.utils.json_codec import JSONCodec
 from open_webui.utils.models import check_model_access, get_all_models
@@ -371,6 +371,86 @@ async def _get_realtime_connection(
     return ws_url, headers
 
 
+@router.post('/realtime/verify')
+async def verify_realtime_connection(request: Request, user=Depends(get_admin_user)):
+    """Check that the configured Realtime provider accepts the configured model.
+
+    Gateways differ in which models they expose through the OpenAI Realtime
+    protocol; a model that is not served as a Realtime model makes the socket
+    drop right after the handshake.  Surfacing that here keeps the Admin from
+    having to start a call to find out.
+    """
+    config = await Config.get_many(
+        'audio.realtime.enabled',
+        'audio.realtime.provider',
+        'audio.realtime.auth_type',
+        'audio.realtime.openai.api_base_url',
+        'audio.realtime.openai.api_key',
+        'audio.realtime.model',
+        'audio.realtime.voice',
+        'audio.realtime.transcription_model',
+    )
+
+    voice_model = config.get('audio.realtime.model')
+    if not voice_model:
+        return {'status': False, 'error': 'No Realtime model is configured.'}
+
+    direct_key = direct_url = None
+    try:
+        from open_webui.utils.direct_connections import get_user_direct_connection
+
+        direct_key, direct_url, _ = get_user_direct_connection(user)
+    except Exception:
+        pass
+
+    try:
+        ws_url, headers = await _get_realtime_connection(
+            config,
+            model=voice_model,
+            direct_key=direct_key,
+            direct_url=direct_url,
+        )
+    except ValueError as exc:
+        return {'status': False, 'error': str(exc)}
+
+    session = await get_session()
+    try:
+        async with asyncio.timeout(20):
+            async with session.ws_connect(
+                ws_url,
+                headers=headers,
+                ssl=AIOHTTP_CLIENT_SESSION_SSL,
+                heartbeat=20,
+                max_msg_size=MAX_EVENT_BYTES,
+            ) as upstream:
+                event = await asyncio.wait_for(upstream.receive_json(), timeout=15)
+    except aiohttp.WSServerHandshakeError as exc:
+        if exc.status in {401, 403}:
+            return {'status': False, 'error': 'The Realtime provider rejected the credentials.'}
+        if exc.status == 404:
+            return {'status': False, 'error': 'The Realtime endpoint was not found at the configured base URL.'}
+        return {'status': False, 'error': f'The Realtime provider refused the connection (HTTP {exc.status}).'}
+    except asyncio.TimeoutError:
+        return {'status': False, 'error': 'The Realtime provider did not answer in time.'}
+    except Exception:
+        return {
+            'status': False,
+            'error': (
+                f'The Realtime provider closed the connection before the session started. '
+                f'The model "{voice_model}" is most likely not served as an OpenAI Realtime model '
+                f'by this endpoint.'
+            ),
+        }
+
+    if event.get('type') != 'session.created':
+        return {
+            'status': False,
+            'error': f'The provider answered with "{event.get("type")}" instead of "session.created".',
+        }
+
+    return {'status': True, 'model': voice_model, 'message': 'The Realtime provider accepted the model.'}
+
+
 @router.websocket('/realtime')
 async def realtime_call(ws: WebSocket):
     await ws.accept()
@@ -465,7 +545,17 @@ async def realtime_call(ws: WebSocket):
                             'Realtime endpoint not found. Check the API base URL and deployment name.'
                         ) from None
                     raise
-            event = await upstream.receive_json()
+            try:
+                event = await upstream.receive_json()
+            except Exception:
+                # Gateways that do not expose the model as an OpenAI Realtime model
+                # accept the handshake and drop the socket right away.  Name the
+                # model so the Admin knows which setting to change.
+                raise ValueError(
+                    f'The realtime provider closed the connection before the session started. '
+                    f'The model "{voice_model}" is most likely not served as an OpenAI Realtime model '
+                    f'by this endpoint.'
+                ) from None
             if event.get('type') != 'session.created':
                 raise ValueError('Provider did not create a voice session')
             await upstream.send_json(
@@ -501,7 +591,20 @@ async def realtime_call(ws: WebSocket):
             )
             event = await upstream.receive_json()
             if event.get('type') != 'session.updated':
-                raise ValueError('Provider rejected voice configuration. Check model, voice, and transcription model.')
+                # Surface the provider's own validation message.  A transcription-only
+                # realtime model rejects the "realtime" session type, and that text
+                # is the only hint about which model is actually usable.
+                provider_error = ''
+                if event.get('type') == 'error':
+                    error = event.get('error')
+                    if isinstance(error, dict):
+                        provider_error = str(error.get('message') or '')[:400]
+                    elif error:
+                        provider_error = str(error)[:400]
+                detail = 'Provider rejected voice configuration. Check model, voice, and transcription model.'
+                if provider_error:
+                    detail = f'{detail} Provider said: {provider_error}'
+                raise ValueError(detail)
         await ws.send_json({'type': 'bridge.ready', 'model': voice_model, 'voice': voice, 'sample_rate': 24000})
 
         async def client_events():

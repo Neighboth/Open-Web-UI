@@ -26,6 +26,23 @@
 
 	const i18n: any = getContext('i18n');
 
+	// The params fields are edited as raw JSON.  A typo must surface as a form
+	// error instead of an uncaught exception that silently aborts the save.
+	const parseJsonParam = (value: unknown, label: string) => {
+		if (typeof value !== 'string') {
+			return value ?? {};
+		}
+		if (value.trim() === '') {
+			return {};
+		}
+		try {
+			return JSON.parse(value);
+		} catch (error) {
+			toast.error(`${label}: ${error instanceof Error ? error.message : String(error)}`);
+			return null;
+		}
+	};
+
 	let loading = false;
 
 	let models = null;
@@ -122,17 +139,22 @@
 			return null;
 		}
 
+		const automatic1111Params = parseJsonParam(
+			config.AUTOMATIC1111_PARAMS,
+			$i18n.t('Automatic1111 Params')
+		);
+		const videosOpenaiParams = parseJsonParam(
+			config.VIDEOS_OPENAI_API_PARAMS,
+			$i18n.t('Videos OpenAI API Params')
+		);
+		if (automatic1111Params === null || videosOpenaiParams === null) {
+			return null;
+		}
+
 		const res = await updateConfig(localStorage.token, {
 			...config,
-			AUTOMATIC1111_PARAMS:
-				typeof config.AUTOMATIC1111_PARAMS === 'string' && config.AUTOMATIC1111_PARAMS.trim() !== ''
-					? JSON.parse(config.AUTOMATIC1111_PARAMS)
-					: {},
-			VIDEOS_OPENAI_API_PARAMS:
-				typeof config.VIDEOS_OPENAI_API_PARAMS === 'string' &&
-				config.VIDEOS_OPENAI_API_PARAMS.trim() !== ''
-					? JSON.parse(config.VIDEOS_OPENAI_API_PARAMS)
-					: {}
+			AUTOMATIC1111_PARAMS: automatic1111Params,
+			VIDEOS_OPENAI_API_PARAMS: videosOpenaiParams
 		}).catch((error) => {
 			toast.error(`${error}`);
 			return null;
@@ -526,6 +548,19 @@
 									/>
 								</AdminSettingField>
 							</div>
+
+							<AdminSettingField
+								label={$i18n.t('Video Generation Mode')}
+								description={$i18n.t(
+									'Mode sent to the provider for every request (e.g. text). Some providers require it.'
+								)}
+							>
+								<input
+									class={inputClass}
+									placeholder="text"
+									bind:value={config.VIDEO_GENERATION_MODE}
+								/>
+							</AdminSettingField>
 
 							<AdminSettingField
 								label={$i18n.t('Videos OpenAI API Params')}

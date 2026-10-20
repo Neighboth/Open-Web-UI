@@ -25,7 +25,9 @@ VIDEO_CONFIG_KEYS = {
     'VIDEOS_OPENAI_API_BASE_URL': 'video_generation.openai.api_base_url',
     'VIDEOS_OPENAI_API_KEY': 'video_generation.openai.api_key',
     'VIDEOS_OPENAI_API_VERSION': 'video_generation.openai.api_version',
+    'VIDEOS_OPENAI_API_PARAMS': 'video_generation.openai.params',
     'VIDEOS_OPENAI_API_ENDPOINT': 'video_generation.openai.endpoint',
+    'VIDEO_GENERATION_MODE': 'video_generation.mode',
     'VIDEO_DURATIONS': 'video_generation.durations',
     'VIDEO_DURATION_DEFAULT': 'video_generation.duration_default',
     'VIDEO_ASPECT_RATIOS': 'video_generation.aspect_ratios',
@@ -72,6 +74,7 @@ DEFAULT_CONFIG = {
     'VIDEOS_OPENAI_API_VERSION': '',
     'VIDEOS_OPENAI_API_PARAMS': {},
     'VIDEOS_OPENAI_API_ENDPOINT': '/video/generations',
+    'VIDEO_GENERATION_MODE': '',
     'VIDEO_DURATIONS': '4 - 12',
     'VIDEO_DURATION_DEFAULT': '12',
     'VIDEO_ASPECT_RATIOS': '21:9, 16:9, 4:3, 1:1, 3:4, 9:16',
@@ -273,6 +276,13 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
             payload['mode'] = img_mode
 
     extra_params = config.get('VIDEOS_OPENAI_API_PARAMS') or {}
+    if isinstance(extra_params, str):
+        # The Admin UI stores this field as a JSON string; the API accepts an object.
+        try:
+            extra_params = json.loads(extra_params)
+        except Exception:
+            log.warning('Ignoring invalid video_generation.openai.params JSON')
+            extra_params = {}
     if isinstance(extra_params, dict):
         payload.update(extra_params)
     for k, v in form_data.items():
@@ -301,12 +311,49 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
                             if isinstance(err_msg, str) and err_msg.startswith('{') and 'invalid_request' in err_msg:
                                 inner_err = json.loads(err_msg)
                                 param_name = inner_err.get('data', {}).get('param')
-                                if param_name and param_name in payload and attempt < 3:
+                                inner_msg = str(inner_err.get('message', '')).lower()
+                                # Only drop the parameter when the provider says it does not
+                                # support it.  A "required" complaint means the opposite: the
+                                # parameter must stay, so removing it would only hide the real
+                                # error behind the same response on every retry.
+                                param_is_rejected = any(
+                                    marker in inner_msg
+                                    for marker in (
+                                        'unsupported',
+                                        'not support',
+                                        'not allow',
+                                        'not an allow',
+                                        'allowed request field',
+                                        'not permit',
+                                        'disallow',
+                                        'forbid',
+                                        'unknown',
+                                        'unrecognized',
+                                        'unexpected',
+                                        'invalid',
+                                        'extra',
+                                    )
+                                )
+                                if param_name and param_is_rejected and param_name in payload and attempt < 3:
                                     log.info(
                                         f"Removing unsupported param '{param_name}' and retrying ({attempt + 1}/3)..."
                                     )
                                     del payload[param_name]
                                     modified_payload = True
+                                elif param_name and 'required' in inner_msg and param_name not in payload:
+                                    # The provider needs a parameter we never sent.  Point the
+                                    # Admin at the setting that carries it instead of echoing a
+                                    # bare upstream message.
+                                    raise HTTPException(
+                                        status_code=response.status,
+                                        detail=(
+                                            f'API Error ({response.status}): {err_msg} '
+                                            f'- set "{param_name}" in Admin Panel > Settings > Video '
+                                            f'(Video Generation Mode or Videos OpenAI API Params).'
+                                        ),
+                                    )
+                        except HTTPException:
+                            raise
                         except Exception:
                             err_msg = err_text
 

@@ -206,3 +206,23 @@ export const getVoices = async (token: string = '') => {
 
 	return res;
 };
+
+export const verifyRealtimeConnection = async (token: string = '') => {
+	const res = await fetch(`${AUDIO_API_BASE_URL}/realtime/verify`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${token}`
+		}
+	})
+		.then(async (res) => {
+			if (!res.ok) throw await res.json();
+			return res.json();
+		})
+		.catch((err) => {
+			console.error(err);
+			return { status: false, error: err?.detail ?? 'Verification failed' };
+		});
+
+	return res;
+};
