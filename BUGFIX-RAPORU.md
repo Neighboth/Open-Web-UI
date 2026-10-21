@@ -310,12 +310,24 @@ OpenAI Realtime biçimli olaylar kullanır (`input_audio_buffer.append`,
 endpoint'i kullanılır; bir gateway aynı servisi sunuyorsa `GEMINI_WS_URL` ile
 ona yönlendirilir (`{model}` yer tutucusu desteklenir).
 
-> **Sağlayıcı notu:** Test edilen gateway'da Gemini live modelleri OpenAI
-> Realtime köprüsünde **çevrilmiyor** (handshake sonrası socket kapanıyor) ve
-> gateway'in Gemini native HTTP yolu (`/v1beta/models/{model}:generateContent`)
-> çalışıyor. Yani gateway tarafında Gemini Live için `bidiGenerateContent` WS
-> yolu açılmalı; bu kodda WS yolu yapılandırılabilir olduğu için açılır açılmaz
-> çalışır.
+**WS URL şablonları:**
+
+| Hedef | URL |
+|---|---|
+| Google (herkese açık) | `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent` |
+| Gateway (Google yolunu yansıtıyorsa) | `wss://<gateway>/v1beta/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent` |
+| Model adı gömülü ise | `wss://<gateway>/...?model={model}` |
+
+> **Sağlayıcı notu (ölçülen):** Test edilen gateway'da Gemini live modelleri
+> OpenAI Realtime köprüsünde **çevrilmiyor** (handshake sonrası socket kapanıyor)
+> ve gateway'in Gemini native **HTTP** yolu (`/v1beta/models/{model}:{method}`)
+> çalışıyor ama **WebSocket** relay'i yok (14 aday yolunun tamamı 404). Yani
+> gateway tarafında Gemini Live için `bidiGenerateContent` WS yolu açılmalı;
+> bu kodda WS yolu yapılandırılabilir olduğu için açılır açılmaz çalışır.
+> Bu arada Gemini native HTTP yolundan gelen hata, modelin **gerçekten** Gemini
+> Live modeli olduğunu ve sadece WS beklediğini doğruluyor:
+> *"models/gemini-3.8-live only supports real-time bidirectional streaming via
+> WebSocket (bidiGenerateContent)"*.
 
 ---
 
@@ -327,9 +339,25 @@ kullanılıyor, kullanıcıdan hiçbir kimlik bilgisi istenmiyor (GPT Agent / Ge
 Spark davranışı). Admin arayüzündeki "rol kısıtı" ve kullanıcıdaki "Kasm
 hesabım" alanları kaldırıldı.
 
+**Opsiyonel istisna:** Yönetici kendi oturumlarını **kendi Kasm hesabında**
+çalıştırabilir (Chat → Entegrasyonlar → Web Browser ⚙️ → "My Browser Account").
+Bu alan **sadece admin'e** görünür, sıradan kullanıcı hiç form görmez.
+
 > **Önemli:** Paylaşılan Kasm hesabı **kişisel bir hesap olmamalı**. Kişisel
 > hesap kullanılırsa o hesabın kayıtlı girişleri (cookie'ler) herkese açık
-> olur. Ayrı bir servis hesabı oluşturun.
+> olur. Ayrı bir servis hesabı oluşturmanız gerekiyor.
+
+**Kasm hesapları (canlı kontrol):**
+| Hesap | Grup | Durum |
+|---|---|---|
+| `user@kasm.local` | All Users | Paylaşılan servis hesabı — yönetici **değil** ✅ |
+| `salih` | All Users + **Administrators** | Kişisel yönetici hesabın |
+
+`/api/public/create_user` → **401 "Access Denied"** (API anahtarının sahibi
+yönetici değil) → yeni hesap **Kasm web arayüzünden yönetici olarak** açılmalı:
+**Settings → Users → Add User** → admin yetkisi yok, gruplar: sadece "All Users" →
+sonra **Permissions → Images** üzerinden bu hesaba `kasmweb/*` workspace izni
+verilmeli (yoksa konteyner açamaz).
 
 ### Katlanarak sessiz yeniden deneme
 Kasm sunucusu erişilemez olduğunda veya hata döndürdüğünde kullanıcıya

@@ -17,7 +17,11 @@ import json
 from open_webui.env import DATA_DIR
 from open_webui.models.config import Config
 from open_webui.utils.auth import get_verified_user
-from open_webui.utils.browser_session import is_safe_kasm_connection_url, resolve_kasm_user_id
+from open_webui.utils.browser_session import (
+    get_user_kasm_credentials,
+    is_safe_kasm_connection_url,
+    resolve_kasm_user_id,
+)
 
 log = logging.getLogger(__name__)
 
@@ -371,10 +375,15 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     image_identifier = selected_browser.get('image', 'kasmweb/chrome:1.16.0')
 
     # The Kasm account of the instance is used for every session, so nobody has
-    # to create an account to open a browser.  It should be a dedicated service
-    # account and not a personal one: a personal account would hand its saved
-    # logins to everybody who uses the sandbox.
-    if str(getattr(user, 'role', '') or '').lower() != 'admin':
+    # to create an account to open a browser.  An administrator can point
+    # their own sessions at a personal Kasm account instead, which keeps their
+    # own logins apart from the ones of the shared account.
+    own_kasm_user, own_kasm_password = get_user_kasm_credentials(user)
+    if own_kasm_user:
+        kasm_user = own_kasm_user
+        kasm_password = own_kasm_password
+        log.info('User %s uses their own Kasm account %s', getattr(user, 'id', '?'), kasm_user)
+    elif str(getattr(user, 'role', '') or '').lower() != 'admin':
         log.info('User %s starts a browser session on the shared Kasm account %s', getattr(user, 'id', '?'), kasm_user)
 
     # Case 1: Kasm Workspaces API Mode (On-demand container creation)

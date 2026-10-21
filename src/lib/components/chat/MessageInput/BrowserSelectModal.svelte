@@ -4,7 +4,10 @@
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import GlobeAlt from '$lib/components/icons/GlobeAlt.svelte';
 	import Check from '$lib/components/icons/Check.svelte';
+	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import { getAvailableBrowsers, type BrowserOption } from '$lib/apis/browser';
+	import { updateUserSettings } from '$lib/apis/users';
+	import { settings, user } from '$lib/stores';
 	import { toast } from 'svelte-sonner';
 
 	const i18n = getContext<any>('i18n');
@@ -42,6 +45,39 @@
 
 	let loading = false;
 
+	// Optional: an administrator can run their own sessions on a personal Kasm
+	// account so their logins stay apart from the shared instance account.
+	// Regular users never see this and never have to create an account.
+	const isAdmin = () => ($user?.role ?? '') === 'admin';
+	let kasmUser = '';
+	let kasmPassword = '';
+	let savingKasm = false;
+
+	const loadKasmCredentials = () => {
+		const own = ($settings as any)?.browserSandboxKasm ?? ($settings as any)?.ui?.browserSandboxKasm;
+		kasmUser = own?.user ?? '';
+		kasmPassword = own?.password ?? '';
+	};
+
+	const saveKasmCredentials = async () => {
+		savingKasm = true;
+		const value =
+			kasmUser.trim() && kasmPassword.trim()
+				? { user: kasmUser.trim(), password: kasmPassword.trim() }
+				: {};
+		const res = await updateUserSettings(localStorage.token, { browserSandboxKasm: value }).catch(
+			(err) => {
+				toast.error(`${err}`);
+				return null;
+			}
+		);
+		savingKasm = false;
+		if (res) {
+			settings.set({ ...$settings, browserSandboxKasm: value } as any);
+			toast.success($i18n.t('Browser account saved'));
+		}
+	};
+
 	const loadBrowsers = async () => {
 		loading = true;
 		try {
@@ -63,6 +99,7 @@
 	$: if (show) {
 		selectedBrowser = localStorage.getItem('selected_browser') || 'chrome';
 		loadBrowsers();
+		if (isAdmin()) loadKasmCredentials();
 	}
 
 	const selectBrowser = (id: string) => {
@@ -160,6 +197,37 @@
 					</button>
 				{/each}
 			</div>
+
+			{#if isAdmin()}
+				<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+					<div class="text-xs font-semibold mb-1 text-gray-700 dark:text-gray-300">
+						{$i18n.t('My Browser Account')}
+					</div>
+					<div class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+						{$i18n.t(
+							'Optional. With your own sandbox account your browser session runs as you, so your logins stay apart from the shared instance account.'
+						)}
+					</div>
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+						<input
+							class="w-full h-8 rounded-lg border border-gray-100/50 bg-gray-50/40 px-2 text-xs text-gray-700 dark:border-white/[0.04] dark:bg-white/[0.03] dark:text-gray-300 placeholder:text-gray-300 focus:border-blue-400 outline-hidden"
+							placeholder={$i18n.t('Username')}
+							bind:value={kasmUser}
+						/>
+						<SensitiveInput bind:value={kasmPassword} placeholder={$i18n.t('Password')} />
+					</div>
+					<div class="flex justify-end mt-3">
+						<button
+							class="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition rounded-lg"
+							type="button"
+							disabled={savingKasm}
+							on:click={saveKasmCredentials}
+						>
+							{savingKasm ? $i18n.t('Saving...') : $i18n.t('Save Account')}
+						</button>
+					</div>
+				</div>
+			{/if}
 
 			<div class="flex justify-end gap-2 pt-4">
 				<button

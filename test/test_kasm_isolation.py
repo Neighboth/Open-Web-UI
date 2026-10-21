@@ -174,3 +174,105 @@ def test_kasm_post_returns_the_first_success():
     result = asyncio.run(browser.kasm_retry(operation, attempts=5, base_delay=0))
     assert result == 'ok'
     assert len(calls) == 3, calls
+
+
+def test_own_kasm_account_is_optional_and_used_when_present():
+    """An administrator can keep their sessions on their own Kasm account."""
+    from open_webui.utils.browser_session import get_user_kasm_credentials
+
+    class U:
+        settings = {'browserSandboxKasm': {'user': 'mine', 'password': 'secret'}}
+
+    assert get_user_kasm_credentials(U()) == ('mine', 'secret')
+    # A user without their own account falls back to the shared one.
+    assert get_user_kasm_credentials(_User(role='user')) == (None, None)
+
+
+def test_own_kasm_account_is_used_for_the_session():
+    _patch_config(dict(CONFIG))
+    original = _patch_session()
+    used = {}
+
+    class Recorder:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def post(self, url, **kwargs):
+            if 'authenticate' in url:
+                used['username'] = (kwargs.get('json') or {}).get('username')
+            return Resp({'user_id': 'kasm-user-id'})
+
+    import aiohttp
+
+    class OwnResp:
+        status = 200
+
+        def __init__(self, payload):
+            self._payload = payload
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def text(self):
+            import json
+
+            return json.dumps(self._payload)
+
+        async def json(self, **k):
+            return self._payload
+
+    class Recorder:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def post(self, url, **kwargs):
+            if 'authenticate' in url:
+                used['username'] = (kwargs.get('json') or {}).get('username')
+                return OwnResp({'user_id': 'own-user-id'})
+            if 'get_images' in url:
+                return OwnResp(
+                    {
+                        'images': [
+                            {'image_id': 'chrome-image-id', 'friendly_name': 'Chrome', 'name': 'kasmweb/chrome:1.19.0'}
+                        ]
+                    }
+                )
+            return OwnResp(
+                {
+                    'kasm_id': 'kasm-id',
+                    'session_token': 'token',
+                    'kasm_url': f'{KASM}/#/connect/kasm/kasm-id/token',
+                }
+            )
+
+    aiohttp.ClientSession = Recorder
+    try:
+        user = _User(role='admin')
+        user.settings = {'browserSandboxKasm': {'user': 'own-account', 'password': 'secret'}}
+        result = asyncio.run(
+            browser.start_browser_session(
+                request=None,
+                form_data=browser.StartSessionForm(browser_id='chrome', chat_id='c-own'),
+                user=user,
+            )
+        )
+    finally:
+        aiohttp.ClientSession = original
+
+    assert result.get('status') is True, result
+    assert used.get('username') == 'own-account', used
