@@ -771,6 +771,32 @@
 								{/each}
 							</div>
 						</AdminSettingField>
+
+						<AdminSettingField
+							label={$i18n.t('Roles allowed to use the shared Kasm account')}
+							description={$i18n.t(
+								'The Kasm account above is shared by every allowed role, so its sessions are visible to all of them. Users who configure their own Kasm account in their user settings are not affected by this list.'
+							)}
+						>
+							<input
+								class={inputClass}
+								value={(config.BROWSER_SANDBOX_ALLOWED_ROLES || []).join(', ')}
+								placeholder="admin"
+								on:change={(e) => {
+									config.BROWSER_SANDBOX_ALLOWED_ROLES = e.currentTarget.value
+										.split(',')
+										.map((role) => role.trim())
+										.filter(Boolean);
+								}}
+							/>
+						</AdminSettingField>
+
+						<AdminSettingRow label={$i18n.t('Allow shared session links')}>
+							<Switch
+								bind:state={config.KASM_ENABLE_SHARING}
+								ariaLabelledbyId={labelId}
+							/>
+						</AdminSettingRow>
 					{:else if config.BROWSER_SANDBOX_PROVIDER === 'vnc'}
 						<AdminSettingField
 							label={$i18n.t('Live Screen / Web VNC Stream URL')}

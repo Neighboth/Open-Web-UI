@@ -91,7 +91,7 @@ def test_kasm_connect_url_with_user_id_segment_is_allowed():
     destroy the container, which broke the embedded preview.
     """
     origin = 'https://kasm.example.test:8443'
-    url = f'{origin}/#/connect/kasm/cdc8d55f-a57c-4262-b353-dc915f445a14/dd4798760d5549cb9aaf7bffbb49d4da/token'
+    url = f'{origin}/#/connect/kasm/kasm-id/kasm-user-id/token'
     assert is_safe_kasm_connection_url(url, origin)
 
 

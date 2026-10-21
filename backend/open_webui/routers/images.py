@@ -663,7 +663,7 @@ async def image_generations(
     metadata: dict | None = None,
     user=None,
 ):
-    from open_webui.utils.direct_connections import get_user_direct_connection
+    from open_webui.utils.direct_connections import get_user_direct_connection, resolve_provider_base_url
 
     u_key, u_url, _ = get_user_direct_connection(user)
 
@@ -692,8 +692,7 @@ async def image_generations(
     if u_key and (not openai_key or openai_key == 'test' or not engine or engine == 'openai'):
         engine = 'openai'
         openai_key = u_key
-        if not openai_url or openai_url == 'test' or 'pixrouter' in (openai_url or ''):
-            openai_url = u_url or 'https://api.openai.com/v1'
+        openai_url = resolve_provider_base_url(openai_url, u_url)
 
     if not model and engine == 'openai':
         model = form_data.model or 'dall-e-3'
@@ -734,37 +733,74 @@ async def image_generations(
 
             session = await get_session()
             effective_data = data
-            async with session.post(
-                url=url,
-                json=data,
-                headers=headers,
-                ssl=AIOHTTP_CLIENT_SESSION_SSL,
-            ) as r:
-                if r.status >= 400:
+            # Providers disagree about which optional fields they accept.  Adapt
+            # instead of hard coding one vendor's dialect: drop a field the
+            # provider rejects, fall back to a supported resolution, and retry.
+            for attempt in range(3):
+                async with session.post(
+                    url=url,
+                    json=effective_data,
+                    headers=headers,
+                    ssl=AIOHTTP_CLIENT_SESSION_SSL,
+                ) as r:
+                    if r.status < 400:
+                        res = await r.json(content_type=None)
+                        break
+
                     body = await r.text()
                     message = _provider_error_message(r, body)
-                    # A provider that rejects the requested resolution only needs a
-                    # smaller one.  Retry once with the standard size before giving up.
-                    if r.status in {400, 502} and data.get('size') and 'size' in message.lower():
+                    lowered = message.lower()
+                    retry_data = None
+
+                    # A resolution the provider does not know only needs a
+                    # smaller one.
+                    if (
+                        r.status in {400, 502}
+                        and effective_data.get('size')
+                        and effective_data['size'] != '1024x1024'
+                        and 'size' in lowered
+                    ):
+                        retry_data = {**effective_data, 'size': '1024x1024'}
                         log.warning(
                             'Image provider rejected size %s, retrying with 1024x1024: %s',
-                            data.get('size'),
+                            effective_data.get('size'),
                             message,
                         )
-                        effective_data = {**data, 'size': '1024x1024'}
-                        async with session.post(
-                            url=url,
-                            json=effective_data,
-                            headers=headers,
-                            ssl=AIOHTTP_CLIENT_SESSION_SSL,
-                        ) as retry:
-                            if retry.status >= 400:
-                                await _raise_provider_error(retry, await retry.text())
-                            res = await retry.json(content_type=None)
                     else:
+                        # An optional field the provider does not accept is
+                        # dropped once and the request is sent again.
+                        rejected = next(
+                            (
+                                key
+                                for key in ('response_format', 'size', 'n')
+                                if key in effective_data
+                                and key in lowered
+                                and any(
+                                    marker in lowered
+                                    for marker in (
+                                        'not allowed',
+                                        'not an allow',
+                                        'unsupported',
+                                        'not support',
+                                        'unknown',
+                                        'unrecognized',
+                                        'unexpected',
+                                        'invalid',
+                                        'extra',
+                                        'not permit',
+                                    )
+                                )
+                            ),
+                            None,
+                        )
+                        if rejected and attempt < 2:
+                            retry_data = {k: v for k, v in effective_data.items() if k != rejected}
+                            log.warning('Image provider rejected "%s", retrying without it: %s', rejected, message)
+
+                    if retry_data is None:
                         await _raise_provider_error(r, body)
-                else:
-                    res = await r.json(content_type=None)
+
+                    effective_data = retry_data
 
             images = []
 

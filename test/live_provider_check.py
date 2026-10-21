@@ -377,8 +377,8 @@ async def main():
     print('\n=== 6) KASM: gercek Kasm connect URL-i guvenli kabul ediliyor ===')
     # ------------------------------------------------------------------
     real_url = (
-        f'{KASM_URL}/#/connect/kasm/cdc8d55f-a57c-4262-b353-dc915f445a14/'
-        'dd4798760d5549cb9aaf7bffbb49d4da/session-token-value'
+        f'{KASM_URL}/#/connect/kasm/kasm-id/'
+        'kasm-user-id/session-token-value'
     )
     record(
         'kasm: 5 parcali connect URL (kasm_id/user_id/token) guvenli',

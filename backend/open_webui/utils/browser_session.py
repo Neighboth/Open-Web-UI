@@ -4,6 +4,54 @@ from uuid import UUID
 from urllib.parse import urlsplit
 
 
+def get_user_kasm_credentials(user) -> tuple[str | None, str | None]:
+    """Read a user's own Kasm account from their settings.
+
+    A user who brings their own Kasm account is isolated from every other user
+    of the instance: the container runs as their account, so nobody inherits
+    somebody else's Kasm session.  The credentials live in the user's own
+    settings, next to the other bring-your-own-key values.
+
+    Returns ``(username, password)`` or ``(None, None)``.
+    """
+    if not user:
+        return None, None
+
+    settings = getattr(user, 'settings', None)
+    if settings is None and isinstance(user, dict):
+        settings = user.get('settings')
+
+    if hasattr(settings, 'model_dump'):
+        try:
+            settings = settings.model_dump()
+        except Exception:
+            settings = {}
+    elif not isinstance(settings, dict):
+        settings = {}
+
+    direct = settings.get('browserSandboxKasm')
+    if not direct:
+        ui = settings.get('ui')
+        if hasattr(ui, 'model_dump'):
+            try:
+                ui = ui.model_dump()
+            except Exception:
+                ui = {}
+        if isinstance(ui, dict):
+            direct = ui.get('browserSandboxKasm')
+
+    if not isinstance(direct, dict):
+        return None, None
+
+    username = direct.get('user')
+    password = direct.get('password')
+    username = username.strip() if isinstance(username, str) else None
+    password = password.strip() if isinstance(password, str) else None
+    if not username or not password:
+        return None, None
+    return username, password
+
+
 def resolve_kasm_user_id(configured_user: str, users: object = None) -> str:
     """Resolve a configured Kasm UUID, username, or email to one user UUID.
 

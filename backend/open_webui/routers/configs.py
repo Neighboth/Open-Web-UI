@@ -80,6 +80,8 @@ CODE_EXECUTION_CONFIG_KEYS = {
     'KASM_WORKSPACES_API_SECRET': 'browser_sandbox.kasm.api_secret',
     'KASM_CDP_URL': 'browser_sandbox.kasm.cdp_url',
     'KASM_ENABLED_BROWSERS': 'browser_sandbox.kasm.browsers',
+    'BROWSER_SANDBOX_ALLOWED_ROLES': 'browser_sandbox.allowed_roles',
+    'KASM_ENABLE_SHARING': 'browser_sandbox.kasm.enable_sharing',
 }
 MODELS_CONFIG_KEYS = {
     'DEFAULT_MODELS': 'ui.default_models',
@@ -775,6 +777,10 @@ class CodeInterpreterConfigForm(BaseModel):
     KASM_WORKSPACES_API_SECRET: str | None = None
     KASM_CDP_URL: str | None = None
     KASM_ENABLED_BROWSERS: list[str] | None = None
+    # Roles that may use the instance wide Kasm account.  Users with their own
+    # Kasm account are not affected by this list.
+    BROWSER_SANDBOX_ALLOWED_ROLES: list[str] | None = ['admin']
+    KASM_ENABLE_SHARING: bool | None = False
 
 
 @router.get('/code_execution', response_model=CodeInterpreterConfigForm)

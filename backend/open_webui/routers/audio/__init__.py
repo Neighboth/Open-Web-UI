@@ -444,13 +444,12 @@ async def _tts_openai(request, payload, file_path, file_body_path, user):
     api_base_url = await Config.get('audio.tts.openai.api_base_url')
 
     if not api_key or api_key == 'test':
-        from open_webui.utils.direct_connections import get_user_direct_connection
+        from open_webui.utils.direct_connections import get_user_direct_connection, resolve_provider_base_url
 
         u_key, u_url, _ = get_user_direct_connection(user)
         if u_key:
             api_key = u_key
-            if not api_base_url or 'pixrouter' in (api_base_url or '') or api_base_url == 'test':
-                api_base_url = u_url or 'https://api.openai.com/v1'
+            api_base_url = resolve_provider_base_url(api_base_url, u_url)
             if not payload.get('model'):
                 payload['model'] = 'tts-1'
             if not payload.get('voice'):
@@ -948,13 +947,12 @@ async def _transcribe_openai(request, file_path, filename, languages, file_dir, 
         request_format = (await Config.get('audio.stt.openai.api_request_format') or 'multipart').lower()
 
         if user:
-            from open_webui.utils.direct_connections import get_user_direct_connection
+            from open_webui.utils.direct_connections import get_user_direct_connection, resolve_provider_base_url
 
             u_key, u_url, _ = get_user_direct_connection(user)
             if u_key and (not api_key or api_key == 'test'):
                 api_key = u_key
-                if not api_base_url or 'pixrouter' in (api_base_url or '') or api_base_url == 'test':
-                    api_base_url = u_url or 'https://api.openai.com/v1'
+                api_base_url = resolve_provider_base_url(api_base_url, u_url)
 
         api_base_url = (api_base_url or 'https://api.openai.com/v1').rstrip('/')
         headers = {'Authorization': f'Bearer {api_key}'}

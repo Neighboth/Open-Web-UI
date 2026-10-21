@@ -17,7 +17,11 @@ import json
 from open_webui.env import DATA_DIR
 from open_webui.models.config import Config
 from open_webui.utils.auth import get_verified_user
-from open_webui.utils.browser_session import is_safe_kasm_connection_url, resolve_kasm_user_id
+from open_webui.utils.browser_session import (
+    get_user_kasm_credentials,
+    is_safe_kasm_connection_url,
+    resolve_kasm_user_id,
+)
 
 log = logging.getLogger(__name__)
 
@@ -310,6 +314,40 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     browser_id = selected_browser['id']
     image_identifier = selected_browser.get('image', 'kasmweb/chrome:1.16.0')
 
+    # Identity of the Kasm account the container runs as.  A user who brings
+    # their own Kasm account is isolated from everybody else; the instance wide
+    # account is shared, so it is only handed out to the roles the Admin
+    # allows.
+    own_kasm_user, own_kasm_password = get_user_kasm_credentials(user)
+    using_shared_account = not own_kasm_user
+
+    if using_shared_account:
+        allowed_roles = await Config.get('browser_sandbox.allowed_roles', ['admin'])
+        if isinstance(allowed_roles, str):
+            allowed_roles = [allowed_roles]
+        allowed_roles = [str(role).strip().lower() for role in (allowed_roles or []) if str(role).strip()]
+        if allowed_roles and str(getattr(user, 'role', '') or '').lower() not in allowed_roles:
+            return {
+                'status': False,
+                'error': (
+                    'The browser sandbox uses a shared Kasm account and is limited to: '
+                    f'{", ".join(allowed_roles)}. Configure your own Kasm account in your user settings '
+                    'or ask an administrator to allow your role.'
+                ),
+                'provider': provider,
+            }
+        if str(getattr(user, 'role', '') or '').lower() != 'admin':
+            log.warning(
+                'User %s is using the shared Kasm account (%s). Their browser session belongs to that '
+                'account; give each user their own Kasm account to keep sessions apart.',
+                getattr(user, 'id', '?'),
+                kasm_user,
+            )
+
+    if own_kasm_user:
+        kasm_user = own_kasm_user
+        kasm_password = own_kasm_password
+
     # Case 1: Kasm Workspaces API Mode (On-demand container creation)
     if provider == 'kasm' and kasm_url and kasm_api_key and kasm_api_secret:
         api_endpoint = f'{kasm_url.rstrip("/")}/api/public/request_kasm'
@@ -424,7 +462,9 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             'api_key': kasm_api_key,
             'api_key_secret': kasm_api_secret,
             'image_id': actual_image_id,
-            'enable_sharing': True,
+            # A shared session can be joined by anyone who learns the link, so
+            # it stays off unless the Admin asks for it.
+            'enable_sharing': bool(await Config.get('browser_sandbox.kasm.enable_sharing', False)),
         }
         if kasm_user_id:
             payload['user_id'] = kasm_user_id
