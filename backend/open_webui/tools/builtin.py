@@ -5240,3 +5240,476 @@ async def request_browser_session(
     except Exception as e:
         log.exception(f'request_browser_session error: {e}')
         return JSONCodec.dumps({'error': str(e)})
+
+
+# =============================================================================
+# BROWSER CONTROL TOOLS (Chrome DevTools Protocol)
+# =============================================================================
+
+
+async def _browser_cdp_client(user, chat_id: str):
+    """Open a DevTools connection to the browser of the current chat session.
+
+    Returns ``(client, info)`` where info carries the page address and the
+    viewport size, or raises ``CdpError`` with an actionable message.
+    """
+    from open_webui.routers.browser import ACTIVE_KASM_SESSIONS
+    from open_webui.utils.browser_cdp import CdpClient, CdpUnavailable, discover_cdp_url
+
+    user_id = getattr(user, 'id', None) or ''
+    session_key = f'{user_id}_{chat_id}'
+    active = ACTIVE_KASM_SESSIONS.get(session_key)
+    if active is None:
+        # Fall back to any session of this user so a tool call still works
+        # after the chat was reloaded.
+        for key, value in ACTIVE_KASM_SESSIONS.items():
+            if key.startswith(f'{user_id}_'):
+                active = value
+                break
+    if active is None:
+        raise CdpUnavailable('There is no browser session. Start one with request_browser_session first.')
+
+    from open_webui.models.config import Config
+
+    kasm_url = await Config.get('browser_sandbox.kasm.url', '') or ''
+    api_key = await Config.get('browser_sandbox.kasm.api_key', '') or ''
+    api_secret = await Config.get('browser_sandbox.kasm.api_secret', '') or ''
+    configured = await Config.get('browser_sandbox.kasm.cdp_url', '') or await Config.get('browser_sandbox.url', '')
+
+    ws_url = await discover_cdp_url(
+        configured,
+        kasm_url=kasm_url,
+        kasm_id=active.get('kasm_id') or '',
+        api_key=api_key,
+        api_secret=api_secret,
+    )
+    if not ws_url:
+        raise CdpUnavailable(
+            'The browser does not expose a DevTools endpoint. Configure "Kasm CDP URL" in '
+            'Admin Panel > Settings > Code Execution with the address of the DevTools port '
+            '(for example http://<host>:<port>).'
+        )
+
+    client = CdpClient(ws_url)
+    await client.__aenter__()
+    try:
+        await client.send('Page.enable', timeout=15)
+        await client.send('Runtime.enable', timeout=15)
+    except Exception:
+        await client.close()
+        raise
+    return client, active
+
+
+async def browser_view(
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Look at the page of the current browser session.
+
+    Returns the page address, its title, the visible text and the list of the
+    interactive elements (buttons, links, fields) with their position, so a
+    following click can aim at them.
+
+    :return: JSON with the page content and the interactive elements.
+    """
+    from open_webui.models.users import UserModel
+    from open_webui.utils.browser_cdp import PAGE_SNAPSHOT_SCRIPT
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        snapshot = await client.evaluate(PAGE_SNAPSHOT_SCRIPT, timeout=30)
+        if not isinstance(snapshot, dict):
+            return JSONCodec.dumps({'error': 'The page did not answer.'}, ensure_ascii=False)
+        return JSONCodec.dumps({'status': 'success', **snapshot}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_screenshot(
+    full_page: bool = False,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+    __event_emitter__: callable = None,
+    __message_id__: str = None,
+) -> str:
+    """
+    Take a screenshot of the current browser page.
+
+    The image is attached to the conversation so it can be seen.
+
+    :param full_page: Capture the whole page instead of the visible area.
+    :return: JSON with the screenshot.
+    """
+    from open_webui.models.users import UserModel
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        data = await client.screenshot(full_page=full_page)
+        if not data:
+            return JSONCodec.dumps({'error': 'The page could not be captured.'}, ensure_ascii=False)
+
+        image = {'url': f'data:image/png;base64,{data}', 'name': 'browser-screenshot.png', 'type': 'image'}
+        files = [{'type': 'image', **image}]
+        if __event_emitter__ and files:
+            await __event_emitter__({'type': 'chat:message:files', 'data': {'files': files}})
+        return JSONCodec.dumps(
+            {
+                'status': 'success',
+                'message': 'The screenshot is attached to the conversation.',
+                'image': image,
+            },
+            ensure_ascii=False,
+        )
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_click(
+    x: Optional[int] = None,
+    y: Optional[int] = None,
+    text: Optional[str] = None,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Click in the current browser page.
+
+    Either give the position of the element (x, y) or the text of the element
+    to click, for example a button label.
+
+    :param x: Horizontal position of the element in the page.
+    :param y: Vertical position of the element in the page.
+    :param text: Text of the element to click.
+    :return: JSON describing the click.
+    """
+    from open_webui.models.users import UserModel
+    from open_webui.utils.browser_cdp import build_click_script
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        if text:
+            found = await client.evaluate(build_click_script(text), timeout=20)
+            if not found or not found.get('found'):
+                return JSONCodec.dumps(
+                    {'error': f'No element with the text "{text}" was found on the page.'},
+                    ensure_ascii=False,
+                )
+            x, y = found.get('x'), found.get('y')
+        if x is None or y is None:
+            return JSONCodec.dumps(
+                {'error': 'Give either a position (x and y) or the text of the element to click.'},
+                ensure_ascii=False,
+            )
+        await client.click(int(x), int(y))
+        await asyncio.sleep(0.6)
+        return JSONCodec.dumps(
+            {'status': 'success', 'clicked': {'x': int(x), 'y': int(y)}, 'text': text},
+            ensure_ascii=False,
+        )
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_scroll(
+    dy: int = 0,
+    dx: int = 0,
+    to: Optional[str] = None,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Scroll the current browser page.
+
+    A negative dy scrolls up, a positive dy scrolls down.  Use "to" to jump to
+    the top, the bottom or to a piece of text.
+
+    :param dy: Vertical scroll amount in pixels.
+    :param dx: Horizontal scroll amount in pixels.
+    :param to: 'top', 'bottom' or the text to scroll to.
+    :return: JSON with the new scroll position.
+    """
+    from open_webui.models.users import UserModel
+    from open_webui.utils.browser_cdp import build_find_script
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        if to:
+            target = to.strip().lower()
+            if target in {'top', 'start'}:
+                await client.evaluate('window.scrollTo(0, 0); true', timeout=15)
+            elif target in {'bottom', 'end'}:
+                await client.evaluate('window.scrollTo(0, document.body.scrollHeight); true', timeout=15)
+            else:
+                found = await client.evaluate(build_find_script(to), timeout=20)
+                if not found or not found.get('found'):
+                    return JSONCodec.dumps({'error': f'The text "{to}" was not found on the page.'}, ensure_ascii=False)
+        elif dy or dx:
+            viewport = await client.evaluate('({x: window.innerWidth, y: window.innerHeight})', timeout=15)
+            await client.scroll(
+                int((viewport or {}).get('x', 800) / 2),
+                int((viewport or {}).get('y', 600) / 2),
+                dx,
+                dy,
+            )
+        else:
+            return JSONCodec.dumps({'error': 'Give a scroll amount (dy) or a target (to).'}, ensure_ascii=False)
+        await asyncio.sleep(0.4)
+        position = await client.evaluate('({x: Math.round(window.scrollX), y: Math.round(window.scrollY)})', timeout=15)
+        return JSONCodec.dumps({'status': 'success', 'scroll': position}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_type(
+    text: str,
+    clear: bool = False,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Type text into the focused field of the current browser page.
+
+    Click the field first so it has the focus.
+
+    :param text: The text to type.
+    :param clear: Clear the field before typing.
+    :return: JSON with the result.
+    """
+    from open_webui.models.users import UserModel
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        if clear:
+            await client.evaluate(
+                '(() => { const el = document.activeElement; if (el) { el.value = ""; '
+                'el.dispatchEvent(new Event("input", { bubbles: true })); } return true; })()',
+                timeout=15,
+            )
+        await client.insert_text(text)
+        await asyncio.sleep(0.3)
+        return JSONCodec.dumps({'status': 'success', 'typed': text[:200]}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_press(
+    key: str = 'Enter',
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Press a key in the current browser page.
+
+    Useful keys are Enter, Tab, Escape, Backspace, Delete, Space, ArrowUp,
+    ArrowDown, ArrowLeft, ArrowRight, PageUp, PageDown, Home, End and
+    Ctrl+A, Ctrl+C, Ctrl+V.
+
+    :param key: The key to press.
+    :return: JSON with the result.
+    """
+    from open_webui.models.users import UserModel
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        await client.press_key(key)
+        await asyncio.sleep(0.3)
+        return JSONCodec.dumps({'status': 'success', 'key': key}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_drag(
+    from_x: int,
+    from_y: int,
+    to_x: int,
+    to_y: int,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Drag in the current browser page, for example to move a slider or to
+    select a part of the text.
+
+    :param from_x: Horizontal start position.
+    :param from_y: Vertical start position.
+    :param to_x: Horizontal end position.
+    :param to_y: Vertical end position.
+    :return: JSON with the result.
+    """
+    from open_webui.models.users import UserModel
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        await client.drag(int(from_x), int(from_y), int(to_x), int(to_y))
+        await asyncio.sleep(0.4)
+        return JSONCodec.dumps(
+            {'status': 'success', 'drag': {'from': [int(from_x), int(from_y)], 'to': [int(to_x), int(to_y)]}},
+            ensure_ascii=False,
+        )
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_select(
+    option: str,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Choose an option in a dropdown of the current browser page.
+
+    :param option: The visible text of the option to choose.
+    :return: JSON with the result.
+    """
+    from open_webui.models.users import UserModel
+    from open_webui.utils.browser_cdp import build_select_script
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        found = await client.evaluate(build_select_script(option), timeout=20)
+        if not found or not found.get('found'):
+            return JSONCodec.dumps(
+                {'error': f'No dropdown option "{option}" was found on the page.'}, ensure_ascii=False
+            )
+        await asyncio.sleep(0.3)
+        return JSONCodec.dumps({'status': 'success', 'selected': found.get('label')}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_delete(
+    count: int = 1,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Delete text in the focused field of the current browser page.
+
+    :param count: How many characters to delete.
+    :return: JSON with the result.
+    """
+    from open_webui.models.users import UserModel
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        for _ in range(max(1, min(int(count), 512))):
+            await client.press_key('Backspace')
+        await asyncio.sleep(0.3)
+        return JSONCodec.dumps({'status': 'success', 'deleted': count}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_open(
+    url: str,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Open an address in the current browser page.
+
+    :param url: The address to open.
+    :return: JSON with the address that was opened.
+    """
+    from open_webui.models.users import UserModel
+    from open_webui.utils.browser_cdp import normalize_url
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        current = await client.evaluate('location.href', timeout=15)
+        target = normalize_url(current or '', url)
+        await client.navigate(target, timeout=45)
+        await asyncio.sleep(1.2)
+        title = await client.evaluate('document.title', timeout=15)
+        return JSONCodec.dumps({'status': 'success', 'url': target, 'title': title}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()
+
+
+async def browser_wait(
+    seconds: float = 2.0,
+    __request__: Request = None,
+    __user__: dict = None,
+    __chat_id__: str = None,
+) -> str:
+    """
+    Wait for the current browser page, for example while a page is loading.
+
+    :param seconds: How many seconds to wait.
+    :return: JSON with the result.
+    """
+    from open_webui.models.users import UserModel
+
+    user = UserModel(**__user__) if __user__ else None
+    client = None
+    try:
+        client, _active = await _browser_cdp_client(user, __chat_id__ or 'tool_session')
+        await asyncio.sleep(min(max(float(seconds), 0.1), 30.0))
+        return JSONCodec.dumps({'status': 'success', 'waited': seconds}, ensure_ascii=False)
+    except Exception as e:
+        return JSONCodec.dumps({'error': str(e)}, ensure_ascii=False)
+    finally:
+        if client is not None:
+            await client.close()

@@ -66,6 +66,17 @@ from open_webui.tools.builtin import (
     generate_image,
     generate_video,
     request_browser_session,
+    browser_view,
+    browser_screenshot,
+    browser_click,
+    browser_scroll,
+    browser_type,
+    browser_press,
+    browser_drag,
+    browser_select,
+    browser_delete,
+    browser_open,
+    browser_wait,
     get_current_timestamp,
     grep_chat_files,
     grep_knowledge_files,
@@ -856,6 +867,22 @@ async def get_builtin_tools(
 
     if config.get('browser_sandbox.enable', True) and features.get('browser'):
         builtin_functions.append(request_browser_session)
+        # Driving the browser needs the DevTools endpoint of the session.
+        builtin_functions.extend(
+            [
+                browser_view,
+                browser_screenshot,
+                browser_click,
+                browser_scroll,
+                browser_type,
+                browser_press,
+                browser_drag,
+                browser_select,
+                browser_delete,
+                browser_open,
+                browser_wait,
+            ]
+        )
 
     # Add code interpreter tool if builtin category enabled,
     # globally enabled, and allowed by model capability.

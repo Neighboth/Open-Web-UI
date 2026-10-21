@@ -168,6 +168,10 @@ class StopSessionForm(BaseModel):
 class KasmError(Exception):
     """A Kasm API call answered with an error or could not be reached."""
 
+    def __init__(self, message: str, *, retryable: bool = True):
+        super().__init__(message)
+        self.retryable = retryable
+
 
 async def kasm_retry(operation, *, attempts: int = 5, base_delay: float = 1.0):
     """Run an operation and retry it silently with a growing delay.
@@ -176,19 +180,26 @@ async def kasm_retry(operation, *, attempts: int = 5, base_delay: float = 1.0):
     with a restart, a TLS connection is reset, or the server is busy.  Showing
     that as a failed browser session is wrong, so the call is repeated with an
     exponential backoff (1s, 2s, 4s, ...) before the user is told anything.
+
+    A permanent answer (a rejected key, a missing right) is not retried at
+    all: repeating it would only lock the account harder.
     """
     delay = base_delay
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
             return await operation()
+        except KasmError as error:
+            if not error.retryable:
+                raise
+            last_error = error
         except Exception as error:
             last_error = error
-            if attempt == attempts - 1:
-                break
-            log.info('Kasm request failed (%s), retrying in %.1fs', error, delay)
-            await asyncio.sleep(delay)
-            delay *= 2
+        if attempt == attempts - 1:
+            break
+        log.info('Kasm request failed (%s), retrying in %.1fs', last_error, delay)
+        await asyncio.sleep(delay)
+        delay *= 2
     raise last_error
 
 
@@ -219,7 +230,10 @@ async def kasm_post(
                     data = {}
                 if response.status != 200 or data.get('error_message'):
                     message = data.get('error_message') or f'Kasm API error (HTTP {response.status})'
-                    raise KasmError(str(message))
+                    # A rejected key or a missing permission stays broken, so sending
+                    # it again would only lock the account harder.
+                    retryable = response.status not in {400, 401, 403, 404}
+                    raise KasmError(str(message), retryable=retryable)
                 return data
 
     return await kasm_retry(call, attempts=attempts)

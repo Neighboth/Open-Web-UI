@@ -442,7 +442,44 @@ https://example.com          applicable=True  trusted=True
 
 ---
 
-## 11. Eklenen testler
+## 11. Tarayıcıyı kontrol eden araçlar (Computer Use)
+
+Model artık açılan tarayıcıyı **gerçekten kullanabiliyor**. Hepsi Chrome DevTools
+Protocol üzerinden çalışıyor (ek bağımlılık yok — WebSocket'i aiohttp yapar).
+
+| Araç | Ne yapar |
+|---|---|
+| `browser_view` | Sayfayı "görür": adres, başlık, görünen metin + tıklanabilir öğeler (buton/bağlantı/alan) **koordinatlarıyla** |
+| `browser_screenshot` | Ekran görüntüsü alır, sohbete **görsel olarak ekler** (model görebilir) |
+| `browser_click` | Tıklar: ya koordinat (`x`,`y`) ya da **metinle** ("Submit" butonunu bul ve tıkla) |
+| `browser_scroll` | Kaydırır: `dy`/`dx` ile, ya da `to=top/bottom/<metin>` |
+| `browser_type` | Odaklı alana yazar (`clear=true` ile önce temizler) |
+| `browser_press` | Tuş basar: Enter, Tab, Escape, Backspace, Delete, Space, ok tuşları, Ctrl+A/C/V |
+| `browser_drag` | Sürükler (slider, metin seçimi) |
+| `browser_select` | Açılır listeden seçer (`<select>`) |
+| `browser_delete` | Odaklı alandan siler (Backspace ×N) |
+| `browser_open` | Adres açar |
+| `browser_wait` | Bekler (sayfa yüklenirken) |
+
+| Dosya | Değişiklik |
+|---|---|
+| `backend/open_webui/utils/browser_cdp.py` | **YENİ** — CDP istemcisi, sayfa anlık görüntüsü/click/select/find betikleri, tuş tablosu, DevTools uç noktası keşfi |
+| `backend/open_webui/tools/builtin.py` | **YENİ** 11 araç (`browser_view` … `browser_wait`) |
+| `backend/open_webui/utils/tools.py` | Araçlar tarayıcı özelliği açıkken kaydediliyor |
+| `test/test_browser_cdp.py` | **YENİ** — betik üretimi, tuş tablosu, URL normalizasyonu testleri |
+
+### DevTools uç noktası nasıl bulunur?
+1. **Ayarlanan adres önceliklidir**: Admin → Code Execution → **Kasm CDP URL**
+   (örn. `http://38.210.77.108:3000`)
+2. Yoksa Kasm konteynerinin **port haritasından** 9222 portu bulunur ve
+   `/json/list` üzerinden sayfanın WebSocket adresi alınır.
+
+> Uç nokta bulunamazsa araçlar net bir mesaj döner:
+> *"The browser does not expose a DevTools endpoint. Configure 'Kasm CDP URL' ..."*
+
+---
+
+## 12. Eklenen testler
 
 | Dosya | Kapsam |
 |---|---|
@@ -459,7 +496,7 @@ https://example.com          applicable=True  trusted=True
 
 | Kontrol | Sonuç |
 |---|---|
-| `pytest test/` | ✅ **39 passed** |
+| `pytest test/` | ✅ **50 passed** |
 | `ruff format --check` (CI backend) | ✅ 296 dosya formatlı |
 | `ruff check --select=F` (CI backend) | ✅ All checks passed |
 | Canlı video isteği (mode gönderilerek) | ✅ 400 "mode is required" → 503 (kabul edildi) |
