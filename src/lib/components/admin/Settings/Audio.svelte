@@ -48,7 +48,8 @@
 		VOICE: 'marin',
 		TRANSCRIPTION_MODEL: 'gpt-transcribe',
 		INPUT_PARAMS: null,
-		REALTIME_CALL_PROMPT_TEMPLATE: ''
+		REALTIME_CALL_PROMPT_TEMPLATE: '',
+		GEMINI_WS_URL: null
 	};
 	let REALTIME_INPUT_PARAMS = '';
 	let verifyingRealtime = false;
@@ -321,6 +322,7 @@
 					>
 						<option value="openai">{$i18n.t('settings.audio.realtime.openai')}</option>
 						<option value="azure">{$i18n.t('Azure OpenAI')}</option>
+						<option value="gemini">{$i18n.t('Gemini Live')}</option>
 					</SettingsSelect>
 				</AdminSettingRow>
 				{#if realtime.PROVIDER === 'azure'}
@@ -335,6 +337,22 @@
 							<option value="microsoft_entra_id">{$i18n.t('settings.audio.realtime.entra')}</option>
 						</SettingsSelect>
 					</AdminSettingRow>
+				{/if}
+				{#if realtime.PROVIDER === 'gemini'}
+					<AdminSettingField
+						label={$i18n.t('Gemini Live WebSocket URL')}
+						description={$i18n.t(
+							'Leave empty to use the public Gemini Live endpoint. Set it when a gateway exposes the same service; {model} is replaced with the model name.'
+						)}
+						forId="realtime-gemini-ws-url"
+					>
+						<input
+							id="realtime-gemini-ws-url"
+							class={inputClass}
+							bind:value={realtime.GEMINI_WS_URL}
+							placeholder="wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
+						/>
+					</AdminSettingField>
 				{/if}
 				<div class="grid grid-cols-1 gap-2" class:sm:grid-cols-2={realtime.AUTH_TYPE === 'api_key'}>
 					<AdminSettingField

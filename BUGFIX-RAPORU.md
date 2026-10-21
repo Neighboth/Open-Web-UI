@@ -50,7 +50,9 @@ sunulduğunu **kendisi** söylüyor:
 
 | Model | `supported_endpoint_types` | Sonuç |
 |---|---|---|
-| `agnes/agnes-image-2.5-flash` | `["openai"]` → **sadece chat** | 400 |
+| `agnes/agnes-image-2.1-flash` | `["openai", "image-generation"]` | katalogda **var** |
+| `agnes/agnes-image-2.0-flash` | `[..., "image-generation"]` | katalogda **var** |
+| `agnes/agnes-image-2.5-flash` | `[""openai""]` → **sadece chat** | 400 |
 | `openai/gpt-image-1` | `["image-generation", "openai"]` | 200 ✅ |
 
 Denenen payload'lar (hepsi aynı 400'ü verdi):
@@ -277,29 +279,104 @@ ve marka adına bağımlı değildir.
 
 ---
 
-## 7. Eklenen testler
+## 7. Gemini Live desteği (OpenAI Realtime + Gemini Live)
+
+Realtime köprüsü artık **iki protokolü** konuşuyor. Tarayıcı tarafı her zaman
+OpenAI Realtime biçimli olaylar kullanır (`input_audio_buffer.append`,
+`response.output_audio.delta`, …); sağlayıcıya gidiş ve dönüş
+`backend/open_webui/routers/audio/gemini_live.py` içinde çevrilir.
+
+| Yön | OpenAI Realtime | Gemini Live |
+|---|---|---|
+| Kurulum | `session.update` | `{"setup": {...}}` + `setupComplete` |
+| Ses girişi | `input_audio_buffer.append` (24 kHz) | `realtimeInput.mediaChunks` (**16 kHz**'e yeniden örneklenir) |
+| Ses çıkışı | `response.output_audio.delta` | `serverContent.modelTurn.parts[].inlineData` → aynı olaya çevrilir |
+| Metin | `conversation.item.create` | `clientContent.turns` |
+| Araç çağrısı | `response.output_item.done` | `toolCall.functionCalls` → aynı olaya çevrilir |
+| Araç sonucu | `conversation.item.create` (function_call_output) | `toolResponse.functionResponses` |
+| Kesinti | `response.cancel` | `serverContent.interrupted` → `input_audio_buffer.speech_started` |
+
+| Dosya | Değişiklik |
+|---|---|
+| `backend/open_webui/routers/audio/gemini_live.py` | **YENİ** — protokol çevirisi, 24 kHz→16 kHz örnekleme, ses eşleme tablosu |
+| `backend/open_webui/routers/audio/realtime.py` | `provider = 'gemini'` dalı: Gemini kurulum mesajı, çeviri, `verify` endpoint'i Gemini'yi de anlıyor |
+| `backend/open_webui/routers/audio/__init__.py` | `PROVIDER` seçeneklerine `gemini`, `GEMINI_WS_URL` ayarı |
+| `src/lib/apis/audio/index.ts` | `RealtimeConfig` tipine `gemini` ve `GEMINI_WS_URL` |
+| `src/lib/components/admin/Settings/Audio.svelte` | "Gemini Live" sağlayıcı seçeneği + WS URL alanı |
+| `test/test_gemini_live.py` | **YENİ** — 12 çeviri testi (ses örnekleme, ses eşleme, setup, araç çağrısı/sonucu, transkripsiyon, kesinti) |
+
+**Yapılandırma:** Ayarlar → Audio → Provider = `Gemini Live`, Voice Model =
+`google/gemini-3.8-live`. WS URL boş bırakılırsa herkese açık Gemini Live
+endpoint'i kullanılır; bir gateway aynı servisi sunuyorsa `GEMINI_WS_URL` ile
+ona yönlendirilir (`{model}` yer tutucusu desteklenir).
+
+> **Sağlayıcı notu:** Test edilen gateway'da Gemini live modelleri OpenAI
+> Realtime köprüsünde **çevrilmiyor** (handshake sonrası socket kapanıyor) ve
+> gateway'in Gemini native HTTP yolu (`/v1beta/models/{model}:generateContent`)
+> çalışıyor. Yani gateway tarafında Gemini Live için `bidiGenerateContent` WS
+> yolu açılmalı; bu kodda WS yolu yapılandırılabilir olduğu için açılır açılmaz
+> çalışır.
+
+---
+
+## 8. Kasm: kullanıcı hesabı istemiyor + katlanarak sessiz yeniden deneme
+
+### Kullanıcı hesabı kaldırıldı
+Tarayıcı açmak için hesap istemiyor: instance hesabı herkes tarafından
+kullanılıyor, kullanıcıdan hiçbir kimlik bilgisi istenmiyor (GPT Agent / Gemini
+Spark davranışı). Admin arayüzündeki "rol kısıtı" ve kullanıcıdaki "Kasm
+hesabım" alanları kaldırıldı.
+
+> **Önemli:** Paylaşılan Kasm hesabı **kişisel bir hesap olmamalı**. Kişisel
+> hesap kullanılırsa o hesabın kayıtlı girişleri (cookie'ler) herkese açık
+> olur. Ayrı bir servis hesabı oluşturun.
+
+### Katlanarak sessiz yeniden deneme
+Kasm sunucusu erişilemez olduğunda veya hata döndürdüğünde kullanıcıya
+söylenmeden **1 sn → 2 sn → 4 sn → 8 sn** bekleyerek **5 kez** yeniden deniyor.
+Bekleme katlanarak büyüyor, denemeler sessiz.
+
+| Dosya | Değişiklik |
+|---|---|
+| `backend/open_webui/routers/browser.py` | **YENİ** `kasm_retry()` (katlanarak bekleme) ve `kasm_post()` (tüm Kasm API çağrıları bu üzerinden) |
+| `backend/open_webui/routers/browser.py` | `authenticate`, `get_users`, `get_images`, `request_kasm`, `get_kasm_status` çağrıları retry'li |
+| `test/test_kasm_isolation.py` | Paylaşılan hesabın herkese açık olması + retry sırası testi |
+| `test/live_kasm_check.py` | Canlı doğrulama (5 kontrol) |
+
+**Canlı doğrulama (gerçek Kasm sunucusu, 5/5):**
+```
+kasm: hesap istemeden tarayici acilir (paylasilan hesap)  -> PASS
+kasm: konteyner gercekten calisiyor (get_kasm_status)      -> PASS  HTTP 200
+kasm: paylasim linki kapali (share_id yok)                 -> PASS  share_id=None
+kasm: SPA sayfasi iframe icin yukleniyor                    -> PASS  HTTP 200
+kasm: 5 kez denenir, aralar 1s/2s/4s/8s                    -> PASS  deneme=5
+```
+
+---
+
+## 9. Eklenen testler
 
 | Dosya | Kapsam |
 |---|---|
 | `test/test_video_generation_params.py` | admin params/mode payload'a gidiyor mu, string-JSON parse, desteklenmeyen alan düşürülüyor, "required" hatasında alan **silinmiyor** |
 | `test/test_browser_session_url.py` | 5 parçalı + 4 parçalı Kasm connect URL, boş segment reddi |
 | `test/test_kasm_dashboard_fallback.py` | dashboard tespiti, fragment'lı session URL'ı dashboard sayılmıyor, ağ hatasında dashboard **dönülmüyor** |
-| `test/test_kasm_isolation.py` | paylaşılan hesap rol kısıtı, kendi hesabı olan kullanıcı, admin erişimi |
+| `test/test_kasm_isolation.py` | paylaşılan hesap herkese açık, katlanarak retry sırası |
+| `test/test_gemini_live.py` | Gemini Live çevirisi: ses örnekleme, ses eşleme, setup, araç çağrısı/sonucu, transkripsiyon, kesinti |
 | `test/live_provider_check.py` | **canlı** sağlayıcı + Kasm doğrulaması (10 kontrol) — tüm host/anahtar/model **environment'tan** okunur |
 | `test/live_realtime_check.py` | **canlı** realtime model doğrulaması — environment'tan okunur |
-| `test/live_kasm_check.py` | **canlı** Kasm: konteyner çalışıyor mu, share linki kapalı mı, hesap izolasyonu — environment'tan okunur |
+| `test/live_kasm_check.py` | **canlı** Kasm: konteyner çalışıyor mu, share linki kapalı mı, retry sırası — environment'tan okunur |
 
-## 8. Doğrulama özeti
+## 10. Doğrulama özeti
 
 | Kontrol | Sonuç |
 |---|---|
-| `pytest test/` | ✅ **28 passed** |
-| `ruff format --check` (CI backend) | ✅ 295 dosya formatlı |
+| `pytest test/` | ✅ **39 passed** |
+| `ruff format --check` (CI backend) | ✅ 296 dosya formatlı |
 | `ruff check --select=F` (CI backend) | ✅ All checks passed |
 | Canlı video isteği (mode gönderilerek) | ✅ 400 "mode is required" → 503 (kabul edildi) |
 | Canlı image hatası | ✅ artık model/endpoint ipucuyla görünüyor |
-| Canlı Kasm konteyner + 2. istek | ✅ konteyner artık yok edilmiyor |
-| Canlı Kasm: konteyner çalışıyor, share kapalı, hesap izolasyonu | ✅ 5/5 |
+| Canlı Kasm (5 kontrol) | ✅ 5/5 |
 | Canlı realtime model doğrulama | ✅ doğru modeli doğru raporluyor |
 | `pixrouter` stringi kodda | ✅ **0** (yerine host bazlı genel kural) |
 | Vite production build | ✅ |

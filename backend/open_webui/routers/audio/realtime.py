@@ -20,6 +20,14 @@ from open_webui.utils.json_codec import JSONCodec
 from open_webui.utils.models import check_model_access, get_all_models
 from open_webui.utils.session_pool import get_session
 from open_webui.utils.voice_avatar import avatar_animation_tools
+from open_webui.routers.audio.gemini_live import (
+    GEMINI_LIVE_PATH,
+    build_setup,
+    command_to_gemini,
+    gemini_model_name,
+    gemini_to_events,
+    resolve_gemini_voice,
+)
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -316,9 +324,9 @@ async def _get_realtime_connection(
 ) -> tuple[str, dict[str, str]]:
     provider = config.get('audio.realtime.provider', 'openai')
     auth_type = config.get('audio.realtime.auth_type', 'api_key')
-    if provider not in {'openai', 'azure'} or auth_type not in {'api_key', 'microsoft_entra_id'}:
+    if provider not in {'openai', 'azure', 'gemini'} or auth_type not in {'api_key', 'microsoft_entra_id'}:
         raise ValueError('Unsupported Realtime provider or authentication method')
-    if provider != 'azure' and auth_type == 'microsoft_entra_id':
+    if provider not in {'azure', 'gemini'} and auth_type == 'microsoft_entra_id':
         raise ValueError('Microsoft Entra ID requires the Azure OpenAI Realtime provider')
 
     api_key = config.get('audio.realtime.openai.api_key')
@@ -345,6 +353,24 @@ async def _get_realtime_connection(
     model = model or config.get('audio.realtime.model')
     if not model:
         raise ValueError('Configure the Realtime model')
+
+    if provider == 'gemini':
+        # The Gemini Live API has its own WebSocket service.  The Admin can
+        # point it at a gateway that exposes the same service; otherwise the
+        # public endpoint is used.
+        template = (config.get('audio.realtime.gemini.ws_url') or '').strip()
+        if not template:
+            if not api_base_url or api_base_url.rstrip('/') == 'https://api.openai.com/v1':
+                api_base_url = 'https://generativelanguage.googleapis.com'
+            template = api_base_url.rstrip('/') + GEMINI_LIVE_PATH
+        if '{model}' in template:
+            template = template.replace('{model}', gemini_model_name(model))
+        ws_url = template.replace('https://', 'wss://', 1).replace('http://', 'ws://', 1)
+        if not api_key:
+            raise ValueError('Configure the Realtime API key')
+        headers = {'Authorization': f'Bearer {api_key}', 'x-goog-api-key': api_key}
+        return ws_url, headers
+
     ws_url = urlunsplit(
         (
             'wss' if url.scheme == 'https' else 'ws',
@@ -389,11 +415,13 @@ async def verify_realtime_connection(request: Request, user=Depends(get_admin_us
         'audio.realtime.model',
         'audio.realtime.voice',
         'audio.realtime.transcription_model',
+        'audio.realtime.gemini.ws_url',
     )
 
     voice_model = config.get('audio.realtime.model')
     if not voice_model:
         return {'status': False, 'error': 'No Realtime model is configured.'}
+    provider = config.get('audio.realtime.provider', 'openai')
 
     direct_key = direct_url = None
     try:
@@ -423,7 +451,24 @@ async def verify_realtime_connection(request: Request, user=Depends(get_admin_us
                 heartbeat=20,
                 max_msg_size=MAX_EVENT_BYTES,
             ) as upstream:
-                event = await asyncio.wait_for(upstream.receive_json(), timeout=15)
+                if provider == 'gemini':
+                    await upstream.send_json(
+                        build_setup(
+                            voice_model,
+                            config.get('audio.realtime.voice') or 'Puck',
+                            DEFAULT_REALTIME_CALL_PROMPT_TEMPLATE,
+                            [CHAT_TOOL],
+                        )
+                    )
+                    event = await asyncio.wait_for(upstream.receive_json(), timeout=15)
+                    if 'error' in event:
+                        error = event.get('error')
+                        text = error.get('message') if isinstance(error, dict) else str(error)
+                        return {'status': False, 'error': f'Gemini Live rejected the session: {str(text)[:300]}'}
+                    if 'setupComplete' not in event:
+                        return {'status': False, 'error': 'The provider did not complete the Gemini Live setup.'}
+                else:
+                    event = await asyncio.wait_for(upstream.receive_json(), timeout=15)
     except aiohttp.WSServerHandshakeError as exc:
         if exc.status in {401, 403}:
             return {'status': False, 'error': 'The Realtime provider rejected the credentials.'}
@@ -437,12 +482,13 @@ async def verify_realtime_connection(request: Request, user=Depends(get_admin_us
             'status': False,
             'error': (
                 f'The Realtime provider closed the connection before the session started. '
-                f'The model "{voice_model}" is most likely not served as an OpenAI Realtime model '
+                f'The model "{voice_model}" is most likely not served as an '
+                f'{"Gemini Live" if provider == "gemini" else "OpenAI Realtime"} model '
                 f'by this endpoint.'
             ),
         }
 
-    if event.get('type') != 'session.created':
+    if provider != 'gemini' and event.get('type') != 'session.created':
         return {
             'status': False,
             'error': f'The provider answered with "{event.get("type")}" instead of "session.created".',
@@ -480,6 +526,7 @@ async def realtime_call(ws: WebSocket):
             'audio.realtime.voice',
             'audio.realtime.transcription_model',
             'audio.realtime.input_params',
+            'audio.realtime.gemini.ws_url',
             'audio.realtime.prompt_template',
             'user.permissions',
         )
@@ -518,6 +565,10 @@ async def realtime_call(ws: WebSocket):
         voice = override.voice or config.get('audio.realtime.voice') or 'Marathon'
         if not voice_model or not voice or not config.get('audio.realtime.transcription_model'):
             raise ValueError('Configure the Realtime model, voice, and transcription model')
+        provider = config.get('audio.realtime.provider', 'openai')
+        instructions = (config.get('audio.realtime.prompt_template') or DEFAULT_REALTIME_CALL_PROMPT_TEMPLATE) + (
+            AVATAR_CALL_INSTRUCTIONS if protocol.animation_tools else ''
+        )
         async with asyncio.timeout(30):
             async with asyncio.timeout(15):
                 ws_url, headers = await _get_realtime_connection(
@@ -545,67 +596,98 @@ async def realtime_call(ws: WebSocket):
                             'Realtime endpoint not found. Check the API base URL and deployment name.'
                         ) from None
                     raise
-            try:
-                event = await upstream.receive_json()
-            except Exception:
-                # Gateways that do not expose the model as an OpenAI Realtime model
-                # accept the handshake and drop the socket right away.  Name the
-                # model so the Admin knows which setting to change.
-                raise ValueError(
-                    f'The realtime provider closed the connection before the session started. '
-                    f'The model "{voice_model}" is most likely not served as an OpenAI Realtime model '
-                    f'by this endpoint.'
-                ) from None
-            if event.get('type') != 'session.created':
-                raise ValueError('Provider did not create a voice session')
-            await upstream.send_json(
-                {
-                    'type': 'session.update',
-                    'session': {
-                        'type': 'realtime',
-                        'output_modalities': ['audio'],
-                        'instructions': (
-                            (config.get('audio.realtime.prompt_template') or DEFAULT_REALTIME_CALL_PROMPT_TEMPLATE)
-                            + (AVATAR_CALL_INSTRUCTIONS if protocol.animation_tools else '')
-                        ),
-                        'audio': {
-                            'input': {
-                                'format': {'type': 'audio/pcm', 'rate': 24000},
-                                'transcription': {'model': config['audio.realtime.transcription_model']},
-                                # Wait for the finalized transcript before requesting a response. This gives
-                                # every function call an unambiguous input_item_id, even during barge-in.
-                                'turn_detection': {
-                                    'type': 'server_vad',
-                                    # The client pauses playback until speech is confirmed.
-                                    'interrupt_response': False,
-                                    'create_response': False,
-                                },
-                                **(config.get('audio.realtime.input_params') or {}),
-                            },
-                            'output': {'format': {'type': 'audio/pcm', 'rate': 24000}, 'voice': voice},
-                        },
-                        'tools': [CHAT_TOOL, *protocol.animation_tools],
-                        'tool_choice': 'auto',
-                    },
-                }
-            )
-            event = await upstream.receive_json()
-            if event.get('type') != 'session.updated':
-                # Surface the provider's own validation message.  A transcription-only
-                # realtime model rejects the "realtime" session type, and that text
-                # is the only hint about which model is actually usable.
-                provider_error = ''
-                if event.get('type') == 'error':
+            if provider == 'gemini':
+                # The Gemini Live API is configured with a setup message instead
+                # of a session.update and answers with setupComplete.
+                await upstream.send_json(
+                    build_setup(
+                        voice_model,
+                        voice,
+                        instructions,
+                        [CHAT_TOOL, *protocol.animation_tools],
+                        transcription_model=config['audio.realtime.transcription_model'],
+                    )
+                )
+                try:
+                    event = await upstream.receive_json()
+                except Exception:
+                    raise ValueError(
+                        f'The realtime provider closed the connection before the session started. '
+                        f'The model "{voice_model}" is most likely not served as a Gemini Live model '
+                        f'by this endpoint.'
+                    ) from None
+                if 'error' in event:
                     error = event.get('error')
-                    if isinstance(error, dict):
-                        provider_error = str(error.get('message') or '')[:400]
-                    elif error:
-                        provider_error = str(error)[:400]
-                detail = 'Provider rejected voice configuration. Check model, voice, and transcription model.'
-                if provider_error:
-                    detail = f'{detail} Provider said: {provider_error}'
-                raise ValueError(detail)
-        await ws.send_json({'type': 'bridge.ready', 'model': voice_model, 'voice': voice, 'sample_rate': 24000})
+                    text = error.get('message') if isinstance(error, dict) else str(error)
+                    raise ValueError(f'Gemini Live rejected the session: {str(text)[:300]}')
+                if 'setupComplete' not in event:
+                    raise ValueError('Provider did not create a voice session')
+            else:
+                try:
+                    event = await upstream.receive_json()
+                except Exception:
+                    # Gateways that do not expose the model as an OpenAI Realtime model
+                    # accept the handshake and drop the socket right away.  Name the
+                    # model so the Admin knows which setting to change.
+                    raise ValueError(
+                        f'The realtime provider closed the connection before the session started. '
+                        f'The model "{voice_model}" is most likely not served as an OpenAI Realtime model '
+                        f'by this endpoint.'
+                    ) from None
+                if event.get('type') != 'session.created':
+                    raise ValueError('Provider did not create a voice session')
+                await upstream.send_json(
+                    {
+                        'type': 'session.update',
+                        'session': {
+                            'type': 'realtime',
+                            'output_modalities': ['audio'],
+                            'instructions': instructions,
+                            'audio': {
+                                'input': {
+                                    'format': {'type': 'audio/pcm', 'rate': 24000},
+                                    'transcription': {'model': config['audio.realtime.transcription_model']},
+                                    # Wait for the finalized transcript before requesting a response. This gives
+                                    # every function call an unambiguous input_item_id, even during barge-in.
+                                    'turn_detection': {
+                                        'type': 'server_vad',
+                                        # The client pauses playback until speech is confirmed.
+                                        'interrupt_response': False,
+                                        'create_response': False,
+                                    },
+                                    **(config.get('audio.realtime.input_params') or {}),
+                                },
+                                'output': {'format': {'type': 'audio/pcm', 'rate': 24000}, 'voice': voice},
+                            },
+                            'tools': [CHAT_TOOL, *protocol.animation_tools],
+                            'tool_choice': 'auto',
+                        },
+                    }
+                )
+                event = await upstream.receive_json()
+                if event.get('type') != 'session.updated':
+                    # Surface the provider's own validation message.  A transcription-only
+                    # realtime model rejects the "realtime" session type, and that text
+                    # is the only hint about which model is actually usable.
+                    provider_error = ''
+                    if event.get('type') == 'error':
+                        error = event.get('error')
+                        if isinstance(error, dict):
+                            provider_error = str(error.get('message') or '')[:400]
+                        elif error:
+                            provider_error = str(error)[:400]
+                    detail = 'Provider rejected voice configuration. Check model, voice, and transcription model.'
+                    if provider_error:
+                        detail = f'{detail} Provider said: {provider_error}'
+                    raise ValueError(detail)
+        await ws.send_json(
+            {
+                'type': 'bridge.ready',
+                'model': voice_model,
+                'voice': resolve_gemini_voice(voice) if provider == 'gemini' else voice,
+                'sample_rate': 24000,
+            }
+        )
 
         async def client_events():
             while True:
@@ -620,16 +702,36 @@ async def realtime_call(ws: WebSocket):
                 if event['type'] == 'bridge.result':
                     protocol.requested.add(f'result:{event["call_id"]}')
                 for item in command if isinstance(command, list) else [command]:
-                    async with asyncio.timeout(5):
-                        await upstream.send_json(item)
+                    if provider == 'gemini':
+                        for message in command_to_gemini(item):
+                            async with asyncio.timeout(5):
+                                await upstream.send_json(message)
+                    else:
+                        async with asyncio.timeout(5):
+                            await upstream.send_json(item)
 
         async def provider_events():
             async for message in upstream:
                 if message.type != aiohttp.WSMsgType.TEXT:
                     raise ValueError('Voice provider connection closed')
-                event = message.json()
-                if not isinstance(event, dict):
+                raw_event = message.json()
+                if not isinstance(raw_event, dict):
                     raise ValueError('Invalid provider event')
+                if provider == 'gemini':
+                    for event in gemini_to_events(raw_event):
+                        kind = event.get('type', '')
+                        if kind == 'error':
+                            raise ValueError('Voice provider rejected a request')
+                        command = protocol.observe(event)
+                        if command:
+                            async with asyncio.timeout(5):
+                                for reply in command_to_gemini(command):
+                                    await upstream.send_json(reply)
+                        if kind.startswith(('response.', 'conversation.item.', 'input_audio_buffer.')):
+                            async with asyncio.timeout(5):
+                                await ws.send_json(event)
+                    continue
+                event = raw_event
                 kind = event.get('type', '')
                 if kind == 'error' and event.get('error', {}).get('code') == 'response_cancel_not_active':
                     continue  # Server VAD may finish cancellation before our explicit cancel arrives.

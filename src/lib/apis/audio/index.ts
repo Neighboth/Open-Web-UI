@@ -29,7 +29,7 @@ export const getAudioConfig = async (token: string) => {
 
 export type RealtimeConfig = {
 	ENABLED: boolean;
-	PROVIDER: 'openai' | 'azure';
+	PROVIDER: 'openai' | 'azure' | 'gemini';
 	AUTH_TYPE: 'api_key' | 'microsoft_entra_id';
 	OPENAI_API_BASE_URL: string;
 	OPENAI_API_KEY: string;
@@ -38,6 +38,7 @@ export type RealtimeConfig = {
 	TRANSCRIPTION_MODEL: string;
 	INPUT_PARAMS: Record<string, unknown> | null;
 	REALTIME_CALL_PROMPT_TEMPLATE: string | null;
+	GEMINI_WS_URL: string | null;
 };
 
 type AudioConfigForm = {

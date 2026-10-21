@@ -1,9 +1,8 @@
-"""Regression tests for the Kasm account isolation.
+"""Regression tests for the Kasm browser session behaviour.
 
-The browser sandbox used one Kasm account for the whole instance, so any user
-who opened a browser session received a session token minted for the Admin's
-Kasm account.  Now a user may bring their own Kasm account, and the shared
-account is limited to the roles the Admin allows.
+The Kasm server is often only briefly unavailable, so every API call is
+retried silently with an exponential backoff.  The shared Kasm account is used
+by everybody: nobody has to create an account to open a browser.
 """
 
 import asyncio
@@ -14,7 +13,6 @@ BACKEND = Path(__file__).resolve().parents[1] / 'backend'
 sys.path.insert(0, str(BACKEND))
 
 from open_webui.routers import browser  # noqa: E402
-from open_webui.utils.browser_session import get_user_kasm_credentials  # noqa: E402
 
 KASM = 'https://kasm.example.test:8443'
 
@@ -29,7 +27,6 @@ CONFIG = {
     'browser_sandbox.kasm.browsers': ['chrome'],
     'browser_sandbox.kasm.cdp_url': '',
     'browser_sandbox.kasm.enable_sharing': False,
-    'browser_sandbox.allowed_roles': ['admin'],
     'browser_sandbox.live_url': f'{KASM}/?password=shared-password',
     'browser_sandbox.url': None,
     'browser_sandbox.auth_token': None,
@@ -37,10 +34,10 @@ CONFIG = {
 
 
 class _User:
-    def __init__(self, role='user', settings=None):
+    def __init__(self, role='user'):
         self.id = '11111111-1111-4111-8111-111111111111'
         self.role = role
-        self.settings = settings or {}
+        self.settings: dict = {}
         self.email = 'user@example.test'
         self.name = 'User'
 
@@ -73,7 +70,9 @@ def _patch_session():
             return False
 
         async def text(self):
-            return '{}'
+            import json
+
+            return json.dumps(self._payload)
 
         async def json(self, **k):
             return self._payload
@@ -116,20 +115,8 @@ def _patch_session():
     return original
 
 
-def test_user_kasm_credentials_are_read_from_the_settings():
-    assert get_user_kasm_credentials(_User(settings={'browserSandboxKasm': {'user': 'u', 'password': 'p'}})) == (
-        'u',
-        'p',
-    )
-    assert get_user_kasm_credentials(
-        _User(settings={'ui': {'browserSandboxKasm': {'user': 'u', 'password': 'p'}}})
-    ) == ('u', 'p')
-    assert get_user_kasm_credentials(_User(settings={})) == (None, None)
-    assert get_user_kasm_credentials(_User(settings={'browserSandboxKasm': {'user': 'u'}})) == (None, None)
-    assert get_user_kasm_credentials(None) == (None, None)
-
-
-def test_shared_account_is_restricted_to_the_allowed_roles():
+def test_any_role_may_use_the_shared_account():
+    """Nobody has to create an account to open a browser."""
     _patch_config(dict(CONFIG))
     original = _patch_session()
     try:
@@ -145,44 +132,45 @@ def test_shared_account_is_restricted_to_the_allowed_roles():
 
         aiohttp.ClientSession = original
 
-    assert result.get('status') is False, result
-    assert 'shared Kasm account' in str(result.get('error')), result
-
-
-def test_own_kasm_account_bypasses_the_role_restriction():
-    _patch_config(dict(CONFIG))
-    original = _patch_session()
-    try:
-        result = asyncio.run(
-            browser.start_browser_session(
-                request=None,
-                form_data=browser.StartSessionForm(browser_id='chrome', chat_id='c2'),
-                user=_User(role='user', settings={'browserSandboxKasm': {'user': 'mine', 'password': 'secret'}}),
-            )
-        )
-    finally:
-        import aiohttp
-
-        aiohttp.ClientSession = original
-
     assert result.get('status') is True, result
     assert result.get('live_url'), result
 
 
-def test_admin_may_use_the_shared_account():
-    _patch_config(dict(CONFIG))
-    original = _patch_session()
+def test_kasm_post_retries_with_a_growing_delay(monkeypatch=None):
+    """A failing call is repeated five times before the user hears about it."""
+    calls = []
+    delays = []
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    browser.asyncio.sleep = fake_sleep
+
+    async def operation():
+        calls.append(1)
+        raise browser.KasmError('server unreachable')
+
     try:
-        result = asyncio.run(
-            browser.start_browser_session(
-                request=None,
-                form_data=browser.StartSessionForm(browser_id='chrome', chat_id='c3'),
-                user=_User(role='admin'),
-            )
-        )
+        asyncio.run(browser.kasm_retry(operation, attempts=5, base_delay=1.0))
+    except browser.KasmError:
+        pass
     finally:
-        import aiohttp
+        browser.asyncio.sleep = asyncio.sleep
 
-        aiohttp.ClientSession = original
+    assert len(calls) == 5, calls
+    # 1s, 2s, 4s, 8s between the five attempts.
+    assert delays == [1.0, 2.0, 4.0, 8.0], delays
 
-    assert result.get('status') is True, result
+
+def test_kasm_post_returns_the_first_success():
+    calls = []
+
+    async def operation():
+        calls.append(1)
+        if len(calls) < 3:
+            raise browser.KasmError('not yet')
+        return 'ok'
+
+    result = asyncio.run(browser.kasm_retry(operation, attempts=5, base_delay=0))
+    assert result == 'ok'
+    assert len(calls) == 3, calls

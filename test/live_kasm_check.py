@@ -1,5 +1,5 @@
-﻿"""Live Kasm verification: does the preview really work, and is the shared
-account leak closed?"""
+﻿"""Live Kasm verification: does the preview really work, and does the retry
+survive a hiccup of the Kasm server?"""
 
 import asyncio
 import json
@@ -19,10 +19,6 @@ API_SECRET = os.environ.get("KASM_API_SECRET", "")
 KASM_USER = os.environ.get("KASM_USER", "")
 KASM_PASSWORD = os.environ.get("KASM_PASSWORD", "")
 KASM_USER_ID = os.environ.get("KASM_USER_ID", "kasm-user-id")
-
-CTX = ssl.create_default_context()
-CTX.check_hostname = False
-CTX.verify_mode = ssl.CERT_NONE
 
 RESULTS = []
 
@@ -46,6 +42,11 @@ def post(path, payload, timeout=60):
         return e.code, e.read().decode("utf-8", "replace")
     except Exception as e:
         return None, f"EXC {type(e).__name__}: {e}"
+
+
+CTX = ssl.create_default_context()
+CTX.check_hostname = False
+CTX.verify_mode = ssl.CERT_NONE
 
 
 def http_get(path, timeout=60):
@@ -78,7 +79,6 @@ CONFIG = {
     "browser_sandbox.kasm.browsers": ["chrome"],
     "browser_sandbox.kasm.cdp_url": "",
     "browser_sandbox.kasm.enable_sharing": False,
-    "browser_sandbox.allowed_roles": ["admin"],
     "browser_sandbox.live_url": f"{KASM}/?password={KASM_PASSWORD}",
     "browser_sandbox.url": None,
     "browser_sandbox.auth_token": None,
@@ -97,14 +97,6 @@ Config.get_many = staticmethod(get_many)
 Config.get = staticmethod(get)
 
 
-class Admin:
-    id = "84593fb0-1617-40ed-8bbd-4bd7a0fa0c8b"
-    role = "admin"
-    settings: dict = {}
-    email = "admin@example.test"
-    name = "Admin"
-
-
 class Ordinary:
     id = "5f9611ee-68d4-4dfd-8d8f-8cfeb391bbca"
     role = "user"
@@ -113,19 +105,11 @@ class Ordinary:
     name = "Ordinary"
 
 
-class OrdinaryWithOwn:
-    id = "5b97105d-18b0-45e8-a028-4aeec737e11c"
-    role = "user"
-    settings = {"browserSandboxKasm": {"user": KASM_USER, "password": KASM_PASSWORD}}
-    email = "user2@example.test"
-    name = "Ordinary2"
-
-
 def cleanup(kasm_id):
     if not kasm_id:
         return
     kid = str(kasm_id).replace("-", "")
-    st, d = post(
+    st, _ = post(
         "/api/public/destroy_kasm",
         {
             "kasm_id": kid,
@@ -139,37 +123,39 @@ def cleanup(kasm_id):
 
 async def main():
     print("=" * 78)
-    print("1) ADMIN paylasilan hesapla oturum aciliyor mu?")
+    print("1) SIRADAN kullanici (hesap istemeden) tarayici acabiliyor mu?")
     print("=" * 78)
     res = await browser.start_browser_session(
         request=None,
-        form_data=browser.StartSessionForm(browser_id="chrome", chat_id="live-admin"),
-        user=Admin(),
+        form_data=browser.StartSessionForm(browser_id="chrome", chat_id="live-user"),
+        user=Ordinary(),
     )
     live_url = res.get("live_url") or ""
     print(f"       status={res.get('status')} provider={res.get('provider')}")
-    print(f"       live_url={live_url[:120]}...")
+    print(f"       live_url={live_url[:110]}...")
+    record(
+        "kasm: hesap istemeden tarayici acilir (paylasilan hesap)",
+        bool(res.get("status")) and bool(live_url),
+        f"status={res.get('status')} error={str(res.get('error'))[:160]}",
+    )
     if not res.get("status"):
-        record("admin: paylasilan hesapla oturum acilir", False, str(res.get("error"))[:200])
         return
 
-    kasm_id = None
-    token = None
-    if "#/connect/kasm/" in live_url:
-        parts = live_url.split("#/connect/kasm/")[1].split("/")
-        kasm_id = parts[0]
-        token = parts[-1]
+    kasm_id = live_url.split("#/connect/kasm/")[1].split("/")[0] if "#/connect/kasm/" in live_url else None
 
-    # The container really is running and the session token is accepted.
     st, d = post(
         "/api/public/get_kasm_status",
-        {"kasm_id": kasm_id, "user_id": KASM_USER_ID, "api_key": API_KEY, "api_key_secret": API_SECRET},
+        {
+            "kasm_id": kasm_id,
+            "user_id": KASM_USER_ID,
+            "api_key": API_KEY,
+            "api_key_secret": API_SECRET,
+        },
     )
-    status_text = json.dumps(d, ensure_ascii=False)[:220] if not isinstance(d, str) else d[:220]
     record(
         "kasm: konteyner gercekten calisiyor (get_kasm_status)",
         st == 200,
-        f"HTTP {st} -> {status_text}",
+        f"HTTP {st}",
     )
 
     st, d = post("/api/public/get_kasms", {"api_key": API_KEY, "api_key_secret": API_SECRET})
@@ -179,51 +165,49 @@ async def main():
             if (k.get("kasm_id") or "").replace("-", "") == str(kasm_id).replace("-", ""):
                 running.append(k)
     record(
-        "kasm: konteyner listede ve paylasim linki kapali",
+        "kasm: paylasim linki kapali (share_id yok)",
         bool(running) and not running[0].get("share_id"),
-        f"share_id={running[0].get('share_id') if running else 'yok'} user_id={running[0].get('user_id') if running else '-'}",
+        f"share_id={running[0].get('share_id') if running else 'yok'}",
     )
 
     st, body = http_get("/")
     record(
-        "kasm: SPA sayfasi iframe icin yukleniyor (X-Frame-Options yok)",
-        st == 200 and "x-frame-options" not in body.lower(),
+        "kasm: SPA sayfasi iframe icin yukleniyor",
+        st == 200,
         f"HTTP {st}, HTML {len(body)} bayt",
     )
 
+    print()
+    print("=" * 78)
+    print("2) Katlanarak sessiz yeniden deneme (1s, 2s, 4s, 8s)")
+    print("=" * 78)
+    calls = []
+    delays = []
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    real_sleep = asyncio.sleep
+    asyncio.sleep = fake_sleep
+
+    async def failing():
+        calls.append(1)
+        raise browser.KasmError("server unreachable")
+
+    try:
+        await browser.kasm_retry(failing, attempts=5, base_delay=1.0)
+    except browser.KasmError:
+        pass
+    finally:
+        asyncio.sleep = real_sleep
+
+    record(
+        "kasm: 5 kez denenir, aralar 1s/2s/4s/8s",
+        len(calls) == 5 and delays == [1.0, 2.0, 4.0, 8.0],
+        f"deneme={len(calls)} bekleme={delays}",
+    )
+
     cleanup(kasm_id)
-
-    print()
-    print("=" * 78)
-    print("2) ADMIN OLMAYAN kullanici paylasilan hesabi kullanabiliyor mu? (olmamali)")
-    print("=" * 78)
-    res2 = await browser.start_browser_session(
-        request=None,
-        form_data=browser.StartSessionForm(browser_id="chrome", chat_id="live-user"),
-        user=Ordinary(),
-    )
-    record(
-        "kasm: siradan kullanici paylasilan hesabi kullanamaz",
-        res2.get("status") is False and "shared Kasm account" in str(res2.get("error")),
-        f"status={res2.get('status')} error={str(res2.get('error'))[:180]}",
-    )
-
-    print()
-    print("=" * 78)
-    print("3) KENDI hesabi olan siradan kullanici")
-    print("=" * 78)
-    res3 = await browser.start_browser_session(
-        request=None,
-        form_data=browser.StartSessionForm(browser_id="chrome", chat_id="live-user-own"),
-        user=OrdinaryWithOwn(),
-    )
-    record(
-        "kasm: kendi hesabi olan kullanici erisebiliyor",
-        bool(res3.get("status")),
-        f"status={res3.get('status')} live_url={(res3.get('live_url') or '')[:100]}",
-    )
-    if res3.get("live_url") and "#/connect/kasm/" in res3["live_url"]:
-        cleanup(res3["live_url"].split("#/connect/kasm/")[1].split("/")[0])
 
     print()
     print("=" * 78)

@@ -110,6 +110,7 @@ REALTIME_CONFIG_KEYS = {
     'TRANSCRIPTION_MODEL': 'audio.realtime.transcription_model',
     'INPUT_PARAMS': 'audio.realtime.input_params',
     'REALTIME_CALL_PROMPT_TEMPLATE': 'audio.realtime.prompt_template',
+    'GEMINI_WS_URL': 'audio.realtime.gemini.ws_url',
 }
 
 STT_CONFIG_KEYS = {
@@ -296,7 +297,7 @@ class STTConfigForm(BaseModel):
 
 class RealtimeConfigForm(BaseModel):
     ENABLED: bool = False
-    PROVIDER: Literal['openai', 'azure'] = 'openai'
+    PROVIDER: Literal['openai', 'azure', 'gemini'] = 'openai'
     AUTH_TYPE: Literal['api_key', 'microsoft_entra_id'] = 'api_key'
     OPENAI_API_BASE_URL: str = 'https://api.openai.com/v1'
     OPENAI_API_KEY: str = ''
@@ -305,6 +306,9 @@ class RealtimeConfigForm(BaseModel):
     TRANSCRIPTION_MODEL: str = Field(default='gpt-transcribe', min_length=1, max_length=200)
     INPUT_PARAMS: Optional[dict] = None
     REALTIME_CALL_PROMPT_TEMPLATE: Optional[str] = None
+    # WebSocket endpoint of the Gemini Live API.  Leave empty to use the public
+    # endpoint, or point it at a gateway that exposes the same service.
+    GEMINI_WS_URL: Optional[str] = None
 
 
 class AudioConfigUpdateForm(BaseModel):

@@ -17,11 +17,7 @@ import json
 from open_webui.env import DATA_DIR
 from open_webui.models.config import Config
 from open_webui.utils.auth import get_verified_user
-from open_webui.utils.browser_session import (
-    get_user_kasm_credentials,
-    is_safe_kasm_connection_url,
-    resolve_kasm_user_id,
-)
+from open_webui.utils.browser_session import is_safe_kasm_connection_url, resolve_kasm_user_id
 
 log = logging.getLogger(__name__)
 
@@ -125,6 +121,66 @@ class StartSessionForm(BaseModel):
 
 class StopSessionForm(BaseModel):
     chat_id: str
+
+
+class KasmError(Exception):
+    """A Kasm API call answered with an error or could not be reached."""
+
+
+async def kasm_retry(operation, *, attempts: int = 5, base_delay: float = 1.0):
+    """Run an operation and retry it silently with a growing delay.
+
+    The Kasm server is often only briefly unavailable: a container start races
+    with a restart, a TLS connection is reset, or the server is busy.  Showing
+    that as a failed browser session is wrong, so the call is repeated with an
+    exponential backoff (1s, 2s, 4s, ...) before the user is told anything.
+    """
+    delay = base_delay
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            return await operation()
+        except Exception as error:
+            last_error = error
+            if attempt == attempts - 1:
+                break
+            log.info('Kasm request failed (%s), retrying in %.1fs', error, delay)
+            await asyncio.sleep(delay)
+            delay *= 2
+    raise last_error
+
+
+async def kasm_post(
+    kasm_url: str,
+    path: str,
+    payload: dict,
+    *,
+    timeout: int = 15,
+    attempts: int = 5,
+) -> dict:
+    """POST to the Kasm API and retry it silently with an exponential backoff.
+
+    A failure is only reported to the user after every attempt has been used,
+    so a short hiccup of the Kasm server does not end the browser session.
+    """
+    url = f'{kasm_url.rstrip("/")}{path}'
+
+    async def call():
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=timeout)) as response:
+                text = await response.text()
+                try:
+                    data = json.loads(text) if text else {}
+                except Exception:
+                    data = {}
+                if not isinstance(data, dict):
+                    data = {}
+                if response.status != 200 or data.get('error_message'):
+                    message = data.get('error_message') or f'Kasm API error (HTTP {response.status})'
+                    raise KasmError(str(message))
+                return data
+
+    return await kasm_retry(call, attempts=attempts)
 
 
 def get_session_dir(user_id: str, chat_id: str) -> Path:
@@ -314,39 +370,12 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
     browser_id = selected_browser['id']
     image_identifier = selected_browser.get('image', 'kasmweb/chrome:1.16.0')
 
-    # Identity of the Kasm account the container runs as.  A user who brings
-    # their own Kasm account is isolated from everybody else; the instance wide
-    # account is shared, so it is only handed out to the roles the Admin
-    # allows.
-    own_kasm_user, own_kasm_password = get_user_kasm_credentials(user)
-    using_shared_account = not own_kasm_user
-
-    if using_shared_account:
-        allowed_roles = await Config.get('browser_sandbox.allowed_roles', ['admin'])
-        if isinstance(allowed_roles, str):
-            allowed_roles = [allowed_roles]
-        allowed_roles = [str(role).strip().lower() for role in (allowed_roles or []) if str(role).strip()]
-        if allowed_roles and str(getattr(user, 'role', '') or '').lower() not in allowed_roles:
-            return {
-                'status': False,
-                'error': (
-                    'The browser sandbox uses a shared Kasm account and is limited to: '
-                    f'{", ".join(allowed_roles)}. Configure your own Kasm account in your user settings '
-                    'or ask an administrator to allow your role.'
-                ),
-                'provider': provider,
-            }
-        if str(getattr(user, 'role', '') or '').lower() != 'admin':
-            log.warning(
-                'User %s is using the shared Kasm account (%s). Their browser session belongs to that '
-                'account; give each user their own Kasm account to keep sessions apart.',
-                getattr(user, 'id', '?'),
-                kasm_user,
-            )
-
-    if own_kasm_user:
-        kasm_user = own_kasm_user
-        kasm_password = own_kasm_password
+    # The Kasm account of the instance is used for every session, so nobody has
+    # to create an account to open a browser.  It should be a dedicated service
+    # account and not a personal one: a personal account would hand its saved
+    # logins to everybody who uses the sandbox.
+    if str(getattr(user, 'role', '') or '').lower() != 'admin':
+        log.info('User %s starts a browser session on the shared Kasm account %s', getattr(user, 'id', '?'), kasm_user)
 
     # Case 1: Kasm Workspaces API Mode (On-demand container creation)
     if provider == 'kasm' and kasm_url and kasm_api_key and kasm_api_secret:
@@ -360,38 +389,32 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
         # 1. Try resolving via /api/authenticate if password is provided
         if kasm_password and configured_kasm_user:
             try:
-                auth_url = f'{kasm_url.rstrip("/")}/api/authenticate'
-                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                    async with session.post(
-                        auth_url,
-                        json={'username': configured_kasm_user, 'password': kasm_password},
-                        timeout=aiohttp.ClientTimeout(total=8),
-                    ) as aresp:
-                        if aresp.status == 200:
-                            adata = await aresp.json()
-                            if adata.get('user_id'):
-                                kasm_user_id = str(adata['user_id'])
-                                log.info(f'Resolved Kasm user_id via /api/authenticate: {kasm_user_id}')
+                adata = await kasm_post(
+                    kasm_url,
+                    '/api/authenticate',
+                    {'username': configured_kasm_user, 'password': kasm_password},
+                    timeout=8,
+                    attempts=3,
+                )
+                if adata.get('user_id'):
+                    kasm_user_id = str(adata['user_id'])
+                    log.info(f'Resolved Kasm user_id via /api/authenticate: {kasm_user_id}')
             except Exception as e:
                 log.debug(f'Kasm /api/authenticate notice: {e}')
 
         # 2. Try resolving via get_users API
         if not kasm_user_id and configured_kasm_user:
             try:
-                users_url = f'{kasm_url.rstrip("/")}/api/public/get_users'
-                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                    async with session.post(
-                        users_url,
-                        json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
-                        timeout=aiohttp.ClientTimeout(total=8),
-                    ) as uresp:
-                        if uresp.status == 200:
-                            udata = await uresp.json()
-                            users_list = udata.get('users', []) if isinstance(udata, dict) else None
-                        else:
-                            lookup_error = f'Kasm user lookup returned HTTP {uresp.status}.'
+                udata = await kasm_post(
+                    kasm_url,
+                    '/api/public/get_users',
+                    {'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
+                    timeout=8,
+                    attempts=3,
+                )
+                users_list = udata.get('users', []) if isinstance(udata, dict) else None
             except Exception as e:
-                lookup_error = f'Kasm user lookup notice: {e}'
+                lookup_error = f'Kasm user lookup failed: {e}'
 
         if not kasm_user_id and configured_kasm_user:
             try:
@@ -404,45 +427,40 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
         actual_image_id = None
         image_lookup_error = None
         try:
-            images_url = f'{kasm_url.rstrip("/")}/api/public/get_images'
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.post(
-                    images_url,
-                    json={'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
-                    timeout=aiohttp.ClientTimeout(total=15),
-                ) as iresp:
-                    if iresp.status == 200:
-                        idata = await iresp.json()
-                        img_list = idata.get('images', [])
-                        target_name = browser_id.lower()
-                        # Prefer an exact friendly-name match, then fall back to a
-                        # substring match on the friendly name or the docker image
-                        # name ("kasmweb/chrome:1.19.0-rolling-weekly").
-                        matched_img = next(
-                            (img for img in img_list if (img.get('friendly_name') or '').lower() == target_name),
-                            None,
-                        ) or next(
-                            (
-                                img
-                                for img in img_list
-                                if target_name in (img.get('friendly_name') or '').lower()
-                                or target_name in (img.get('name') or '').lower()
-                                or target_name in (img.get('docker_image') or '').lower()
-                            ),
-                            None,
-                        )
-                        if matched_img and matched_img.get('image_id'):
-                            actual_image_id = matched_img['image_id']
-                            log.info(
-                                f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}' ({matched_img.get('friendly_name')})"
-                            )
-                        else:
-                            image_lookup_error = (
-                                f'No Kasm workspace image matches the browser "{browser_id}". '
-                                f'Install the workspace or pick another browser.'
-                            )
-                    else:
-                        image_lookup_error = f'Kasm image lookup returned HTTP {iresp.status}.'
+            idata = await kasm_post(
+                kasm_url,
+                '/api/public/get_images',
+                {'api_key': kasm_api_key, 'api_key_secret': kasm_api_secret},
+                timeout=15,
+            )
+            img_list = idata.get('images', [])
+            target_name = browser_id.lower()
+            # Prefer an exact friendly-name match, then fall back to a
+            # substring match on the friendly name or the docker image
+            # name ("kasmweb/chrome:1.19.0-rolling-weekly").
+            matched_img = next(
+                (img for img in img_list if (img.get('friendly_name') or '').lower() == target_name),
+                None,
+            ) or next(
+                (
+                    img
+                    for img in img_list
+                    if target_name in (img.get('friendly_name') or '').lower()
+                    or target_name in (img.get('name') or '').lower()
+                    or target_name in (img.get('docker_image') or '').lower()
+                ),
+                None,
+            )
+            if matched_img and matched_img.get('image_id'):
+                actual_image_id = matched_img['image_id']
+                log.info(
+                    f"Resolved browser '{browser_id}' to Kasm image_id '{actual_image_id}' ({matched_img.get('friendly_name')})"
+                )
+            else:
+                image_lookup_error = (
+                    f'No Kasm workspace image matches the browser "{browser_id}". '
+                    f'Install the workspace or pick another browser.'
+                )
         except Exception as e:
             image_lookup_error = f'Kasm image lookup failed: {e}'
             log.warning('Failed to auto-resolve Kasm image: %s', e)
@@ -470,144 +488,11 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             payload['user_id'] = kasm_user_id
 
         try:
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.post(api_endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    data = {}
-                    try:
-                        data = await resp.json()
-                    except Exception:
-                        pass
-
-                    if resp.status != 200 or data.get('error_message'):
-                        err = data.get('error_message') or f'Kasm API error (HTTP {resp.status})'
-                        log.warning(f'Failed to start Kasm container via API: {err}')
-                        # Fall back to configured live preview URL or direct Kasm endpoint
-                        fallback_live_url = configured_live_url or kasm_url
-                        if fallback_live_url and not _is_kasm_dashboard_url(fallback_live_url, kasm_url):
-                            ACTIVE_KASM_SESSIONS[session_key] = {
-                                'live_url': fallback_live_url,
-                                'cdp_url': kasm_cdp_url or None,
-                                'user_id': user.id,
-                                'chat_id': chat_id,
-                                'browser_id': browser_id,
-                                'provider': 'kasm_standalone',
-                                'started_at': time.time(),
-                            }
-                            log.info(f'Falling back to live preview URL: {fallback_live_url}')
-                            return {
-                                'status': True,
-                                'live_url': fallback_live_url,
-                                'cdp_url': kasm_cdp_url or None,
-                                'provider': 'kasm',
-                                'browser_id': browser_id,
-                            }
-                        # The Kasm dashboard is not a browser session view.  Returning it
-                        # silently produces an embedded page that shows the dashboard and
-                        # a login toast, so report the real failure instead.
-                        return {
-                            'status': False,
-                            'error': f'{err}. The Kasm container could not be started.',
-                            'provider': provider,
-                        }
-
-                    kasm_id = data.get('kasm_id') or (data.get('kasm') or {}).get('kasm_id')
-                    share_id = data.get('share_id') or (data.get('kasm') or {}).get('share_id')
-                    kasm_live_url = data.get('kasm_url') or (data.get('kasm') or {}).get('kasm_url')
-                    session_token = (
-                        data.get('session_token')
-                        or data.get('operational_token')
-                        or (data.get('kasm') or {}).get('session_token')
-                        or (data.get('kasm') or {}).get('operational_token')
-                    )
-
-                    base_url = kasm_url.rstrip('/')
-
-                    if kasm_id and session_token and kasm_user_id:
-                        kasm_live_url = f'{base_url}/#/connect/kasm/{quote(str(kasm_id), safe="")}/{quote(str(kasm_user_id), safe="")}/{quote(str(session_token), safe="")}'
-                    elif kasm_id and session_token:
-                        kasm_live_url = f'{base_url}/#/connect/kasm/{quote(str(kasm_id), safe="")}/{quote(str(session_token), safe="")}'
-                    elif kasm_live_url:
-                        if kasm_live_url.startswith(('http://', 'https://')):
-                            returned_origin = urlsplit(kasm_live_url)
-                            configured_origin = urlsplit(base_url)
-                            if (
-                                returned_origin.scheme != configured_origin.scheme
-                                or returned_origin.netloc.lower() != configured_origin.netloc.lower()
-                            ):
-                                log.warning(
-                                    'Ignoring Kasm URL returned for a different origin: %s',
-                                    returned_origin.netloc,
-                                )
-                                kasm_live_url = None
-                        if kasm_live_url and not (
-                            kasm_live_url.startswith('http://') or kasm_live_url.startswith('https://')
-                        ):
-                            kasm_live_url = (
-                                f'{base_url}{kasm_live_url if kasm_live_url.startswith("/") else "/" + kasm_live_url}'
-                            )
-                        if not kasm_live_url:
-                            kasm_live_url = configured_live_url or f'{base_url}/#/userdashboard'
-                    elif configured_live_url:
-                        kasm_live_url = configured_live_url
-                    else:
-                        kasm_live_url = f'{base_url}/#/userdashboard'
-
-                    # Ensure container has reached 'running' state before returning live_url
-                    if kasm_id:
-                        try:
-                            status_url = f'{base_url}/api/public/get_kasm_status'
-                            for _ in range(15):
-                                await asyncio.sleep(2)
-                                async with aiohttp.ClientSession(
-                                    connector=aiohttp.TCPConnector(ssl=False)
-                                ) as st_session:
-                                    async with st_session.post(
-                                        status_url,
-                                        json={
-                                            'api_key': kasm_api_key,
-                                            'api_key_secret': kasm_api_secret,
-                                            'kasm_id': kasm_id,
-                                        },
-                                        timeout=aiohttp.ClientTimeout(total=3),
-                                    ) as st_resp:
-                                        if st_resp.status == 200:
-                                            st_data = await st_resp.json()
-                                            k_st = st_data.get('kasm', {})
-                                            if (
-                                                k_st.get('operational_status') == 'running'
-                                                or k_st.get('status') == 'running'
-                                            ):
-                                                log.info(
-                                                    f'Kasm container {kasm_id} is running and ready for connection.'
-                                                )
-                                                break
-                        except Exception as e:
-                            log.debug(f'Kasm readiness poll notice: {e}')
-
-                    ACTIVE_KASM_SESSIONS[session_key] = {
-                        'kasm_id': kasm_id,
-                        'live_url': kasm_live_url,
-                        'share_id': share_id,
-                        'user_id': user.id,
-                        'kasm_user_id': kasm_user_id or user.id,
-                        'chat_id': chat_id,
-                        'browser_id': browser_id,
-                        'cdp_url': kasm_cdp_url or None,
-                        'provider': 'kasm_api',
-                        'started_at': time.time(),
-                    }
-
-                    log.info(f'Started Kasm Workspaces container for user {user.id} chat {chat_id}')
-                    return {
-                        'status': True,
-                        'live_url': kasm_live_url,
-                        'cdp_url': kasm_cdp_url or None,
-                        'kasm_id': kasm_id,
-                        'provider': 'kasm',
-                        'browser_id': browser_id,
-                    }
+            data = await kasm_post(kasm_url, '/api/public/request_kasm', payload, timeout=30)
         except Exception as e:
-            log.warning(f'Kasm Workspaces container request notice: {e}')
+            err = str(e) or 'Kasm API error'
+            log.warning(f'Failed to start Kasm container via API: {err}')
+            # Fall back to configured live preview URL or direct Kasm endpoint
             fallback_live_url = configured_live_url or kasm_url
             if fallback_live_url and not _is_kasm_dashboard_url(fallback_live_url, kasm_url):
                 ACTIVE_KASM_SESSIONS[session_key] = {
@@ -619,6 +504,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     'provider': 'kasm_standalone',
                     'started_at': time.time(),
                 }
+                log.info(f'Falling back to live preview URL: {fallback_live_url}')
                 return {
                     'status': True,
                     'live_url': fallback_live_url,
@@ -626,14 +512,100 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     'provider': 'kasm',
                     'browser_id': browser_id,
                 }
-            # The Kasm dashboard is not a browser session view.  Returning it here
-            # produced an embedded dashboard with a login toast, so report the
-            # real failure instead.
+            # The Kasm dashboard is not a browser session view.  Returning it
+            # silently produces an embedded page that shows the dashboard and
+            # a login toast, so report the real failure instead.
             return {
                 'status': False,
-                'error': f'Could not reach the Kasm Workspaces server: {e}',
+                'error': f'{err}. The Kasm container could not be started.',
                 'provider': provider,
             }
+
+        kasm_id = data.get('kasm_id') or (data.get('kasm') or {}).get('kasm_id')
+        share_id = data.get('share_id') or (data.get('kasm') or {}).get('share_id')
+        kasm_live_url = data.get('kasm_url') or (data.get('kasm') or {}).get('kasm_url')
+        session_token = (
+            data.get('session_token')
+            or data.get('operational_token')
+            or (data.get('kasm') or {}).get('session_token')
+            or (data.get('kasm') or {}).get('operational_token')
+        )
+
+        base_url = kasm_url.rstrip('/')
+
+        if kasm_id and session_token and kasm_user_id:
+            kasm_live_url = f'{base_url}/#/connect/kasm/{quote(str(kasm_id), safe="")}/{quote(str(kasm_user_id), safe="")}/{quote(str(session_token), safe="")}'
+        elif kasm_id and session_token:
+            kasm_live_url = (
+                f'{base_url}/#/connect/kasm/{quote(str(kasm_id), safe="")}/{quote(str(session_token), safe="")}'
+            )
+        elif kasm_live_url:
+            if kasm_live_url.startswith(('http://', 'https://')):
+                returned_origin = urlsplit(kasm_live_url)
+                configured_origin = urlsplit(base_url)
+                if (
+                    returned_origin.scheme != configured_origin.scheme
+                    or returned_origin.netloc.lower() != configured_origin.netloc.lower()
+                ):
+                    log.warning(
+                        'Ignoring Kasm URL returned for a different origin: %s',
+                        returned_origin.netloc,
+                    )
+                    kasm_live_url = None
+            if kasm_live_url and not (kasm_live_url.startswith('http://') or kasm_live_url.startswith('https://')):
+                kasm_live_url = f'{base_url}{kasm_live_url if kasm_live_url.startswith("/") else "/" + kasm_live_url}'
+            if not kasm_live_url:
+                kasm_live_url = configured_live_url or f'{base_url}/#/userdashboard'
+        elif configured_live_url:
+            kasm_live_url = configured_live_url
+        else:
+            kasm_live_url = f'{base_url}/#/userdashboard'
+
+        # Ensure container has reached 'running' state before returning live_url
+        if kasm_id:
+            try:
+                for _ in range(15):
+                    await asyncio.sleep(2)
+                    st_data = await kasm_post(
+                        kasm_url,
+                        '/api/public/get_kasm_status',
+                        {
+                            'api_key': kasm_api_key,
+                            'api_key_secret': kasm_api_secret,
+                            'kasm_id': kasm_id,
+                        },
+                        timeout=3,
+                        attempts=2,
+                    )
+                    k_st = st_data.get('kasm', {})
+                    if k_st.get('operational_status') == 'running' or k_st.get('status') == 'running':
+                        log.info(f'Kasm container {kasm_id} is running and ready for connection.')
+                        break
+            except Exception as e:
+                log.debug(f'Kasm readiness poll notice: {e}')
+
+        ACTIVE_KASM_SESSIONS[session_key] = {
+            'kasm_id': kasm_id,
+            'live_url': kasm_live_url,
+            'share_id': share_id,
+            'user_id': user.id,
+            'kasm_user_id': kasm_user_id or user.id,
+            'chat_id': chat_id,
+            'browser_id': browser_id,
+            'cdp_url': kasm_cdp_url or None,
+            'provider': 'kasm_api',
+            'started_at': time.time(),
+        }
+
+        log.info(f'Started Kasm Workspaces container for user {user.id} chat {chat_id}')
+        return {
+            'status': True,
+            'live_url': kasm_live_url,
+            'cdp_url': kasm_cdp_url or None,
+            'kasm_id': kasm_id,
+            'provider': 'kasm',
+            'browser_id': browser_id,
+        }
 
     # Case 2: Standalone Kasm Workspaces or Live Stream URL
     if provider == 'kasm':
