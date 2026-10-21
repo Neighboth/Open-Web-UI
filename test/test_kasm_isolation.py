@@ -276,3 +276,49 @@ def test_own_kasm_account_is_used_for_the_session():
 
     assert result.get('status') is True, result
     assert used.get('username') == 'own-account', used
+
+
+def test_tls_status_flags_an_untrusted_certificate():
+    """A frame with an untrusted certificate is blocked by the browser."""
+    import socket
+    import ssl
+
+    from open_webui.routers import browser as browser_module
+
+    class FakeContext:
+        def __init__(self, *a, **k):
+            pass
+
+        def wrap_socket(self, sock, **kwargs):
+            raise ssl.SSLCertVerificationError(1, '[X509: NO_CERTIFICATE_OR_CRL_FOUND]')
+
+    class FakeSocket:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    original_context = ssl.create_default_context
+    original_socket = socket.create_connection
+    ssl.create_default_context = lambda *a, **k: FakeContext()
+    socket.create_connection = lambda *a, **k: FakeSocket()
+    browser_module._KASM_TLS_CACHE.clear()
+    try:
+        status = browser_module.kasm_tls_status('https://kasm.example.test:8443')
+    finally:
+        ssl.create_default_context = original_context
+        socket.create_connection = original_socket
+        browser_module._KASM_TLS_CACHE.clear()
+
+    assert status['applicable'] is True
+    assert status['trusted'] is False
+    assert status['detail']
+
+
+def test_tls_status_ignores_plain_http():
+    from open_webui.routers import browser as browser_module
+
+    status = browser_module.kasm_tls_status('http://kasm.example.test:8443')
+    assert status['applicable'] is False
+    assert status['trusted'] is True

@@ -382,7 +382,67 @@ kasm: 5 kez denenir, aralar 1s/2s/4s/8s                    -> PASS  deneme=5
 
 ---
 
-## 9. Eklenen testler
+## 10. Kasm iframe'i neden bozuk? — TLS sertifikası
+
+### Canlı teşhis
+Tarayıcıda birebir reprodüksiyon:
+
+```
+[browser.navigation_failed] The desktop rejected the site's TLS connection.
+ERR_CERT_AUTHORITY_INVALID (-202)
+```
+
+Sertifika incelemesi:
+
+| Alan | Değer |
+|---|---|
+| Subject / Issuer | `CN=vm183597.ovadns.com` (**self-signed**) |
+| SAN | **yok** → IP adresiyle eşleşme imkânsız |
+| Geçerlilik | 2026-10-04 → 2031-10-03 (tarih sorunu yok) |
+| DNS | `vm183597.ovadns.com` **çözülmüyor** |
+
+**Neden yeni sekmede çalışıyor, iframe'de çalışmıyor?**
+Tarayıcı güvenilmeyen sertifika için **"Gelişmiş → Devam et"** uyarısı gösterir.
+Bu uyarı **alt-çerçevede (iframe) gösterilemez**, Chrome yüklemeyi **doğrudan
+engeller** → *"Çalışma sayfasındaki web ... sorunlarla karşılaşılıyor olabilir veya
+kalıcı olarak yeni bir web adresine taşınmış olabilir."* hatası çıkar.
+
+Yani bu **Open WebUI'de değil, Kasm sunucusunun sertifikasında** bir sorun.
+
+### Çözüm (sunucu tarafı, kalıcı)
+1. `kasm.senin-domain.com` → `38.210.77.108` DNS kaydı
+2. 443'te bir reverse proxy (Caddy/nginx) + **Let's Encrypt** sertifikası →
+   `https://127.0.0.1:8443`'e proxy
+3. Open WebUI → Ayarlar → Code Execution → **Kasm URL** = `https://kasm.senin-domain.com`
+
+Alternatif (reverse proxy istemezsen): Kasm'ın **kendi CA'sını** dışa aktarıp
+istemci makinelerine kur (Windows: "Trusted Root Certification Authorities") ve
+sertifikanın CN'ini kullanan **hostname**'i kullan (`vm183597.ovadns.com` →
+`hosts` dosyasına ekle). IP adresi **asla** kullanılmamalı (SAN olmadığı için
+eşleşmez).
+
+### Kod tarafı yapılan
+Artık kullanıcı Chrome'un kafa karışıcı hata sayfasını görmüyor:
+
+| Dosya | Değişiklik |
+|---|---|
+| `backend/open_webui/routers/browser.py` | **YENİ** `kasm_tls_status()` — Kasm sertifikasının sistem güven deposunda güvenilir olup olmadığını kontrol ediyor (sonuç önbellekleniyor) |
+| `backend/open_webui/routers/browser.py` | Oturum cevabına ve `session/active` cevabına `tls` bilgisi ekleniyor |
+| `backend/open_webui/tools/builtin.py` | `browser_session` olayına `tls` bilgisi taşınıyor |
+| `src/lib/stores/index.ts` | **YENİ** `agentLiveNotice` store'u |
+| `src/lib/components/chat/Chat.svelte` | `browser_session` olayından `tls` bilgisi okunup uyarıya çevriliyor |
+| `src/lib/components/chat/LiveAgentPreview.svelte` | Sertifika güvenilmezse **bozuk iframe yerine** net bir uyarı + "Yeni sekmede aç" düğmesi gösteriliyor |
+
+**Canlı doğrulama:**
+```
+https://38.210.77.108:8443   applicable=True  trusted=False  detail="self-signed certificate"
+http://38.210.77.108:8443    applicable=False trusted=True
+https://example.com          applicable=True  trusted=True
+```
+
+---
+
+## 11. Eklenen testler
 
 | Dosya | Kapsam |
 |---|---|

@@ -158,6 +158,10 @@ export const showSearch = writable(false);
 export const showSettings: Writable<boolean | string | SettingsModalRequest> = writable(false);
 export const showChangelog = writable(false);
 export const agentLiveUrl = writable<string | null>(null);
+// Set when the live preview cannot be embedded (for example an untrusted
+// certificate on the Kasm server).  The preview then explains the problem
+// instead of showing a broken frame.
+export const agentLiveNotice = writable<string | null>(null);
 
 export const showControls = writable(false);
 export const showEmbeds = writable(false);

@@ -1,5 +1,5 @@
 <script>
-	import { agentLiveUrl, chatId } from '$lib/stores';
+	import { agentLiveUrl, agentLiveNotice, chatId } from '$lib/stores';
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import GlobeAlt from '$lib/components/icons/GlobeAlt.svelte';
 	import { getContext, onDestroy } from 'svelte';
@@ -9,6 +9,7 @@
 
 	const handleClose = async () => {
 		agentLiveUrl.set(null);
+		agentLiveNotice.set(null);
 		if ($chatId) {
 			try {
 				await stopBrowserSession(localStorage.token, $chatId);
@@ -35,6 +36,7 @@
 	};
 
 	onDestroy(() => {
+		agentLiveNotice.set(null);
 		if ($agentLiveUrl && $chatId) {
 			try {
 				stopBrowserSession(localStorage.token, $chatId);
@@ -111,6 +113,19 @@
 				</button>
 			</div>
 		</div>
+		{#if $agentLiveNotice}
+			<div class="px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200">
+				<p class="font-semibold mb-1">{$i18n.t('The live preview cannot be embedded')}</p>
+				<p class="mb-3">{$agentLiveNotice}</p>
+				<button
+					type="button"
+					on:click={openInWindow}
+					class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition"
+				>
+					{$i18n.t('Open in a new tab')}
+				</button>
+			</div>
+		{/if}
 		<div class="px-3 py-1.5 bg-blue-50/80 dark:bg-blue-950/40 border-b border-blue-100 dark:border-blue-900/50 flex items-center justify-between text-xs text-blue-700 dark:text-blue-300">
 			<span class="truncate">Masaüstü açılmazsa veya iframe/SSL engeli olursa:</span>
 			<button
@@ -121,13 +136,20 @@
 				Düz Tarayıcıda Aç &rarr;
 			</button>
 		</div>
-		<iframe
-			src={$agentLiveUrl}
-			class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"
-			title="Agent Preview"
-			allow="autoplay; microphone; camera; clipboard-read; clipboard-write; window-management; fullscreen; display-capture; web-share"
-			referrerpolicy="no-referrer"
-			loading="eager"
-		></iframe>
+		{#if $agentLiveNotice}
+			<div class="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900">
+				<GlobeAlt className="size-8 text-gray-400" strokeWidth="1.5" />
+				<p>{$i18n.t('The session is running. Open it in a new tab to use it.')}</p>
+			</div>
+		{:else}
+			<iframe
+				src={$agentLiveUrl}
+				class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"
+				title="Agent Preview"
+				allow="autoplay; microphone; camera; clipboard-read; clipboard-write; window-management; fullscreen; display-capture; web-share"
+				referrerpolicy="no-referrer"
+				loading="eager"
+			></iframe>
+		{/if}
 	</div>
 {/if}

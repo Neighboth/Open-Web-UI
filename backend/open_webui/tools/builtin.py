@@ -5196,6 +5196,7 @@ async def request_browser_session(
 
         live_url = res.get('live_url')
         cdp_url = res.get('cdp_url')
+        tls = res.get('tls') or {}
 
         if __event_emitter__ and live_url:
             await __event_emitter__(
@@ -5203,8 +5204,28 @@ async def request_browser_session(
                     'type': 'browser_session',
                     'data': {
                         'live_url': live_url,
+                        'tls': tls,
                     },
                 }
+            )
+
+        if tls.get('applicable') and not tls.get('trusted'):
+            # The certificate of the Kasm server is not trusted by the
+            # browser.  A new tab can be used after the warning is dismissed,
+            # but a frame is blocked outright, so the user has to know why.
+            return JSONCodec.dumps(
+                {
+                    'status': 'success',
+                    'message': (
+                        'Browser session started. The live preview cannot be embedded because the '
+                        'certificate of the Kasm server is not trusted by this browser; open it in a '
+                        'new tab instead.'
+                    ),
+                    'cdp_url': cdp_url,
+                    'live_url': live_url,
+                    'tls': tls,
+                },
+                ensure_ascii=False,
             )
 
         return JSONCodec.dumps(

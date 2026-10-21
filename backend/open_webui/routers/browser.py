@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import shutil
+import socket
+import ssl
 import tarfile
 import time
 from pathlib import Path
@@ -56,6 +58,42 @@ def _is_kasm_dashboard_url(url: str, kasm_url: str) -> bool:
         # dashboard ("/#/connect/kasm/...").
         and not parsed.fragment
     )
+
+
+_KASM_TLS_CACHE: dict[str, dict] = {}
+
+
+def kasm_tls_status(kasm_url: str) -> dict:
+    """Check whether the Kasm server's TLS certificate is trusted.
+
+    A browser refuses to load a frame whose certificate it does not trust and
+    cannot show its "proceed anyway" warning inside a frame.  The embedded
+    preview then fails with a cryptic network error while a new tab works
+    after the warning is dismissed.  Detecting the situation here lets the UI
+    say what is actually wrong instead of showing a broken frame.
+    """
+    if not kasm_url or not kasm_url.lower().startswith('https://'):
+        return {'applicable': False, 'trusted': True, 'detail': ''}
+
+    cached = _KASM_TLS_CACHE.get(kasm_url)
+    if cached is not None:
+        return cached
+
+    status = {'applicable': True, 'trusted': False, 'detail': ''}
+    try:
+        parsed = urlsplit(kasm_url)
+        context = ssl.create_default_context()
+        with socket.create_connection((parsed.hostname, parsed.port or 443), timeout=10) as sock:
+            with context.wrap_socket(sock, server_hostname=parsed.hostname):
+                status = {'applicable': True, 'trusted': True, 'detail': ''}
+    except ssl.SSLCertVerificationError as error:
+        detail = getattr(error, 'verify_message', None) or str(error)
+        status['detail'] = str(detail)
+    except Exception as error:
+        status['detail'] = str(error)
+
+    _KASM_TLS_CACHE[kasm_url] = status
+    return status
 
 
 DEFAULT_BROWSERS = [
@@ -511,6 +549,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     'chat_id': chat_id,
                     'browser_id': browser_id,
                     'provider': 'kasm_standalone',
+                    'kasm_url': kasm_url,
                     'started_at': time.time(),
                 }
                 log.info(f'Falling back to live preview URL: {fallback_live_url}')
@@ -603,6 +642,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             'browser_id': browser_id,
             'cdp_url': kasm_cdp_url or None,
             'provider': 'kasm_api',
+            'kasm_url': kasm_url,
             'started_at': time.time(),
         }
 
@@ -614,6 +654,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
             'kasm_id': kasm_id,
             'provider': 'kasm',
             'browser_id': browser_id,
+            'tls': kasm_tls_status(kasm_url),
         }
 
     # Case 2: Standalone Kasm Workspaces or Live Stream URL
@@ -627,6 +668,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                 'chat_id': chat_id,
                 'browser_id': browser_id,
                 'provider': 'kasm_standalone',
+                'kasm_url': kasm_url,
                 'started_at': time.time(),
             }
             return {
@@ -689,6 +731,7 @@ async def get_active_browser_session(chat_id: str, user=Depends(get_verified_use
             'kasm_id': active.get('kasm_id'),
             'provider': active.get('provider', 'kasm'),
             'browser_id': active.get('browser_id', 'chrome'),
+            'tls': kasm_tls_status(active.get('kasm_url') or ''),
         }
     return {'status': False, 'live_url': None}
 

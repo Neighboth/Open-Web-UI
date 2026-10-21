@@ -49,7 +49,8 @@
 		showFileNavDir,
 		chatRequestQueues,
 		desktopEvent,
-		agentLiveUrl
+		agentLiveUrl,
+		agentLiveNotice
 	} from '$lib/stores';
 	import { refreshChatList, refreshFolderChatLists } from '$lib/stores/chatList';
 
@@ -1049,6 +1050,13 @@
 					const activeSession = await getActiveBrowserSession(localStorage.token, $chatId);
 					if (activeSession?.status && activeSession?.live_url) {
 						agentLiveUrl.set(activeSession.live_url);
+						agentLiveNotice.set(
+							activeSession?.tls?.applicable && !activeSession?.tls?.trusted
+								? $i18n.t(
+										'The certificate of the browser sandbox server is not trusted by this browser, so the live preview cannot be embedded. Open the session in a new tab instead, or install the certificate on this device.'
+									)
+								: null
+						);
 					}
 				} catch (err) {
 					console.debug('Failed to restore active browser session:', err);
@@ -1770,6 +1778,13 @@
 						: data.files;
 				} else if (type === 'browser_session') {
 					agentLiveUrl.set(data.live_url);
+					agentLiveNotice.set(
+						data?.tls?.applicable && !data?.tls?.trusted
+							? $i18n.t(
+									'The certificate of the browser sandbox server is not trusted by this browser, so the live preview cannot be embedded. Open the session in a new tab instead, or install the certificate on this device.'
+								)
+							: null
+					);
 				} else if (type === 'chat:message:tasks') {
 					chatTasks = data.tasks;
 				} else if (type === 'chat:message:embeds' || type === 'embeds') {
