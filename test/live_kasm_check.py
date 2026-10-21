@@ -13,11 +13,12 @@ from pathlib import Path
 BACKEND = Path(r"Z:\open-web-ui\backend")
 sys.path.insert(0, str(BACKEND))
 
-KASM = os.environ.get("KASM_URL", "https://38.210.77.108:8443")
+KASM = os.environ.get("KASM_URL", "https://kasm.example.test:8443")
 API_KEY = os.environ.get("KASM_API_KEY", "")
 API_SECRET = os.environ.get("KASM_API_SECRET", "")
 KASM_USER = os.environ.get("KASM_USER", "")
 KASM_PASSWORD = os.environ.get("KASM_PASSWORD", "")
+KASM_USER_ID = os.environ.get("KASM_USER_ID", "kasm-user-id")
 
 CTX = ssl.create_default_context()
 CTX.check_hostname = False
@@ -128,7 +129,7 @@ def cleanup(kasm_id):
         "/api/public/destroy_kasm",
         {
             "kasm_id": kid,
-            "user_id": "dd4798760d5549cb9aaf7bffbb49d4da",
+            "user_id": KASM_USER_ID,
             "api_key": API_KEY,
             "api_key_secret": API_SECRET,
         },
@@ -162,7 +163,7 @@ async def main():
     # The container really is running and the session token is accepted.
     st, d = post(
         "/api/public/get_kasm_status",
-        {"kasm_id": kasm_id, "user_id": "dd4798760d5549cb9aaf7bffbb49d4da", "api_key": API_KEY, "api_key_secret": API_SECRET},
+        {"kasm_id": kasm_id, "user_id": KASM_USER_ID, "api_key": API_KEY, "api_key_secret": API_SECRET},
     )
     status_text = json.dumps(d, ensure_ascii=False)[:220] if not isinstance(d, str) else d[:220]
     record(
