@@ -74,7 +74,7 @@ def test_kasm_user_resolver_rejects_partial_missing_and_ambiguous_matches():
 
 
 def test_kasm_user_resolver_fallback_when_users_none():
-    assert resolve_kasm_user_id('user@kasm.local', None) == 'user@kasm.local'
+    assert resolve_kasm_user_id('user@example.test', None) == 'user@example.test'
     configured_id = '8efbc18c-5fd9-47ad-ae69-a39a54aafc5d'
     assert resolve_kasm_user_id(configured_id, None) == configured_id
 
