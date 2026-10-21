@@ -1,4 +1,4 @@
-from importlib.util import module_from_spec, spec_from_file_location
+﻿from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
 
@@ -80,7 +80,7 @@ def test_kasm_user_resolver_fallback_when_users_none():
 
 
 def test_authenticated_query_url_is_allowed():
-    origin = 'https://38.210.77.108:8443'
+    origin = 'https://kasm.example.test:8443'
     assert is_safe_kasm_connection_url(f'{origin}/?password=secretToken', origin)
 
 
@@ -90,18 +90,18 @@ def test_kasm_connect_url_with_user_id_segment_is_allowed():
     Rejecting that shape made the backend treat a live session as stale and
     destroy the container, which broke the embedded preview.
     """
-    origin = 'https://38.210.77.108:8443'
+    origin = 'https://kasm.example.test:8443'
     url = f'{origin}/#/connect/kasm/cdc8d55f-a57c-4262-b353-dc915f445a14/dd4798760d5549cb9aaf7bffbb49d4da/token'
     assert is_safe_kasm_connection_url(url, origin)
 
 
 def test_kasm_connect_url_without_user_id_segment_is_allowed():
-    origin = 'https://38.210.77.108:8443'
+    origin = 'https://kasm.example.test:8443'
     assert is_safe_kasm_connection_url(f'{origin}/#/connect/kasm/kasm-id/token', origin)
 
 
 def test_kasm_connect_url_with_empty_segment_is_rejected():
-    origin = 'https://38.210.77.108:8443'
+    origin = 'https://kasm.example.test:8443'
     assert not is_safe_kasm_connection_url(f'{origin}/#/connect/kasm/kasm-id//token', origin)
     assert not is_safe_kasm_connection_url(f'{origin}/#/connect/kasm/', origin)
     assert is_safe_kasm_connection_url(f'{origin}/?token=secretToken', origin)

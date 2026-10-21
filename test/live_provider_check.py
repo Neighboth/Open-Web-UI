@@ -1,11 +1,16 @@
 ﻿"""Live end-to-end verification of the video / image / Kasm fixes.
 
-Runs the real router code against the real providers the Admin uses
-(PixRouter + Kasm Workspaces) using the configuration from the exported
-config file and the production database.
+Runs the real router code against the real providers and the real Kasm
+Workspaces server.  Every host, credential and model is read from the
+environment, so this script carries no account details of its own:
 
-Run with:
-    set PYTHONPATH=Z:\\open-web-ui\\backend
+    set PIX_KEY=...        set PIX_URL=https://<host>/v1
+    set KASM_URL=...       set KASM_API_KEY=...  set KASM_API_SECRET=...
+    set KASM_USER=...      set KASM_PASSWORD=...
+    set VIDEO_MODEL=...    set IMAGE_MODEL=...   set WORKING_IMAGE_MODEL=...
+    set BROWSER_ID=chrome
+
+    set PYTHONPATH=<repo>\\backend
     set WEBUI_SECRET_KEY=...
     python test/live_provider_check.py
 """
@@ -20,18 +25,25 @@ BACKEND = Path(__file__).resolve().parents[1] / 'backend'
 sys.path.insert(0, str(BACKEND))
 
 PIX_KEY = os.environ.get('PIX_KEY', '')
-PIX_URL = 'https://pixrouter.com/v1'
-KASM_URL = 'https://38.210.77.108:8443'
+PIX_URL = os.environ.get('PIX_URL', 'https://provider.example.test/v1')
+KASM_URL = os.environ.get('KASM_URL', 'https://kasm.example.test:8443')
 KASM_API_KEY = os.environ.get('KASM_API_KEY', '')
 KASM_API_SECRET = os.environ.get('KASM_API_SECRET', '')
 KASM_USER = os.environ.get('KASM_USER', '')
 KASM_PASSWORD = os.environ.get('KASM_PASSWORD', '')
 
+# Every provider specific value is taken from the environment so this script
+# carries no account, host or credential details of its own.
+VIDEO_MODEL = os.environ.get('VIDEO_MODEL', 'agnes/agnes-video-2.5-flash')
+IMAGE_MODEL = os.environ.get('IMAGE_MODEL', 'agnes/agnes-image-2.5-flash')
+WORKING_IMAGE_MODEL = os.environ.get('WORKING_IMAGE_MODEL', 'openai/gpt-image-1')
+BROWSER_ID = os.environ.get('BROWSER_ID', 'chrome')
+
 # The Admin's saved configuration (from webui.db).
 ADMIN_CONFIG = {
     'video_generation.enable': True,
     'video_generation.engine': 'openai',
-    'video_generation.model': 'agnes/agnes-video-2.5-flash',
+    'video_generation.model': VIDEO_MODEL,
     'video_generation.size': '720P',
     'video_generation.openai.api_base_url': '',
     'video_generation.openai.api_key': '',
@@ -48,7 +60,7 @@ ADMIN_CONFIG = {
     'video_generation.image_input.mode': 'image',
     'image_generation.enable': True,
     'image_generation.engine': 'openai',
-    'image_generation.model': 'agnes/agnes-image-2.5-flash',
+    'image_generation.model': IMAGE_MODEL,
     'image_generation.size': '4096x4096',
     'image_generation.steps': 50,
     'image_generation.prompt.enable': True,
@@ -76,11 +88,13 @@ def record(name, ok, detail):
 
 
 class FakeUser:
-    id = '84593fb0-1617-40ed-8bbd-4bd7a0fa0c8b'
+    """A stand-in for the signed-in Admin; no real account data is used."""
+
+    id = '00000000-0000-4000-8000-000000000000'
     role = 'admin'
     settings = USER_SETTINGS
-    email = 'salihsimsekhp@gmail.com'
-    name = 'Salih'
+    email = 'admin@example.test'
+    name = 'Admin'
 
 
 def patch_config(config_cls, values):
@@ -311,7 +325,7 @@ async def main():
         json.dumps(
             {
                 'error': {
-                    'message': 'Model agnes-image-2.5-flash is an image model. Use /v1/images/generations.',
+                    'message': 'Model {IMAGE_MODEL} is an image model. Use /v1/images/generations.',
                     'type': 'AgnesAI_error',
                     'code': 'invalid_request',
                 }
@@ -332,7 +346,7 @@ async def main():
 
     record(
         'image: saglayicinin "is an image model" mesaji HTTPException detail-inde',
-        'is an image model' in msg and 'gpt-image-1' in msg,
+        'is an image model' in msg and WORKING_IMAGE_MODEL.split('/')[-1] in msg,
         f'hata = {msg[:300]}',
     )
 
@@ -397,7 +411,7 @@ async def main():
                 'browser_sandbox.kasm.api_secret': KASM_API_SECRET,
                 'browser_sandbox.kasm.user': KASM_USER,
                 'browser_sandbox.kasm.password': KASM_PASSWORD,
-                'browser_sandbox.kasm.browsers': ['chrome'],
+                'browser_sandbox.kasm.browsers': [BROWSER_ID],
                 'browser_sandbox.live_url': f'{KASM_URL}/?password={KASM_PASSWORD}',
                 'browser_sandbox.url': None,
                 'browser_sandbox.auth_token': None,
@@ -405,7 +419,7 @@ async def main():
             },
         )
         result = await browser.start_browser_session(
-            request=None, form_data=browser.StartSessionForm(browser_id='chrome', chat_id='live-check'), user=user
+            request=None, form_data=browser.StartSessionForm(browser_id=BROWSER_ID, chat_id=os.environ.get('TEST_CHAT_ID', 'live-check')), user=user
         )
         live_url = result.get('live_url') or ''
         safe = is_safe_kasm_connection_url(live_url, KASM_URL)
@@ -419,7 +433,7 @@ async def main():
             # A second start must reuse the running container instead of
             # destroying it, otherwise the embedded preview dies.
             again = await browser.start_browser_session(
-                request=None, form_data=browser.StartSessionForm(browser_id='chrome', chat_id='live-check'), user=user
+                request=None, form_data=browser.StartSessionForm(browser_id=BROWSER_ID, chat_id=os.environ.get('TEST_CHAT_ID', 'live-check')), user=user
             )
             record(
                 'kasm: ikinci istek konteyneri yok etmiyor, ayni URL-i donduruyor',
@@ -427,7 +441,7 @@ async def main():
                 f"ilk  = {live_url[-40:]}\n       ikinci = {str(again.get('live_url'))[-40:]}",
             )
             await browser.stop_browser_session(
-                request=None, form_data=browser.StopSessionForm(chat_id='live-check'), user=user
+                request=None, form_data=browser.StopSessionForm(chat_id=os.environ.get('TEST_CHAT_ID', 'live-check')), user=user
             )
     except Exception as e:
         record('kasm: konteyner baslatildi ve connect URL guvenli', False, f'{type(e).__name__}: {e}')

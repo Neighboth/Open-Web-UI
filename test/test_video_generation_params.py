@@ -100,7 +100,7 @@ BASE_CONFIG = {
     'video_generation.engine': 'openai',
     'video_generation.model': 'agnes/agnes-video-2.5-flash',
     'video_generation.size': '720P',
-    'video_generation.openai.api_base_url': 'https://pixrouter.com/v1',
+    'video_generation.openai.api_base_url': 'https://provider.example.test/v1',
     'video_generation.openai.api_key': 'test-key',
     'video_generation.openai.params': {'mode': 'text'},
     'video_generation.mode': '',

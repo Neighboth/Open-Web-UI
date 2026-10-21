@@ -48,6 +48,9 @@ def _is_kasm_dashboard_url(url: str, kasm_url: str) -> bool:
         parsed.scheme == base.scheme
         and parsed.netloc.lower() == base.netloc.lower()
         and parsed.path.rstrip('/') in {'', '/'}
+        # A fragment means the SPA will route to a session view, not to the
+        # dashboard ("/#/connect/kasm/...").
+        and not parsed.fragment
     )
 
 
@@ -566,7 +569,7 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
         except Exception as e:
             log.warning(f'Kasm Workspaces container request notice: {e}')
             fallback_live_url = configured_live_url or kasm_url
-            if fallback_live_url:
+            if fallback_live_url and not _is_kasm_dashboard_url(fallback_live_url, kasm_url):
                 ACTIVE_KASM_SESSIONS[session_key] = {
                     'live_url': fallback_live_url,
                     'cdp_url': kasm_cdp_url or None,
@@ -583,11 +586,19 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                     'provider': 'kasm',
                     'browser_id': browser_id,
                 }
+            # The Kasm dashboard is not a browser session view.  Returning it here
+            # produced an embedded dashboard with a login toast, so report the
+            # real failure instead.
+            return {
+                'status': False,
+                'error': f'Could not reach the Kasm Workspaces server: {e}',
+                'provider': provider,
+            }
 
     # Case 2: Standalone Kasm Workspaces or Live Stream URL
     if provider == 'kasm':
         fallback_live_url = configured_live_url or kasm_url
-        if fallback_live_url:
+        if fallback_live_url and not _is_kasm_dashboard_url(fallback_live_url, kasm_url):
             ACTIVE_KASM_SESSIONS[session_key] = {
                 'live_url': fallback_live_url,
                 'cdp_url': kasm_cdp_url or None,
@@ -601,6 +612,16 @@ async def start_browser_session(request: Request, form_data: StartSessionForm, u
                 'status': True,
                 'live_url': fallback_live_url,
                 'cdp_url': kasm_cdp_url or None,
+                'provider': 'kasm',
+                'browser_id': browser_id,
+            }
+        if fallback_live_url:
+            return {
+                'status': False,
+                'error': (
+                    'The configured live preview URL points at the Kasm dashboard, not at a browser '
+                    'session. Configure a session URL (or the Kasm API credentials) to start a browser.'
+                ),
                 'provider': 'kasm',
                 'browser_id': browser_id,
             }

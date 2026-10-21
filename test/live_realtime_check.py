@@ -9,7 +9,9 @@ BACKEND = Path(__file__).resolve().parents[1] / 'backend'
 sys.path.insert(0, str(BACKEND))
 
 PIX_KEY = os.environ.get('PIX_KEY', '')
-PIX_URL = 'https://pixrouter.com/v1'
+PIX_URL = os.environ.get('PIX_URL', 'https://provider.example.test/v1')
+REALTIME_MODEL = os.environ.get('REALTIME_MODEL', 'google/gemini-3.1-flash-live-preview')
+SECOND_REALTIME_MODEL = os.environ.get('SECOND_REALTIME_MODEL', 'mistralai/voxtral-mini-realtime-latest')
 
 ADMIN_CONFIG = {
     'audio.realtime.enabled': True,
@@ -17,7 +19,7 @@ ADMIN_CONFIG = {
     'audio.realtime.auth_type': 'api_key',
     'audio.realtime.openai.api_base_url': '',
     'audio.realtime.openai.api_key': '',
-    'audio.realtime.model': os.environ.get('REALTIME_MODEL', 'google/gemini-3.1-flash-live-preview'),
+    'audio.realtime.model': REALTIME_MODEL,
     'audio.realtime.voice': 'Marathon',
     'audio.realtime.transcription_model': 'openai/whisper-large-v3',
 }
@@ -34,11 +36,13 @@ USER_SETTINGS = {
 
 
 class FakeUser:
-    id = '84593fb0-1617-40ed-8bbd-4bd7a0fa0c8b'
+    """A stand-in for the signed-in Admin; no real account data is used."""
+
+    id = '00000000-0000-4000-8000-000000000000'
     role = 'admin'
     settings = USER_SETTINGS
-    email = 'salihsimsekhp@gmail.com'
-    name = 'Salih'
+    email = 'admin@example.test'
+    name = 'Admin'
 
 
 async def main():
@@ -54,10 +58,7 @@ async def main():
     Config.get_many = staticmethod(get_many)
     Config.get = staticmethod(get)
 
-    for model in [
-        'google/gemini-3.1-flash-live-preview',
-        'mistralai/voxtral-mini-realtime-latest',
-    ]:
+    for model in [REALTIME_MODEL, SECOND_REALTIME_MODEL]:
         ADMIN_CONFIG['audio.realtime.model'] = model
         result = await verify_realtime_connection(request=None, user=FakeUser())
         print(f'\nmodel = {model}')
