@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import json
 import logging
 import mimetypes
 import re
@@ -10,7 +11,7 @@ import uuid
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote, urlparse
 
 import aiofiles
@@ -71,6 +72,11 @@ IMAGE_CONFIG_KEYS = {
     'IMAGE_GENERATION_ENGINE': 'image_generation.engine',
     'IMAGE_GENERATION_MODEL': 'image_generation.model',
     'IMAGE_SIZE': 'image_generation.size',
+    'IMAGE_DEFAULT_RATIO': 'image_generation.default_ratio',
+    'IMAGE_ALLOWED_SIZES': 'image_generation.allowed_sizes',
+    'IMAGE_ALLOWED_RATIOS': 'image_generation.allowed_ratios',
+    'ENABLE_REFERENCE_IMAGES': 'image_generation.reference_images.enable',
+    'REFERENCE_IMAGES_MAX': 'image_generation.reference_images.max',
     'IMAGE_STEPS': 'image_generation.steps',
     'IMAGES_OPENAI_API_BASE_URL': 'image_generation.openai.api_base_url',
     'IMAGES_OPENAI_API_KEY': 'image_generation.openai.api_key',
@@ -226,6 +232,36 @@ async def get_image_model(request):
             )
 
 
+def _split_options(value: Any) -> list[str]:
+    """Split a comma or newline separated option list."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        items = [str(item).strip() for item in value]
+    else:
+        items = [part.strip() for part in re.split(r'[,\n]', str(value))]
+    return [item for item in items if item]
+
+
+def _allowed_sizes(image_config) -> list[str]:
+    return _split_options(getattr(image_config, 'IMAGE_ALLOWED_SIZES', None))
+
+
+def _allowed_ratios(image_config) -> list[str]:
+    return _split_options(getattr(image_config, 'IMAGE_ALLOWED_RATIOS', None))
+
+
+def _check_size(size: str | None, allowed: list[str], kind: str = 'size') -> None:
+    """Reject a resolution the administrator did not allow."""
+    if not size or not allowed or size == 'auto':
+        return
+    if size not in allowed:
+        raise HTTPException(
+            status_code=400,
+            detail=(f'Unsupported {kind} "{size}". Use one of the configured values: {", ".join(allowed)}.'),
+        )
+
+
 class ImagesConfig(BaseModel):
     ENABLE_IMAGE_GENERATION: bool
     ENABLE_IMAGE_PROMPT_GENERATION: bool
@@ -233,6 +269,13 @@ class ImagesConfig(BaseModel):
     IMAGE_GENERATION_ENGINE: str
     IMAGE_GENERATION_MODEL: str
     IMAGE_SIZE: str | None
+    # Resolution tiers such as 1K, 2K, 3K and 4K are offered next to the
+    # plain width x height form, so both are accepted.
+    IMAGE_DEFAULT_RATIO: str | None
+    IMAGE_ALLOWED_SIZES: str | None
+    IMAGE_ALLOWED_RATIOS: str | None
+    ENABLE_REFERENCE_IMAGES: bool | None
+    REFERENCE_IMAGES_MAX: int | None
     IMAGE_STEPS: int | None
 
     IMAGES_OPENAI_API_BASE_URL: str
@@ -286,11 +329,19 @@ async def update_config(request: Request, form_data: ImagesConfig, user=Depends(
             ),
         )
 
-    pattern = r'^\d+x\d+$'
+    # A resolution is either plain width x height (1024x1024) or a tier
+    # (1K, 2K, 3K, 4K), which several providers use instead of pixels.
+    pattern = r'^(\d+x\d+|\d+[KkMm])$'
     if not (form_data.IMAGE_SIZE == 'auto' or form_data.IMAGE_SIZE == '' or re.match(pattern, form_data.IMAGE_SIZE)):
         raise HTTPException(
             status_code=400,
-            detail=ERROR_MESSAGES.INCORRECT_FORMAT('  (e.g., 512x512).'),
+            detail=ERROR_MESSAGES.INCORRECT_FORMAT('  (e.g., 1024x1024 or 4K).'),
+        )
+
+    if form_data.REFERENCE_IMAGES_MAX is not None and not 0 <= form_data.REFERENCE_IMAGES_MAX <= 20:
+        raise HTTPException(
+            status_code=400,
+            detail=ERROR_MESSAGES.INCORRECT_FORMAT('  (0 - 20).'),
         )
 
     if form_data.IMAGE_STEPS < 0:
@@ -673,13 +724,24 @@ async def image_generations(
     # image model other than gpt-image-1, which is warned about on settings save
 
     size = '512x512'
-    if image_config.IMAGE_SIZE and 'x' in image_config.IMAGE_SIZE:
+    if image_config.IMAGE_SIZE and image_config.IMAGE_SIZE != 'auto':
         size = image_config.IMAGE_SIZE
 
-    if form_data.size and 'x' in form_data.size:
+    if form_data.size:
         size = form_data.size
 
-    width, height = tuple(map(int, size.split('x')))
+    # A resolution is either plain width x height (1024x1024) or a tier
+    # (1K, 2K, 3K, 4K).  The tier form has no pixels, so it is passed to the
+    # provider as it is and only the pixel form is split.
+    width = height = None
+    if 'x' in size.lower():
+        try:
+            width, height = tuple(map(int, size.lower().split('x')))
+        except ValueError:
+            width = height = None
+    if width is None or height is None:
+        # The pixel based engines need concrete numbers.
+        width = height = 512
 
     metadata = metadata or {}
 
@@ -697,6 +759,12 @@ async def image_generations(
     if not model and engine == 'openai':
         model = form_data.model or 'dall-e-3'
 
+    # Keep the request inside the options the administrator allowed, so the
+    # model gets a clear message instead of a provider error.
+    _check_size(form_data.size, _allowed_sizes(image_config), 'resolution')
+    if form_data.size is None and image_config.IMAGE_SIZE and image_config.IMAGE_SIZE != 'auto':
+        _check_size(image_config.IMAGE_SIZE, _allowed_sizes(image_config), 'resolution')
+
     try:
         if engine == 'openai':
             headers = {
@@ -710,6 +778,18 @@ async def image_generations(
             url = f'{openai_url}/images/generations'
             if image_config.IMAGES_OPENAI_API_VERSION:
                 url = f'{url}?api-version={image_config.IMAGES_OPENAI_API_VERSION}'
+
+            provider_params = image_config.IMAGES_OPENAI_API_PARAMS
+            if isinstance(provider_params, str):
+                try:
+                    provider_params = json.loads(provider_params)
+                except Exception:
+                    provider_params = {}
+            provider_params = dict(provider_params) if isinstance(provider_params, dict) else {}
+            # The default ratio of the instance is used unless the provider
+            # parameters carry one already.
+            if image_config.IMAGE_DEFAULT_RATIO and 'ratio' not in provider_params:
+                provider_params['ratio'] = image_config.IMAGE_DEFAULT_RATIO
 
             data = {
                 'model': model,
@@ -728,7 +808,7 @@ async def image_generations(
                     )
                     else {'response_format': 'b64_json'}
                 ),
-                **({} if not image_config.IMAGES_OPENAI_API_PARAMS else image_config.IMAGES_OPENAI_API_PARAMS),
+                **provider_params,
             }
 
             session = await get_session()

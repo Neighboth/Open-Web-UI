@@ -193,21 +193,6 @@ def test_own_kasm_account_is_used_for_the_session():
     original = _patch_session()
     used = {}
 
-    class Recorder:
-        def __init__(self, *a, **k):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *a):
-            return False
-
-        def post(self, url, **kwargs):
-            if 'authenticate' in url:
-                used['username'] = (kwargs.get('json') or {}).get('username')
-            return Resp({'user_id': 'kasm-user-id'})
-
     import aiohttp
 
     class OwnResp:

@@ -415,6 +415,20 @@
 							/>
 						</AdminSettingRow>
 
+						<AdminSettingField
+							label={$i18n.t('Reference Images Max')}
+							description={$i18n.t('How many reference images may be sent at once (0 - 20).')}
+						>
+							<input
+								class={inputClass}
+								type="number"
+								min="0"
+								max="20"
+								placeholder="4"
+								bind:value={config.REFERENCE_IMAGES_MAX}
+							/>
+						</AdminSettingField>
+
 						<AdminSettingRow
 							label={$i18n.t('settings.admin.images.imagePromptGeneration.label')}
 							description={$i18n.t('settings.admin.images.imagePromptGeneration.description')}

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from typing import Optional, Any
 
 import aiohttp
@@ -108,6 +109,17 @@ DEFAULT_CONFIG = {
     'VIDEOS_EDIT_COMFYUI_WORKFLOW': '',
     'VIDEOS_EDIT_COMFYUI_WORKFLOW_NODES': [],
 }
+
+
+def _split_options(value) -> list[str]:
+    """Split a comma or newline separated option list."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        items = [str(item).strip() for item in value]
+    else:
+        items = [part.strip() for part in re.split(r'[,\n]', str(value))]
+    return [item for item in items if item]
 
 
 async def get_config_values() -> dict:
@@ -258,6 +270,26 @@ async def video_generations(request: Request, form_data: dict, user=Depends(get_
     aspect_ratio_val = form_data.get('aspect_ratio') or config.get('VIDEO_ASPECT_RATIO_DEFAULT')
     if aspect_ratio_val:
         payload['aspect_ratio'] = aspect_ratio_val
+
+    # Keep the request inside the options the administrator allowed, so the
+    # model gets a clear message instead of a provider error.
+    allowed_ratios = _split_options(config.get('VIDEO_ASPECT_RATIOS'))
+    if allowed_ratios and aspect_ratio_val and aspect_ratio_val not in allowed_ratios:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f'Unsupported aspect ratio "{aspect_ratio_val}". '
+                f'Use one of the configured values: {", ".join(allowed_ratios)}.'
+            ),
+        )
+    allowed_sizes = _split_options(config.get('VIDEO_SIZES'))
+    if allowed_sizes and size_val and size_val not in allowed_sizes:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f'Unsupported resolution "{size_val}". Use one of the configured values: {", ".join(allowed_sizes)}.'
+            ),
+        )
 
     # Images / Image references
     images = form_data.get('images')

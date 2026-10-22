@@ -376,6 +376,84 @@ async def get_updated_tool_function(function: Callable, extra_params: dict):
     return function
 
 
+def split_option_list(value) -> list[str]:
+    """Split a comma or newline separated option list."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        items = [str(item).strip() for item in value]
+    else:
+        items = [part.strip() for part in re.split(r'[,\n]', str(value))]
+    return [item for item in items if item]
+
+
+def build_media_options_hint(config: dict, tool_name: str) -> str:
+    """Describe the options the administrator configured for a media tool.
+
+    The model can only pick from what the instance offers, so the configured
+    ratios, resolutions and durations belong in the tool description.  Without
+    it the model answers with the hard coded list of the function signature and
+    the user gets values the provider rejects.
+    """
+    options: list[str] = []
+
+    def add(label: str, values: list[str], default: Any = None) -> None:
+        if not values:
+            return
+        text = ', '.join(values)
+        if default:
+            text += f' (default: {default})'
+        options.append(f'- {label}: {text}')
+
+    if tool_name == 'generate_video':
+        add(
+            'aspect ratio',
+            split_option_list(config.get('video_generation.aspect_ratios')),
+            config.get('video_generation.aspect_ratio_default') or None,
+        )
+        add(
+            'resolution',
+            split_option_list(config.get('video_generation.sizes')),
+            config.get('video_generation.size_default') or None,
+        )
+        durations = str(config.get('video_generation.durations') or '').strip()
+        if durations:
+            default = config.get('video_generation.duration_default') or None
+            options.append(f'- duration: {durations} seconds' + (f' (default: {default})' if default else ''))
+        mode = str(config.get('video_generation.mode') or '').strip()
+        if mode:
+            options.append(f'- mode: {mode}')
+        maximum = config.get('video_generation.image_input.max')
+        if maximum:
+            options.append(f'- reference images: up to {maximum}')
+
+    elif tool_name in {'generate_image', 'edit_image'}:
+        add(
+            'resolution',
+            split_option_list(config.get('image_generation.allowed_sizes')),
+            config.get('image_generation.size') or None,
+        )
+        add(
+            'aspect ratio',
+            split_option_list(config.get('image_generation.allowed_ratios')),
+            config.get('image_generation.default_ratio') or None,
+        )
+        if tool_name == 'edit_image':
+            edit_size = config.get('images.edit.size')
+            if edit_size:
+                options.append(f'- resolution of the edit tool: {edit_size}')
+        maximum = config.get('image_generation.reference_images.max')
+        if maximum:
+            options.append(f'- reference images: up to {maximum}')
+
+    if not options:
+        return ''
+    return (
+        'Options configured by the administrator. Only use these values, and only '
+        'when the user asked for them:\n' + '\n'.join(options)
+    )
+
+
 async def get_tools(request: Request, tool_ids: list[str], user: UserModel, extra_params: dict) -> dict[str, dict]:
     """Load tools for the given tool_ids, checking access control."""
     if not tool_ids:
@@ -677,6 +755,25 @@ async def get_builtin_tools(
         'ui.enable_user_webhooks',
         'subagents.enable',
         'subagents.background_enabled',
+    )
+
+    # The options the administrator configured for the media tools.  The model
+    # reads them in the tool description, so it only offers valid values.
+    media_config = await Config.get_many(
+        'video_generation.aspect_ratios',
+        'video_generation.sizes',
+        'video_generation.durations',
+        'video_generation.aspect_ratio_default',
+        'video_generation.size_default',
+        'video_generation.duration_default',
+        'video_generation.mode',
+        'video_generation.image_input.max',
+        'image_generation.allowed_sizes',
+        'image_generation.allowed_ratios',
+        'image_generation.default_ratio',
+        'image_generation.size',
+        'image_generation.reference_images.max',
+        'images.edit.size',
     )
 
     async def has_user_permission(feature_key: str) -> bool:
@@ -986,6 +1083,14 @@ async def get_builtin_tools(
             parameters.get('properties', {}).pop('background', None)
             if isinstance(parameters.get('required'), list):
                 parameters['required'] = [name for name in parameters['required'] if name != 'background']
+
+        # The media tools can only use the options the administrator set, so
+        # those belong in the description the model reads.
+        hint = build_media_options_hint(media_config, func.__name__)
+        if hint:
+            description = (spec.get('function') or {}).get('description')
+            if description:
+                spec['function']['description'] = f'{description}\n\n{hint}'
 
         tools_dict[func.__name__] = {
             'tool_id': f'builtin:{func.__name__}',

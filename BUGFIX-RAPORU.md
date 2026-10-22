@@ -479,7 +479,60 @@ Protocol üzerinden çalışıyor (ek bağımlılık yok — WebSocket'i aiohttp
 
 ---
 
-## 12. Eklenen testler
+## 12. Medya araçlarının seçenekleri modele söylenmiyordu
+
+### Kök neden
+`generate_video` / `generate_image` / `edit_image` araçlarının açıklaması **sabit
+metin**ti (ör. *"aspect ratio ('21:9', '16:9', '4:3', '1:1', '3:4', '9:16')"*).
+Admin 8 oran girdiyse model hâlâ 6 tanesini duyuyordu; çözünürlük seçenekleri
+hiç söylenmiyordu.
+
+Ayrıca **Images ayarlarında 4 alan kaydedilmiyordu**:
+`IMAGE_DEFAULT_RATIO`, `IMAGE_ALLOWED_SIZES`, `IMAGE_ALLOWED_RATIOS`,
+`ENABLE_REFERENCE_IMAGES` backend'de `IMAGE_CONFIG_KEYS` içinde yoktu →
+`config_updates()` bunları düşürüyordu → **"kaydet dedim, input boşaldı"**
+tam da buydu.
+
+### Düzeltmeler
+| Dosya | Değişiklik |
+|---|---|
+| `backend/open_webui/utils/tools.py` | **YENİ** `build_media_options_hint()` — admin'in girdiği oran/çözünürlük/süre/referans görsel limiti araç açıklamasına ekleniyor |
+| `backend/open_webui/routers/images.py` | Eksik config anahtarları eklendi (`default_ratio`, `allowed_sizes`, `allowed_ratios`, `reference_images.enable/max`) |
+| `backend/open_webui/routers/images.py` | `IMAGE_SIZE` doğrulaması artık **1K / 2K / 3K / 4K** tier'larını da kabul ediyor (eskiden `^\d+x\d+$` → reddediyordu) |
+| `backend/open_webui/routers/images.py` | Tier boyutlar çözünürlük olarak **aynen** sağlayıcıya gidiyor (eskiden `'x' in size` kontrolü "1K"yi yok sayıp `size.split('x')` ile ValueError veriyordu) |
+| `backend/open_webui/routers/images.py` | İzin verilmeyen çözünürlük/oran reddediliyor, model hangi değerlerin geçerli olduğunu öğrenip düzeltebiliyor |
+| `backend/open_webui/routers/images.py` | Varsayılan oran, sağlayıcı parametrelerinde yoksa otomatik ekleniyor |
+| `backend/open_webui/routers/videos.py` | Aynı doğrulama video için de var |
+| `src/lib/components/admin/Settings/Images.svelte` | "Azami referans görsel sayısı" alanı eklendi |
+| `src/lib/i18n/locales/tr-TR,en-US` | 18 yeni çeviri anahtarı |
+
+**Modele artık şunlar söyleniyor:**
+```
+Options configured by the administrator. Only use these values...
+- aspect ratio: 21:9, 16:9, 4:3, 1:1, 3:4, 9:16, 2:3, 3:2 (default: 16:9)
+- resolution: 720P, 1080P, 1024x1024 (default: 720P)
+- duration: 4 - 12 seconds (default: 12)
+- reference images: up to 5
+```
+```
+- resolution: 4096x4096, 1K, 2K, 3K, 4K (default: 4096x4096)
+- aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 2:3, 3:2, 21:9 (default: 1:1)
+- reference images: up to 4
+```
+
+---
+
+## 13. Kasm önizleme üst barı ve i18n
+
+4-5 buton aynı işi yapıyordu, bazıları çeviri dışıydı. Artık:
+- Başlıkta **tek buton** ("Ayrı pencerede aç") + kapatma
+- Altta eski mavi bar kaldırıldı
+- Sertifika uyarısı varsa net mesaj + "Yeni sekmede aç" butonu
+- Tüm metinler tr-TR + en-US çeviri kataloğunda
+
+---
+
+## 14. Eklenen testler
 
 | Dosya | Kapsam |
 |---|---|
@@ -488,6 +541,8 @@ Protocol üzerinden çalışıyor (ek bağımlılık yok — WebSocket'i aiohttp
 | `test/test_kasm_dashboard_fallback.py` | dashboard tespiti, fragment'lı session URL'ı dashboard sayılmıyor, ağ hatasında dashboard **dönülmüyor** |
 | `test/test_kasm_isolation.py` | paylaşılan hesap herkese açık, katlanarak retry sırası |
 | `test/test_gemini_live.py` | Gemini Live çevirisi: ses örnekleme, ses eşleme, setup, araç çağrısı/sonucu, transkripsiyon, kesinti |
+| `test/test_media_options.py` | modele giden oran/çözünürlük listesi, tier boyut doğrulaması |
+| `test/test_browser_tools.py` | tarayıcı araçları özellik açıkken modele ulaşıyor, kapalıyken ulaşmıyor |
 | `test/live_provider_check.py` | **canlı** sağlayıcı + Kasm doğrulaması (10 kontrol) — tüm host/anahtar/model **environment'tan** okunur |
 | `test/live_realtime_check.py` | **canlı** realtime model doğrulaması — environment'tan okunur |
 | `test/live_kasm_check.py` | **canlı** Kasm: konteyner çalışıyor mu, share linki kapalı mı, retry sırası — environment'tan okunur |
@@ -496,10 +551,11 @@ Protocol üzerinden çalışıyor (ek bağımlılık yok — WebSocket'i aiohttp
 
 | Kontrol | Sonuç |
 |---|---|
-| `pytest test/` | ✅ **50 passed** |
-| `ruff format --check` (CI backend) | ✅ 296 dosya formatlı |
+| `pytest test/` | ✅ **58 passed** |
+| `ruff format --check` (CI backend) | ✅ 297 dosya formatlı |
 | `ruff check --select=F` (CI backend) | ✅ All checks passed |
 | Canlı video isteği (mode gönderilerek) | ✅ 400 "mode is required" → 503 (kabul edildi) |
+| Canlı Agnes image 2.5 flash | ✅ 1K/2K/3K/4K/4096x4096 + 8 oranın tamamı 200 |
 | Canlı image hatası | ✅ artık model/endpoint ipucuyla görünüyor |
 | Canlı Kasm (5 kontrol) | ✅ 5/5 |
 | Canlı realtime model doğrulama | ✅ doğru modeli doğru raporluyor |
