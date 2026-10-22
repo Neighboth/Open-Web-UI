@@ -338,6 +338,33 @@ async def _get_realtime_connection(
         api_key = direct_key
         api_base_url = direct_url or 'https://api.openai.com/v1'
 
+    model = model or config.get('audio.realtime.model')
+    if not model:
+        raise ValueError('Configure the Realtime model')
+
+    if provider == 'gemini':
+        # The Gemini Live API has its own WebSocket service.  The Admin can
+        # point it at a gateway that exposes the same service; without an
+        # explicit URL the public endpoint is used.
+        template = (config.get('audio.realtime.gemini.ws_url') or '').strip()
+        if not template:
+            if not api_base_url or api_base_url.rstrip('/') == 'https://api.openai.com/v1':
+                api_base_url = 'https://generativelanguage.googleapis.com'
+            template = api_base_url.rstrip('/') + GEMINI_LIVE_PATH
+        if '{model}' in template:
+            # The gateway knows the model under the id it published, for
+            # example "google/gemini-3.8-live".
+            template = template.replace('{model}', model)
+        ws_url = template
+        if ws_url.startswith('https://'):
+            ws_url = 'wss://' + ws_url[len('https://') :]
+        elif ws_url.startswith('http://'):
+            ws_url = 'ws://' + ws_url[len('http://') :]
+        if not api_key:
+            raise ValueError('Configure the Realtime API key')
+        headers = {'Authorization': f'Bearer {api_key}', 'x-goog-api-key': api_key}
+        return ws_url, headers
+
     try:
         url = urlsplit(api_base_url)
         valid_url = (
@@ -350,27 +377,6 @@ async def _get_realtime_connection(
         valid_url = False
     if not valid_url:
         raise ValueError('Invalid Realtime provider URL')
-    model = model or config.get('audio.realtime.model')
-    if not model:
-        raise ValueError('Configure the Realtime model')
-
-    if provider == 'gemini':
-        # The Gemini Live API has its own WebSocket service.  The Admin can
-        # point it at a gateway that exposes the same service; otherwise the
-        # public endpoint is used.
-        template = (config.get('audio.realtime.gemini.ws_url') or '').strip()
-        if not template:
-            if not api_base_url or api_base_url.rstrip('/') == 'https://api.openai.com/v1':
-                api_base_url = 'https://generativelanguage.googleapis.com'
-            template = api_base_url.rstrip('/') + GEMINI_LIVE_PATH
-        if '{model}' in template:
-            template = template.replace('{model}', gemini_model_name(model))
-        ws_url = template.replace('https://', 'wss://', 1).replace('http://', 'ws://', 1)
-        if not api_key:
-            raise ValueError('Configure the Realtime API key')
-        headers = {'Authorization': f'Bearer {api_key}', 'x-goog-api-key': api_key}
-        return ws_url, headers
-
     ws_url = urlunsplit(
         (
             'wss' if url.scheme == 'https' else 'ws',

@@ -18,7 +18,7 @@ print("Kasm TLS guven kontrolu")
 print("=" * 74)
 for url in (
     os.environ.get("KASM_URL", ""),
-    "http://38.210.77.108:8443",
+    "http://kasm.example.test:8443",
     "https://example.com",
 ):
     if not url:

@@ -364,7 +364,7 @@
 							<AdminSettingField label={$i18n.t('settings.admin.images.imageSize.label')}>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('Default Size (e.g. 1024x1024 or 4096x4096)')}
+									placeholder={$i18n.t('Default Size (e.g. 1024x1024, 1K, 2K, 3K or 4K)')}
 									bind:value={config.IMAGE_SIZE}
 								/>
 							</AdminSettingField>
@@ -380,7 +380,7 @@
 							<AdminSettingField label={$i18n.t('Allowed Sizes')}>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('Comma separated sizes (e.g. 512x512, 1024x1024, 4096x4096)')}
+									placeholder={$i18n.t('Comma separated sizes (e.g. 1024x1024, 1K, 2K, 3K, 4K)')}
 									bind:value={config.IMAGE_ALLOWED_SIZES}
 								/>
 							</AdminSettingField>
@@ -388,7 +388,9 @@
 							<AdminSettingField label={$i18n.t('Allowed Ratios')}>
 								<input
 									class={inputClass}
-									placeholder={$i18n.t('Comma separated ratios (e.g. 1:1, 16:9, 9:16, 4:3, 3:4)')}
+									placeholder={$i18n.t(
+									'Comma separated ratios (e.g. 1:1, 16:9, 9:16, 4:3, 3:4, 2:3, 3:2, 21:9)'
+								)}
 									bind:value={config.IMAGE_ALLOWED_RATIOS}
 								/>
 							</AdminSettingField>

@@ -91,30 +91,24 @@
 			</div>
 		</div>
 		{#if $agentLiveNotice}
-			<div class="px-4 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200">
-				<p class="font-semibold mb-1">{$i18n.t('The live preview cannot be embedded')}</p>
-				<p class="mb-3">{$agentLiveNotice}</p>
+			<div class="px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-3">
+				<span class="flex-1">{$agentLiveNotice}</span>
 				<button
 					type="button"
 					on:click={openInWindow}
-					class="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition"
+					class="shrink-0 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition"
 				>
 					{$i18n.t('Open in a new tab')}
 				</button>
 			</div>
-			<div class="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900">
-				<GlobeAlt className="size-8 text-gray-400" strokeWidth="1.5" />
-				<p>{$i18n.t('The session is running. Open it in a new tab to use it.')}</p>
-			</div>
-		{:else}
-			<iframe
-				src={$agentLiveUrl}
-				class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"
-				title="Agent Preview"
-				allow="autoplay; microphone; camera; clipboard-read; clipboard-write; window-management; fullscreen; display-capture; web-share"
-				referrerpolicy="no-referrer"
-				loading="eager"
-			></iframe>
 		{/if}
+		<iframe
+			src={$agentLiveUrl}
+			class="w-full h-full border-none bg-white dark:bg-gray-900 flex-1"
+			title="Agent Preview"
+			allow="autoplay; microphone; camera; clipboard-read; clipboard-write; window-management; fullscreen; display-capture; web-share"
+			referrerpolicy="no-referrer"
+			loading="eager"
+		></iframe>
 	</div>
 {/if}

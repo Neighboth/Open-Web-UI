@@ -350,7 +350,7 @@ Bu alan **sadece admin'e** görünür, sıradan kullanıcı hiç form görmez.
 **Kasm hesapları (canlı kontrol):**
 | Hesap | Grup | Durum |
 |---|---|---|
-| `user@kasm.local` | All Users | Paylaşılan servis hesabı — yönetici **değil** ✅ |
+| `<paylasilan-hesap>` | All Users | Paylaşılan servis hesabı — yönetici **değil** ✅ |
 | `salih` | All Users + **Administrators** | Kişisel yönetici hesabın |
 
 `/api/public/create_user` → **401 "Access Denied"** (API anahtarının sahibi
@@ -410,7 +410,7 @@ kalıcı olarak yeni bir web adresine taşınmış olabilir."* hatası çıkar.
 Yani bu **Open WebUI'de değil, Kasm sunucusunun sertifikasında** bir sorun.
 
 ### Çözüm (sunucu tarafı, kalıcı)
-1. `kasm.senin-domain.com` → `38.210.77.108` DNS kaydı
+1. `kasm.senin-domain.com` → `<kasm-host>` DNS kaydı
 2. 443'te bir reverse proxy (Caddy/nginx) + **Let's Encrypt** sertifikası →
    `https://127.0.0.1:8443`'e proxy
 3. Open WebUI → Ayarlar → Code Execution → **Kasm URL** = `https://kasm.senin-domain.com`
@@ -435,8 +435,8 @@ Artık kullanıcı Chrome'un kafa karışıcı hata sayfasını görmüyor:
 
 **Canlı doğrulama:**
 ```
-https://38.210.77.108:8443   applicable=True  trusted=False  detail="self-signed certificate"
-http://38.210.77.108:8443    applicable=False trusted=True
+https://<kasm-host>:8443   applicable=True  trusted=False  detail="self-signed certificate"
+http://<kasm-host>:8443    applicable=False trusted=True
 https://example.com          applicable=True  trusted=True
 ```
 
@@ -470,7 +470,7 @@ Protocol üzerinden çalışıyor (ek bağımlılık yok — WebSocket'i aiohttp
 
 ### DevTools uç noktası nasıl bulunur?
 1. **Ayarlanan adres önceliklidir**: Admin → Code Execution → **Kasm CDP URL**
-   (örn. `http://38.210.77.108:3000`)
+   (örn. `http://<kasm-host>:3000`)
 2. Yoksa Kasm konteynerinin **port haritasından** 9222 portu bulunur ve
    `/json/list` üzerinden sayfanın WebSocket adresi alınır.
 
@@ -532,7 +532,43 @@ Options configured by the administrator. Only use these values...
 
 ---
 
-## 14. Eklenen testler
+## 14. Bu turda düzeltilenler
+
+### Admin → Images sayfası boş ekran veriyordu (bloker)
+Pydantic v2'da `Optional[X]` **varsayılan değersiz** yani hâlâ **zorunlu** alan
+demektir. Yeni eklenen 5 alan (`IMAGE_DEFAULT_RATIO`, `IMAGE_ALLOWED_SIZES`,
+`IMAGE_ALLOWED_RATIOS`, `ENABLE_REFERENCE_IMAGES`, `REFERENCE_IMAGES_MAX`) response
+modelinde zorunlu kaldı → FastAPI doğrulaması 500 verdi → sayfa boş kaldı.
+Artık `= None` varsayılanları var.
+
+### PixRouter Gemini realtime proxy'si test edildi ✅
+Proxy **Gemini Live** el sıkışması kullanıyor (OpenAI-Realtime değil):
+- `wss://<host>/v1/realtime?model={model}` — model **sorgu dizesinde** olmalı (yoksa HTTP 400)
+- İlk mesaj `{"setup": {...}}` → yanıt `{"setupComplete": {}}` + `sessionResumptionUpdate`
+- Backend'in Gemini dalı bununla birebir çalışıyor (canlı test: `setupComplete` geldi)
+
+| Değişiklik | Detay |
+|---|---|
+| `backend/open_webui/routers/audio/realtime.py` | `{model}` yer tutucusu artık **tam model id'sini** koyuyor (`google/gemini-3.8-live`), çünkü gateway modeli kendi yayımladığı id ile tanıyor |
+| `backend/open_webui/routers/audio/realtime.py` | Gemini dalında boş `api_base_url` reddedilmiyordu (adres WS şablonundan geliyor) |
+| `backend/open_webui/routers/audio/realtime.py` | Şema dönüşümü yalnızca baştaki `http(s)://` için yapılıyor |
+
+### Sesli arama: BYOK modelleri kabul ediliyor
+`modelId` hesaplanırken **direct (BYOK) modelleri bilerek dışlanıyordu** →
+"Select one server-configured chat model." hatası. Backend'de
+`generate_direct_chat_completion` kullanıcının kendi bağlantısıyla çalışmayı
+zaten destekliyor; engel sadece frontend filtresiydi. Artık BYOK modeli de seçilebilir.
+
+### 4K / 2K / 3K boyutları arayüzde de kabul ediliyor
+Placeholder'lar güncellendi: "Default Size (e.g. 1024x1024, 1K, 2K, 3K or 4K)".
+
+### Kasm sertifikası iframe'i engellemiyor
+Sertifika güvenilmezse ekran **boş** kalmıyor; iframe her zaman açılıyor, üstünde
+kısa bir uyarı şeridi ve "Yeni sekmede aç" düğmesi duruyor.
+
+---
+
+## 15. Eklenen testler
 
 | Dosya | Kapsam |
 |---|---|

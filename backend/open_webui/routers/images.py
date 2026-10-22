@@ -271,11 +271,11 @@ class ImagesConfig(BaseModel):
     IMAGE_SIZE: str | None
     # Resolution tiers such as 1K, 2K, 3K and 4K are offered next to the
     # plain width x height form, so both are accepted.
-    IMAGE_DEFAULT_RATIO: str | None
-    IMAGE_ALLOWED_SIZES: str | None
-    IMAGE_ALLOWED_RATIOS: str | None
-    ENABLE_REFERENCE_IMAGES: bool | None
-    REFERENCE_IMAGES_MAX: int | None
+    IMAGE_DEFAULT_RATIO: str | None = None
+    IMAGE_ALLOWED_SIZES: str | None = None
+    IMAGE_ALLOWED_RATIOS: str | None = None
+    ENABLE_REFERENCE_IMAGES: bool | None = None
+    REFERENCE_IMAGES_MAX: int | None = None
     IMAGE_STEPS: int | None
 
     IMAGES_OPENAI_API_BASE_URL: str
